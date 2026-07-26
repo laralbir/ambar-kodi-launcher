@@ -8,6 +8,17 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **La pantalla ya no se apaga ni salta el salvapantallas mientras
+  Ámbar está en ejecución** (relevante para un kiosko que se supone
+  siempre visible). Nuevo puerto `ScreenWakeLock` con un adapter por
+  plataforma (`ambar/adapters/desktop/`): `MacWakeLock` (lanza
+  `caffeinate -d -i` como proceso auxiliar, ya viene con macOS —
+  **verificado en vivo**: arranca al iniciar el launcher y termina
+  limpio al cerrar) y `WindowsWakeLock` (`SetThreadExecutionState` de
+  `kernel32` vía `ctypes`, sin dependencia nueva — **sin verificar en
+  hardware/VM Windows real**, mismo patrón de verificación pendiente
+  que el resto de adapters específicos de Windows). Se libera al
+  cerrar el launcher, junto con el resto de la limpieza de salida.
 - **Al cerrar el launcher, se para la reproducción actual** (Kodi o
   Spotify, lo que estuviera sonando) antes de cerrar la ventana — antes
   el audio se quedaba sonando aunque el launcher ya no estuviera.

@@ -12,6 +12,7 @@ from flask_socketio import SocketIO
 
 from ambar.adapters.audio.null_source import NullAudioLevelSource
 from ambar.adapters.audio.null_volume import NullVolumeController
+from ambar.adapters.desktop.null_wake_lock import NullWakeLock
 from ambar.adapters.desktop.webview_window import WebviewWindowController
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.kodi.ws_listener import listen as kodi_listen
@@ -67,6 +68,25 @@ def _build_volume_controller():
     except Exception as e:
         print(f"Control de volumen no disponible ({e}); quedara inactivo.")
     return NullVolumeController()
+
+
+def _build_wake_lock():
+    """Elige el adapter que evita la suspension de pantalla segun la
+    plataforma, con el mismo fallback seguro que el resto de adapters
+    opcionales: si falla, el kiosko sigue funcionando, solo que sin
+    proteccion contra el salvapantallas/reposo."""
+    try:
+        if sys.platform == "win32":
+            from ambar.adapters.desktop.windows_wake_lock import WindowsWakeLock
+
+            return WindowsWakeLock()
+        if sys.platform == "darwin":
+            from ambar.adapters.desktop.macos_wake_lock import MacWakeLock
+
+            return MacWakeLock()
+    except Exception as e:
+        print(f"Bloqueo de suspension de pantalla no disponible ({e}); quedara inactivo.")
+    return NullWakeLock()
 
 
 def _build_audio_level_source():
@@ -171,7 +191,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     )
     system_service = SystemService(
         WebviewWindowController(), audio_level_service, _build_volume_controller(),
-        kodi_gateway, spotify_gateway,
+        kodi_gateway, spotify_gateway, _build_wake_lock(),
     )
     skins_dir = os.path.join(data_dir, "skins")
     skin_service = SkinService(skins_dir)
@@ -216,6 +236,7 @@ def _start_server(app: Flask, socketio: SocketIO, container: AppContainer, event
     ).start()
     threading.Thread(target=spotify_poll, args=(container.now_playing_service,), daemon=True).start()
     container.audio_level_service.start()
+    container.system_service.start()
     print("Servidor corriendo en http://localhost:5005")
     # allow_unsafe_werkzeug: servidor local de un unico kiosko, no expuesto a
     # internet; el servidor de desarrollo de Werkzeug es suficiente aqui.

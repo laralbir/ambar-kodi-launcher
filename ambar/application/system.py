@@ -16,12 +16,20 @@ class SystemService:
         volume_controller,
         kodi_gateway,
         spotify_gateway,
+        screen_wake_lock,
     ):
         self._window = window
         self._audio_level_service = audio_level_service
         self._volume_controller = volume_controller
         self._kodi_gateway = kodi_gateway
         self._spotify_gateway = spotify_gateway
+        self._screen_wake_lock = screen_wake_lock
+
+    def start(self) -> None:
+        # Evitar que la pantalla se apague/salte el salvapantallas/el equipo
+        # entre en reposo mientras Ambar esta en ejecucion -- un kiosko se
+        # supone siempre visible.
+        self._screen_wake_lock.acquire()
 
     def get_volume(self) -> dict:
         return self._volume_controller.get()
@@ -56,6 +64,7 @@ class SystemService:
             # si esa fuente no esta activa/configurada).
             self._kodi_gateway.stop()
             self._spotify_gateway.pause()
+            self._screen_wake_lock.release()
             # Parar la captura de audio ANTES de cerrar la ventana: si el
             # proceso empieza a apagarse mientras ScreenCaptureKit sigue
             # disparando callbacks nativos de ObjC en un hilo de fondo, el

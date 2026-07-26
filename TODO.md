@@ -41,14 +41,6 @@ de aquí.
   carátula** — ahora mismo se muestra el icono de nota musical
   genérico (`#art-placeholder`); valorar algo más elaborado (silueta
   de disco/vinilo, gradiente con las iniciales del álbum, etc.).
-- **Evitar que la pantalla se apague, salte el salvapantallas o el
-  equipo entre en reposo** mientras Ámbar está en ejecución (relevante
-  para un kiosko que se supone siempre visible/activo). Necesita un
-  mecanismo por plataforma: Windows vía `SetThreadExecutionState`
-  (`ES_DISPLAY_REQUIRED | ES_CONTINUOUS`, API de `kernel32` vía
-  `ctypes`, sin dependencia nueva); macOS vía `caffeinate` (proceso
-  auxiliar) o la API de IOKit `IOPMAssertionCreateWithName`. No
-  implementado todavía.
 - **VU-meter en el mini PC real**: verificado en macOS y en una VM
   Windows 11 ARM64 (ver `CHANGELOG.md`) — pendiente solo confirmarlo
   también en el hardware Windows real (Intel N100).
@@ -182,3 +174,10 @@ de aquí.
 - Iconos descriptivos en los botones de volumen.
 - Al cerrar el launcher, se para la reproducción actual (Kodi o
   Spotify) antes de cerrar la ventana.
+- Evitar que la pantalla se apague, salte el salvapantallas o el
+  equipo entre en reposo mientras Ámbar está en ejecución: macOS vía
+  `caffeinate -d -i` (verificado en vivo: arranca al iniciar, termina
+  limpio al cerrar); Windows vía `SetThreadExecutionState`
+  (`ES_DISPLAY_REQUIRED | ES_CONTINUOUS`, API de `kernel32` vía
+  `ctypes`, sin dependencia nueva — sin verificar en hardware/VM
+  Windows real).

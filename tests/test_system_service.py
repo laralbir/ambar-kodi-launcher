@@ -50,13 +50,25 @@ class FakeSpotifyGateway:
         self.calls.append("pause")
 
 
-def make_service(window=None, audio=None, volume=None, kodi=None, spotify=None):
+class FakeWakeLock:
+    def __init__(self):
+        self.calls = []
+
+    def acquire(self):
+        self.calls.append("acquire")
+
+    def release(self):
+        self.calls.append("release")
+
+
+def make_service(window=None, audio=None, volume=None, kodi=None, spotify=None, wake_lock=None):
     return SystemService(
         window or FakeWindow(),
         audio or FakeAudioLevelService(),
         volume or FakeVolumeController(),
         kodi or FakeKodiGateway(),
         spotify or FakeSpotifyGateway(),
+        wake_lock or FakeWakeLock(),
     )
 
 
@@ -96,3 +108,21 @@ def test_exit_stops_playback_before_closing_window():
     assert spotify.calls == ["pause"]
     assert audio.calls == ["stop"]
     assert window.calls == ["close"]
+
+
+def test_start_acquires_wake_lock():
+    wake_lock = FakeWakeLock()
+    service = make_service(wake_lock=wake_lock)
+
+    service.start()
+
+    assert wake_lock.calls == ["acquire"]
+
+
+def test_exit_releases_wake_lock():
+    wake_lock = FakeWakeLock()
+    service = make_service(wake_lock=wake_lock)
+
+    service.execute("exit")
+
+    assert wake_lock.calls == ["release"]
