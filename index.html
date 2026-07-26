@@ -232,6 +232,11 @@
   .grid-card-sub{font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
   .list-view{display:flex; flex-direction:column; gap:0.5rem; max-width:800px; margin:0 auto;}
+  .cd-warning{
+    max-width:800px; margin:0 auto 1rem; padding:0.9rem 1.1rem; border-radius:8px;
+    background:rgba(255,176,32,0.1); border:1px solid rgba(255,176,32,0.35);
+    color:var(--amber); font-size:0.9rem; line-height:1.4;
+  }
   .list-item{
     display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--panel);
     border:1px solid var(--line); border-radius:8px; cursor:pointer;
@@ -680,9 +685,16 @@
     refreshCdTabAvailability();
   });
 
+  let cdDetectionReliable = true;
+
   function refreshCdTabAvailability(){
     fetch("/api/library/kodi/cd-available").then(r => r.json()).then(data => {
-      el("lib-tab-cd").classList.toggle("disabled", !data.available);
+      cdDetectionReliable = data.detection_reliable;
+      // Si la deteccion no es fiable en este SO (macOS, ver backend), no se
+      // deshabilita nunca la pestaña -- se avisa al entrar en vez de ocultar
+      // una funcion que podria funcionar igualmente.
+      const disable = data.detection_reliable && !data.available;
+      el("lib-tab-cd").classList.toggle("disabled", disable);
     }).catch(() => {});
   }
   el("open-library-spotify").addEventListener("click", () => openLibrary("spotify-pl"));
@@ -731,7 +743,8 @@
         el("lib-title").textContent = "CD de audio";
         const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/"));
         const items = await res.json();
-        renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero");
+        const warning = cdDetectionReliable ? "" : `<div class="cd-warning">⚠ En este sistema, Kodi no siempre detecta correctamente los CD de audio. Si no ves pistas aquí, puede que el CD no se esté leyendo bien — no significa necesariamente que no haya un CD puesto.</div>`;
+        renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero", warning);
       }
 
       else if(viewNode.tab === "spotify-pl") {
@@ -789,8 +802,9 @@
     });
   }
 
-  function renderDirectoryList(items, playWholePath, tab, playWholeLabel) {
-    let html = '<div class="list-view">';
+  function renderDirectoryList(items, playWholePath, tab, playWholeLabel, warningHtml) {
+    let html = warningHtml || '';
+    html += '<div class="list-view">';
     if(playWholePath) {
       html += `<div class="list-item" style="border-color:var(--kodi);" onclick="playKodi({file: '${playWholePath}'})">
         <div class="list-item-icon" style="color:var(--kodi)">▶</div>

@@ -67,7 +67,7 @@ def create_app(container) -> Flask:
 
     @app.route("/api/library/kodi/cd-available")
     def kodi_cd_available():
-        return jsonify({"available": container.library_service.kodi_cd_available()})
+        return jsonify(container.library_service.kodi_cd_status())
 
     @app.route("/api/library/kodi/play", methods=["POST"])
     def kodi_play():

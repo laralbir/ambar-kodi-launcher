@@ -1,0 +1,76 @@
+from ambar.application.library import LibraryService
+
+
+class FakeKodiGateway:
+    def __init__(self):
+        self.calls = []
+
+    def stop(self):
+        self.calls.append("stop")
+
+    def play(self, item):
+        self.calls.append(("play", item))
+
+
+class FakeSpotifyGateway:
+    def __init__(self):
+        self.calls = []
+
+    def pause(self):
+        self.calls.append("pause")
+
+    def play_context(self, context_uri):
+        self.calls.append(("play_context", context_uri))
+        return True
+
+
+def test_kodi_play_pauses_spotify_before_playing():
+    kodi = FakeKodiGateway()
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(kodi, spotify)
+
+    service.kodi_play({"songid": 1})
+
+    assert spotify.calls == ["pause"]
+    assert kodi.calls == [("play", {"songid": 1})]
+
+
+def test_spotify_play_stops_kodi_before_playing():
+    kodi = FakeKodiGateway()
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(kodi, spotify)
+
+    ok = service.spotify_play("spotify:playlist:abc")
+
+    assert ok is True
+    assert kodi.calls == ["stop"]
+    assert spotify.calls == [("play_context", "spotify:playlist:abc")]
+
+
+def test_kodi_play_works_when_spotify_not_configured():
+    kodi = FakeKodiGateway()
+
+    class UnconfiguredSpotify:
+        def pause(self):
+            pass  # best-effort, no-op sin credenciales
+
+    service = LibraryService(kodi, UnconfiguredSpotify())
+
+    service.kodi_play({"file": "cdda://local/"})
+
+    assert kodi.calls == [("play", {"file": "cdda://local/"})]
+
+
+def test_spotify_play_works_when_kodi_not_running():
+    spotify = FakeSpotifyGateway()
+
+    class UnreachableKodi:
+        def stop(self):
+            pass  # best-effort, no-op si Kodi no responde
+
+    service = LibraryService(UnreachableKodi(), spotify)
+
+    ok = service.spotify_play("spotify:playlist:abc")
+
+    assert ok is True
+    assert spotify.calls == [("play_context", "spotify:playlist:abc")]

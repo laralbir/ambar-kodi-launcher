@@ -69,6 +69,14 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
     `objc.createStructType` con `ValueError("depythonifying 'pointer'...")`
     de forma consistente). Ver comentario en
     `ambar/adapters/audio/macos_screencapturekit.py`.
+- **Exclusión mutua Kodi ↔ Spotify al reproducir**: al elegir reproducir
+  una canción/álbum/carpeta/CD desde la biblioteca de Kodi se pausa
+  automáticamente la reproducción de Spotify (Connect) si la había, y
+  viceversa: al elegir reproducir una playlist de Spotify se para la
+  reproducción activa en Kodi. Ambas llamadas son best-effort (no
+  fallan si la otra fuente no está configurada o no responde) —
+  `KodiGateway.stop()` y `SpotifyGateway.pause()` en
+  `ambar/application/library.py`.
 
 ### Changed
 - **Biblioteca de Kodi: pestaña "CD" separada de "Carpetas"**, activa
@@ -78,6 +86,15 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   se navega como una fuente de archivos normal. Nuevo método
   `KodiGateway.has_audio_cd()` y ruta
   `GET /api/library/kodi/cd-available`.
+  **En macOS esta detección no es fiable** (confirmado con `diskutil`:
+  un CD de audio real, formato `CD_DA`, sigue dando
+  `system.hasmediadvdaudio: false` en Kodi — límite conocido de los
+  builds de Kodi para macOS, no de esta app), así que
+  `LibraryService.kodi_cd_status()` añade un flag `detection_reliable`
+  (`sys.platform != "darwin"`): en macOS la pestaña nunca se
+  deshabilita y se muestra un aviso al entrar; en Windows/Linux se
+  habilita/deshabilita según la detección real de Kodi, sin cambios de
+  comportamiento respecto a lo anterior.
 - `build.py`: el binario ya no lleva la versión en el nombre —
   siempre se llama `Ambar` (`Ambar.app`/`Ambar.exe`), para que cambie
   lo mínimo posible entre compilaciones (ayuda a que macOS no trate

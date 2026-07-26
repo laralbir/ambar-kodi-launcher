@@ -72,6 +72,12 @@ class KodiGateway:
         elif action == "previous":
             self.rpc("Player.GoTo", {"playerid": pid, "to": "previous"})
 
+    def stop(self) -> None:
+        players = self.rpc("Player.GetActivePlayers")
+        if not players:
+            return
+        self.rpc("Player.Stop", {"playerid": players[0]["playerid"]})
+
     # ---------- biblioteca ----------
 
     def get_artists(self) -> list:

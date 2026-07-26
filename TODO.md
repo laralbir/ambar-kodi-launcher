@@ -14,6 +14,20 @@ de aquí.
   en vez de una imagen rota). Posible mejora futura: usar la carátula
   del primer álbum como sustituto cuando no hay imagen de artista —
   no implementado, decir si se quiere.
+- **Detección de CD de audio poco fiable en macOS.** Confirmado con
+  `diskutil` que un CD insertado real (Redbook, `CD_partition_scheme`
+  con particiones `CD_DA`) sigue dando `system.hasmediadvdaudio: false`
+  en Kodi, y `cdda://local/` da "Invalid params" pase lo que pase — no
+  hay ajuste de Kodi ni addon que lo explique, parece un límite de los
+  builds de Kodi para macOS (su soporte de lectura nativa de CD de
+  audio ahí es históricamente más débil que en Windows/Linux). **No
+  se ha parcheado con nada específico de macOS** (p. ej. mirar
+  `/Volumes/` vía `diskutil`) porque rompería la paridad de
+  comportamiento con Windows. Mientras tanto: en macOS la pestaña "CD"
+  nunca se deshabilita (no hay forma fiable de saberlo) y se muestra
+  un aviso al entrar; en Windows/Linux sí se habilita/deshabilita
+  según `system.hasmediadvdaudio` real. **Pendiente de confirmar si
+  Kodi para Windows detecta correctamente el CD en el mini PC real.**
 
 ## Pendiente
 
@@ -73,6 +87,11 @@ de aquí.
   `.track-title`/`.track-meta`): que se desplace lateralmente hasta
   leerse entero, con una pausa inicial antes de empezar a moverse,
   como en los displays de las autorradios.
+- Deshabilitar la opción de navegar en la pestaña de Kodi o de Spotify
+  si esa fuente no está en ejecución o no está correctamente
+  configurada (p. ej. Kodi no responde al JSON-RPC, o Spotify no
+  tiene credenciales/autorización válidas todavía) — hoy las pestañas
+  siempre están accesibles aunque la fuente no esté disponible.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -89,3 +108,6 @@ de aquí.
   devuelve "Invalid params" para `Files.GetDirectory` con
   `directory="sources://music/"` en esta build (bug/limitación de
   Kodi, no nuestro) — se usa `Files.GetSources` para el nivel raíz.
+- Exclusión mutua Kodi ↔ Spotify: al reproducir algo desde la
+  biblioteca de una fuente se para automáticamente la otra si estaba
+  sonando.

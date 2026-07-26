@@ -84,6 +84,15 @@ class SpotifyGateway:
         except Exception:
             pass
 
+    def pause(self) -> None:
+        sp = self._client()
+        if not sp:
+            return
+        try:
+            sp.pause_playback()
+        except Exception:
+            pass
+
     # ---------- biblioteca / auth ----------
 
     def get_playlists(self) -> list:
