@@ -60,8 +60,6 @@ de aquí.
 - Configurar en qué pantalla/monitor arranca el launcher por defecto
   (relevante porque el mini PC saca a la vez a la pantalla táctil y a
   la TV).
-- Permitir reproducir un álbum o artista completo desde la biblioteca
-  de Kodi, no solo una canción suelta.
 - Navegación de biblioteca consistente entre Kodi y Spotify
   (artistas/álbumes/playlists con la misma estructura de navegación
   en ambas fuentes).
@@ -107,3 +105,8 @@ de aquí.
 - Marquee para título/artista/álbum cuando el texto no cabe: se
   desplaza lateralmente hasta leerse entero, con pausa inicial y al
   final antes de reiniciar, como en los displays de las autorradios.
+- Reproducir un álbum o artista completo desde la biblioteca de Kodi
+  ("Reproducir todo de [artista]" al ver sus álbumes, "Reproducir
+  álbum completo" al ver sus canciones), no solo una canción suelta.
+  Kodi ya soporta `artistid`/`albumid` en `Playlist.Add` — expande
+  solo la lista de canciones correspondiente.

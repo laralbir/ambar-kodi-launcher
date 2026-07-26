@@ -94,3 +94,12 @@ def test_spotify_status_reflects_configuration():
     service = LibraryService(FakeKodiGateway(), FakeSpotifyGateway(configured=False))
 
     assert service.spotify_status() == {"available": False}
+
+
+def test_kodi_play_with_artistid_plays_whole_artist():
+    kodi = FakeKodiGateway()
+    service = LibraryService(kodi, FakeSpotifyGateway())
+
+    service.kodi_play({"artistid": 7})
+
+    assert kodi.calls == [("play", {"artistid": 7})]

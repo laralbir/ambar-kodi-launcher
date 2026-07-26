@@ -825,13 +825,13 @@
           renderGrid(items, "label", "albumid", (item) => {
             libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
-          }, "year");
+          }, "year", `Reproducir todo de ${viewNode.title}`, () => playKodi({artistid: viewNode.id}));
         }
         else if (viewNode.type === 'songs') {
           el("lib-title").textContent = viewNode.title;
           const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id);
           const items = await res.json();
-          renderList(items, "label", (item) => playKodi({songid: item.songid}));
+          renderList(items, "label", (item) => playKodi({songid: item.songid}), "Reproducir álbum completo", () => playKodi({albumid: viewNode.id}));
         }
       }
       
@@ -867,8 +867,15 @@
     }
   }
 
-  function renderGrid(items, titleKey, idKey, onClick, subKey=null) {
-    const html = `<div class="grid-view">` + items.map((it, idx) => {
+  function renderGrid(items, titleKey, idKey, onClick, subKey=null, playAllLabel=null, playAllAction=null) {
+    let html = '';
+    if(playAllLabel){
+      html += `<div class="list-item" style="border-color:var(--kodi); margin-bottom:1rem;" id="play-all-item">
+        <div class="list-item-icon" style="color:var(--kodi)">▶</div>
+        <div class="list-item-info"><div class="list-item-title">${playAllLabel}</div></div>
+      </div>`;
+    }
+    html += `<div class="grid-view">` + items.map((it, idx) => {
       let thumb = it.thumbnail ? `/api/art?path=${encodeURIComponent(it.thumbnail)}` : '';
       let imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
       return `
@@ -882,6 +889,7 @@
       `;
     }).join('') + `</div>`;
     el("lib-content").innerHTML = html;
+    if(playAllLabel) document.getElementById("play-all-item").addEventListener("click", playAllAction);
     items.forEach((it, idx) => {
       document.getElementById(`gitem-${idx}`).addEventListener("click", () => onClick(it));
     });
@@ -936,8 +944,15 @@
     });
   }
 
-  function renderList(items, titleKey, onClick) {
-    const html = `<div class="list-view">` + items.map((it, idx) => `
+  function renderList(items, titleKey, onClick, playAllLabel=null, playAllAction=null) {
+    let html = `<div class="list-view">`;
+    if(playAllLabel){
+      html += `<div class="list-item" style="border-color:var(--kodi);" id="play-all-item">
+        <div class="list-item-icon" style="color:var(--kodi)">▶</div>
+        <div class="list-item-info"><div class="list-item-title">${playAllLabel}</div></div>
+      </div>`;
+    }
+    html += items.map((it, idx) => `
       <div class="list-item" id="litem-${idx}">
         <div class="list-item-icon">🎵</div>
         <div class="list-item-info">
@@ -947,6 +962,7 @@
       </div>
     `).join('') + `</div>`;
     el("lib-content").innerHTML = html;
+    if(playAllLabel) document.getElementById("play-all-item").addEventListener("click", playAllAction);
     items.forEach((it, idx) => {
       document.getElementById(`litem-${idx}`).addEventListener("click", () => onClick(it));
     });

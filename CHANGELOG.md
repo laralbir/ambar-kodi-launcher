@@ -35,6 +35,15 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   cortarse con `text-overflow:ellipsis`. Solo se activa si el texto
   realmente desborda (medido con `scrollWidth` contra el ancho del
   contenedor); textos cortos no animan.
+- **Reproducir álbum o artista completo** desde la biblioteca de Kodi:
+  botón "Reproducir todo de [artista]" en la vista de álbumes y
+  "Reproducir álbum completo" en la vista de canciones. Kodi ya
+  soporta `artistid`/`albumid` directamente en `Playlist.Add`
+  (expande la lista de canciones correspondiente), así que solo hizo
+  falta enrutar `artistid` en `LibraryService.kodi_play()` (`albumid`
+  ya se pasaba) y añadir el botón en el frontend. Verificado en vivo
+  contra Kodi real: reproducir por `artistid` expande y arranca la
+  playlist correctamente.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

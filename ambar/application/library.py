@@ -48,6 +48,8 @@ class LibraryService:
             item["songid"] = body["songid"]
         elif "albumid" in body:
             item["albumid"] = body["albumid"]
+        elif "artistid" in body:
+            item["artistid"] = body["artistid"]
         elif "file" in body:
             item["file"] = body["file"]
         self._kodi.play(item)
