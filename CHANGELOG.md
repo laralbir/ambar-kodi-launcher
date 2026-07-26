@@ -21,6 +21,14 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   pista se muestra un indicador giratorio mientras la imagen se
   descarga, en vez de dejar el hueco en blanco hasta que termine de
   cargar (los listados de biblioteca ya tenían su propio `.loader`).
+- **Barra de progreso seekable**: click en cualquier punto de la barra
+  de reproducción para adelantar/atrasar. Nuevo
+  `KodiGateway.seek(percentage)` (`Player.Seek` con
+  `value: {percentage}`) y `SpotifyGateway.seek(percentage)`
+  (convierte a `position_ms` según la duración de la pista actual y
+  llama a `seek_track`), enrutados por `PlaybackControlService.seek()`
+  vía `POST /api/seek`. Actualización optimista en el frontend (la
+  barra se mueve al click, sin esperar al próximo evento de estado).
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

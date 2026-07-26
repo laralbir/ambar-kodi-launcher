@@ -30,6 +30,12 @@ def create_app(container) -> Flask:
         container.playback_control_service.execute(body.get("source"), body.get("action"))
         return jsonify({"ok": True})
 
+    @app.route("/api/seek", methods=["POST"])
+    def seek():
+        body = request.get_json(force=True) or {}
+        container.playback_control_service.seek(body.get("source"), body.get("percentage"))
+        return jsonify({"ok": True})
+
     @app.route("/api/system", methods=["POST"])
     def api_system():
         body = request.get_json(force=True) or {}

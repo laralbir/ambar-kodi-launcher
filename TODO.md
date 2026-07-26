@@ -62,9 +62,6 @@ de aquí.
   la TV).
 - Permitir reproducir un álbum o artista completo desde la biblioteca
   de Kodi, no solo una canción suelta.
-- Barra de progreso de reproducción seekable: permitir adelantar/
-  atrasar la reproducción haciendo click en el punto deseado de la
-  barra.
 - Navegación de biblioteca consistente entre Kodi y Spotify
   (artistas/álbumes/playlists con la misma estructura de navegación
   en ambas fuentes).
@@ -109,3 +106,6 @@ de aquí.
   comprobado al cargar y cada 15s.
 - Spinner de carga en la carátula de "ahora suena" mientras se
   descarga la imagen (los listados de biblioteca ya tenían uno).
+- Barra de progreso de reproducción seekable: click en cualquier punto
+  de la barra para adelantar/atrasar (`Player.Seek` en Kodi,
+  `seek_track` en Spotify).

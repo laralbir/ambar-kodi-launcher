@@ -14,3 +14,9 @@ class PlaybackControlService:
             self._kodi.control(action)
         elif source == "spotify":
             self._spotify.control(action)
+
+    def seek(self, source: str | None, percentage: float) -> None:
+        if source == "kodi":
+            self._kodi.seek(percentage)
+        elif source == "spotify":
+            self._spotify.seek(percentage)

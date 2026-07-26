@@ -94,7 +94,7 @@
 
   .vu-bar{
     height: 14px; border-radius:4px; background: #101113; border:1px solid var(--line);
-    overflow:hidden; margin-top:0.6vh; position:relative;
+    overflow:hidden; margin-top:0.6vh; position:relative; cursor:pointer;
   }
   .vu-fill{
     height:100%; width:0%; transition: width 0.3s ease;
@@ -332,7 +332,7 @@
       <div class="track-title" id="track-title">Nada sonando</div>
       <div class="track-meta" id="track-meta">Elige música desde la biblioteca o desde Spotify en tu móvil</div>
 
-      <div class="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
+      <div class="vu-bar" id="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
       <div class="time-row"><span id="pct-label">0%</span><span id="state-label">—</span></div>
 
       <div class="transport">
@@ -666,6 +666,27 @@
   el("btn-play").addEventListener("click", () => control("playpause"));
   el("btn-next").addEventListener("click", () => control("next"));
   el("btn-prev").addEventListener("click", () => control("previous"));
+
+  async function seek(percentage){
+    if(!currentSource) return;
+    // Actualizacion optimista: refleja el click al instante, sin esperar
+    // al proximo playback_update (que puede tardar unos segundos en Spotify).
+    el("vu-fill").style.width = percentage + "%";
+    el("pct-label").textContent = Math.round(percentage) + "%";
+    try{
+      await fetch(API_BASE + "/api/seek", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({percentage, source: currentSource})
+      });
+    }catch(e){}
+  }
+
+  el("vu-bar").addEventListener("click", (e) => {
+    const rect = el("vu-bar").getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    seek(percentage);
+  });
 
   // ---------- NATIVE LIBRARY ----------
   let libHistory = []; // Stack for navigation

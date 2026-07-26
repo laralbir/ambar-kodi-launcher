@@ -43,6 +43,19 @@ class SpotifyGateway:
             return None
         return spotipy.Spotify(auth=token_info["access_token"])
 
+    def seek(self, percentage: float) -> None:
+        sp = self._client()
+        if not sp:
+            return
+        try:
+            current = sp.current_playback()
+            if not current or not current.get("item"):
+                return
+            duration_ms = current["item"].get("duration_ms") or 0
+            sp.seek_track(int(duration_ms * percentage / 100))
+        except Exception:
+            pass
+
     def is_configured(self) -> bool:
         return self._client() is not None
 

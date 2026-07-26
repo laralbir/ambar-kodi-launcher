@@ -118,6 +118,15 @@ class KodiGateway:
         })
         return res.get("files", []) if res else []
 
+    def seek(self, percentage: float) -> None:
+        players = self.rpc("Player.GetActivePlayers")
+        if not players:
+            return
+        self.rpc("Player.Seek", {
+            "playerid": players[0]["playerid"],
+            "value": {"percentage": percentage},
+        })
+
     def is_reachable(self) -> bool:
         return self.rpc("JSONRPC.Ping") == "pong"
 
