@@ -7,3 +7,9 @@ Pillow
 Flask-SocketIO==5.3.6
 websocket-client==1.7.0
 simple-websocket
+
+# VU-meter: captura de audio del sistema (loopback), una dependencia nativa
+# distinta por plataforma (ver ambar/adapters/audio/).
+soundcard; sys_platform == "win32"
+pyobjc-framework-ScreenCaptureKit; sys_platform == "darwin"
+pyobjc-framework-CoreMedia; sys_platform == "darwin"

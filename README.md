@@ -67,6 +67,15 @@ Puedes compilar Ámbar como una aplicación independiente (`.exe` en Windows o `
    ```
 3. Al terminar, encontrarás el binario compilado dentro de la carpeta `dist/`. Puedes llevarte esa carpeta o el ejecutable a tu kiosko multimedia.
 
+### VU-metro en macOS: permiso de Grabación de pantalla
+
+El VU-metro captura el audio real del sistema vía `ScreenCaptureKit`, que requiere el permiso "Grabación de pantalla y del audio del sistema" (Ajustes del Sistema → Privacidad y Seguridad). Al compilar con `python build.py` la app queda firmada de forma *ad-hoc* (sin certificado de Apple Developer), lo que provoca dos comportamientos conocidos de macOS que **no tienen solución desde el código de la app**:
+
+- **La app no siempre aparece sola en la lista de permisos.** Si al ejecutar la app y conceder el permiso no se añade automáticamente, añádela a mano con el botón **"+"** de esa lista, navegando hasta `Ambar-X.Y.Z.app` dentro de `dist/`.
+- **El permiso puede perderse en cada recompilación.** Como la firma ad-hoc cambia con cada `python build.py`, macOS puede tratar cada build como una app distinta y pedir el permiso de nuevo. Tras conceder el permiso hay que **cerrar del todo y volver a abrir la app** (no basta con que ya estuviera corriendo).
+
+Si esto resulta demasiado incómodo para uso diario, la solución definitiva es firmar la app con un certificado de código estable (local o de Apple Developer) para que la identidad no cambie entre compilaciones — no implementado todavía, ver `TODO.md`.
+
 ---
 
 ## Versionado y releases

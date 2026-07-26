@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from flask import Flask
 from flask_socketio import SocketIO
 
+from ambar.adapters.audio.null_source import NullAudioLevelSource
 from ambar.adapters.desktop.webview_window import WebviewWindowController
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.kodi.ws_listener import listen as kodi_listen
@@ -18,13 +19,14 @@ from ambar.adapters.spotify.gateway import SpotifyGateway
 from ambar.adapters.spotify.poller import poll as spotify_poll
 from ambar.adapters.web.app import create_app
 from ambar.adapters.web.socketio_bridge import SocketIOBridge
+from ambar.application.audio_level import AudioLevelService
 from ambar.application.config import ConfigService
 from ambar.application.events import EventBus
 from ambar.application.library import LibraryService
 from ambar.application.now_playing import NowPlayingService
 from ambar.application.playback_control import PlaybackControlService
 from ambar.application.system import SystemService
-from ambar.domain.events import PlaybackStateChanged
+from ambar.domain.events import AudioLevelChanged, PlaybackStateChanged
 
 DEFAULT_SPOTIFY_REDIRECT_URI = "http://localhost:5005/callback"
 
@@ -39,6 +41,26 @@ class AppContainer:
     library_service: LibraryService
     system_service: SystemService
     config_service: ConfigService
+    audio_level_service: AudioLevelService
+
+
+def _build_audio_level_source():
+    """Elige el adapter de captura de audio segun la plataforma. Si falla el
+    import (dependencia nativa ausente) o la construccion, cae a
+    NullAudioLevelSource -- el VU-metro queda inactivo pero el resto de la
+    app sigue funcionando con normalidad."""
+    try:
+        if sys.platform == "win32":
+            from ambar.adapters.audio.windows_wasapi import WasapiLoopbackSource
+
+            return WasapiLoopbackSource()
+        if sys.platform == "darwin":
+            from ambar.adapters.audio.macos_screencapturekit import ScreenCaptureKitAudioSource
+
+            return ScreenCaptureKitAudioSource()
+    except Exception as e:
+        print(f"VU-meter: nivel de audio real no disponible ({e}); el medidor quedara inactivo.")
+    return NullAudioLevelSource()
 
 
 def _configure_spotify(spotify_gateway: SpotifyGateway, config: dict) -> None:
@@ -65,7 +87,8 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     now_playing_service = NowPlayingService(kodi_gateway, spotify_gateway, event_bus)
     playback_control_service = PlaybackControlService(kodi_gateway, spotify_gateway)
     library_service = LibraryService(kodi_gateway, spotify_gateway)
-    system_service = SystemService(WebviewWindowController())
+    audio_level_service = AudioLevelService(_build_audio_level_source(), event_bus)
+    system_service = SystemService(WebviewWindowController(), audio_level_service)
 
     def on_config_updated(config: dict) -> None:
         kodi_gateway.host = config.get("KODI_HOST", kodi_gateway.host)
@@ -89,6 +112,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         library_service=library_service,
         system_service=system_service,
         config_service=config_service,
+        audio_level_service=audio_level_service,
     )
     return container, event_bus
 
@@ -98,6 +122,7 @@ def _start_server(app: Flask, socketio: SocketIO, container: AppContainer, event
         target=kodi_listen, args=(container.kodi_gateway, container.now_playing_service), daemon=True
     ).start()
     threading.Thread(target=spotify_poll, args=(container.now_playing_service,), daemon=True).start()
+    container.audio_level_service.start()
     print("Servidor corriendo en http://localhost:5005")
     # allow_unsafe_werkzeug: servidor local de un unico kiosko, no expuesto a
     # internet; el servidor de desarrollo de Werkzeug es suficiente aqui.
@@ -118,6 +143,7 @@ def run(app_dir: str) -> None:
     socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
     socketio_bridge = SocketIOBridge(socketio)
     event_bus.subscribe(PlaybackStateChanged, socketio_bridge.handle_playback_state_changed)
+    event_bus.subscribe(AudioLevelChanged, socketio_bridge.handle_audio_level_changed)
 
     try:
         import webview

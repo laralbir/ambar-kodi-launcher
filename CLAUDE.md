@@ -16,6 +16,10 @@ commit:
 - `CHANGELOG.md`
 - la guía de usuario en `docs/`
 
+El trabajo pendiente (backlog) vive en `TODO.md`, no en este fichero.
+Al completar algo de `TODO.md`, muévelo a `CHANGELOG.md` en vez de
+simplemente borrarlo.
+
 ## Hardware
 
 - **Mini PC**: Intel N100, 16GB RAM, 512GB SSD, Windows 11 preinstalado,
@@ -71,7 +75,10 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
 Estética "receptor HiFi vintage": panel gunmetal (#17181a/#1f2124),
 acento ámbar tipo display VFD/LED (#ffb020), tipografía Oswald
 (títulos condensados) + JetBrains Mono (datos/tiempos) + Inter (UI).
-Barra de progreso estilo VU-meter segmentado. Layout horizontal
+Barra de progreso estilo VU-meter segmentado (`.vu-bar`/`.vu-fill`,
+progreso de reproducción — no confundir con el VU-metro de nivel real
+de audio, `.vu-meter-leds`/`.vu-meter-needle`, ver sección "VU-metro"
+más abajo). Layout horizontal
 pensado para el formato panorámico bajo de la pantalla táctil:
 carátula a la izquierda, info + transporte en el centro, accesos a
 Biblioteca/Spotify a la derecha.
@@ -101,7 +108,9 @@ dimensionados para esa resolución exacta.
     listener de WebSocket), `spotify/` (gateway Spotipy + poller),
     `persistence/` (config en JSON), `web/` (rutas Flask +
     `SocketIOBridge`, el único sitio que sabe que existe SocketIO),
-    `desktop/` (ventana pywebview).
+    `desktop/` (ventana pywebview), `audio/` (captura de audio para
+    el VU-metro: `windows_wasapi.py`, `macos_screencapturekit.py`,
+    `null_source.py` como fallback — ver "VU-metro" abajo).
   - `bootstrap.py` — composition root: construye los adapters, los
     inyecta en los servicios, conecta el `EventBus` y arranca el
     servidor (+ ventana nativa si aplica).
@@ -154,7 +163,80 @@ dimensionados para esa resolución exacta.
   Gatekeeper del bundle recién firmado); en arranques posteriores es
   inmediato. No es un cuelgue — si tarda más de ~10s sí investigar.
 
+## VU-metro (nivel real de audio)
+
+- Configurable desde Ajustes (`VU_METER_STYLE`: `"leds"` o `"needle"`,
+  persistido en `config.json` como el resto de la configuración).
+  **No** es una animación decorativa: mide de verdad el audio de
+  salida del sistema (loopback), con un adapter distinto por
+  plataforma (`ambar/adapters/audio/`) tras el puerto
+  `AudioLevelSource`.
+- **Estéreo**: un medidor por canal (L/R), cada uno con su propio
+  `LevelMeter` en `AudioLevelService` y su propia leyenda de dB junto
+  al medidor (`-Inf dB` en silencio total, escala logarítmica —
+  intencionado, no un bug). Zonas de saturación ámbar/rojo dibujadas
+  en la propia escala (arco de color en la aguja, fondo tintado en las
+  barras LED apagadas), no solo cuando el nivel las alcanza. Si el
+  audio calla, el medidor cae de forma progresiva hasta -60dB en vez
+  de congelarse — hay un watchdog de decaimiento también en el
+  frontend (`index.html`, `VU_IDLE_MS`) como red de seguridad
+  independiente de si el backend sigue publicando eventos.
+- **macOS** (entorno de desarrollo): `ScreenCaptureKit` (macOS 13+),
+  vía PyObjC, sin driver adicional. Pide permiso de "Grabación de
+  pantalla" la primera vez (System Settings > Privacy & Security).
+  Verificado en vivo end-to-end (audio real → WebSocket → cliente).
+  **Detalle no obvio (extracción de PCM):** usa
+  `CMBlockBufferCopyDataBytes`, NO
+  `CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer` — esta
+  última tiene metadatos de bridging rotos en
+  `pyobjc-framework-CoreMedia` 12.2.1 para su parámetro de salida
+  `AudioBufferList` (probado exhaustivamente: `bytearray`, `ctypes`
+  en varias formas, `NSMutableData`, `objc.createStructType` — todos
+  rechazados con `ValueError("depythonifying 'pointer'...")`). Si en
+  el futuro se toca este adapter y algo similar vuelve a fallar, no
+  perder tiempo ahí: usar el camino de `CMBlockBufferCopyDataBytes`
+  (bien anotado por PyObjC, funciona directo).
+  **Detalle no obvio (layout estéreo):** el buffer de audio de
+  ScreenCaptureKit con `channelCount=2` es *planar*, no intercalado —
+  todo el canal 0 seguido de todo el canal 1 en el mismo array plano
+  (`samples[:n/2]` = izquierdo, `samples[n/2:]` = derecho), NO
+  muestras L/R alternadas. Confirmado en vivo leyendo el
+  `AudioStreamBasicDescription` (flag `kAudioFormatFlagIsNonInterleaved`
+  activo) antes de asumir el formato.
+  **Limitación conocida de macOS (no arreglable desde la app, ver
+  `TODO.md`):** `build.py` firma el `.app` de forma *ad-hoc* (sin
+  certificado de Apple Developer). Esto puede hacer que la app no
+  aparezca sola en Ajustes del Sistema → Privacidad y Seguridad →
+  Grabación de pantalla (añadirla a mano con "+"), y que el permiso se
+  pierda en cada recompilación (firma distinta ⇒ macOS la trata como
+  app nueva) — hay que volver a concederlo y **cerrar del todo y
+  reabrir la app** tras hacerlo. Documentado en `README.md` y
+  `docs/index.html`.
+  **Importante:** al cerrar la app (`SystemService.execute("exit")`)
+  hay que llamar a `AudioLevelService.stop()` ANTES de cerrar la
+  ventana — si el proceso empieza a finalizar mientras el stream de
+  ScreenCaptureKit sigue disparando callbacks nativos de ObjC en un
+  hilo de fondo, el intérprete revienta (visible como "Ambar-x se ha
+  cerrado inesperadamente"). Ya arreglado, pero si se añaden más
+  recursos nativos de fondo en el futuro, recordar pararlos también
+  ahí antes de cerrar.
+- **Windows** (producción, el mini PC real): captura WASAPI loopback
+  vía el paquete `soundcard`, que entrega los canales ya separados
+  (`(numframes, nchannels)`, sin necesidad de partir nada a mano).
+  **Sin verificar en hardware/VM Windows real** — se desarrolló en
+  macOS. Probar antes de confiar en ello.
+- Si la captura falla por cualquier motivo (dependencia nativa
+  ausente, permiso denegado, plataforma no soportada), cae a
+  `NullAudioLevelSource`: el medidor queda inactivo, el resto de la
+  app sigue funcionando con normalidad — nunca debe romper el arranque.
+- `requirements.txt` usa marcadores de entorno PEP 508
+  (`sys_platform == "win32"` / `"darwin"`) para que `soundcard` y los
+  `pyobjc-framework-*` solo se instalen en su plataforma
+  correspondiente.
+
 ## Pendiente / próximos pasos
+
+Backlog completo en [`TODO.md`](TODO.md). Aquí solo lo más inmediato:
 
 - Configurar credenciales de Spotify Developer Dashboard
   (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`) y autorizar una vez

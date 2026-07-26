@@ -1,19 +1,27 @@
 import os
 import sys
 
+from ambar.application.audio_level import AudioLevelService
 from ambar.ports.window_controller import WindowController
 
 
 class SystemService:
     """Comandos de sistema del kiosko: pantalla completa, salir, apagar, reiniciar."""
 
-    def __init__(self, window: WindowController):
+    def __init__(self, window: WindowController, audio_level_service: AudioLevelService):
         self._window = window
+        self._audio_level_service = audio_level_service
 
     def execute(self, action: str | None) -> None:
         if action == "fullscreen":
             self._window.toggle_fullscreen()
         elif action == "exit":
+            # Parar la captura de audio ANTES de cerrar: si el proceso empieza
+            # a apagarse mientras ScreenCaptureKit sigue disparando callbacks
+            # nativos de ObjC en un hilo de fondo, el interprete puede
+            # reventar al finalizar (crash visible como "Ambar-x se ha
+            # cerrado inesperadamente" en macOS).
+            self._audio_level_service.stop()
             self._window.close()
         elif action == "shutdown":
             os.system("shutdown /s /t 0" if sys.platform == "win32" else "sudo shutdown -h now")

@@ -106,7 +106,12 @@ class KodiGateway:
         self.rpc("Player.Open", {"item": {"playlistid": 0}})
 
     def art_proxy(self, path: str) -> tuple[bytes | str, int, str | None]:
-        img_url = f"http://{self.host}:{self.port}/image/{path}"
+        # `path` llega aqui ya decodificado una vez por Flask (request.args
+        # lo desescapa al parsear la query string). El webserver de Kodi
+        # espera la URL image:// completa codificada como un unico segmento
+        # de path -- hay que volver a codificarla, si no Kodi ve barras/
+        # dos-puntos sueltos y no la resuelve (404).
+        img_url = f"http://{self.host}:{self.port}/image/{quote(path, safe='')}"
         try:
             r = requests.get(img_url, timeout=3)
             return r.content, r.status_code, r.headers.get("Content-Type", "image/jpeg")

@@ -97,6 +97,63 @@
   .time-row{display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace;
     font-size:0.85rem; color:var(--text-dim); margin-top:0.3vh;}
 
+  /* ---------- VU-METER (nivel real de audio, estereo) ---------- */
+  .vu-meter{margin-top:1.6vh;}
+  /* Los selectores con id vencen a las reglas de clase display:flex de abajo;
+     necesario para que [hidden] realmente oculte (si no, "flex" gana). */
+  .vu-meter-leds[hidden], .vu-meter-needle[hidden]{display:none !important;}
+
+  .vu-meter-leds{display:flex; flex-direction:column; gap:5px;}
+  .vu-channel-leds{display:flex; align-items:center; gap:0.6rem;}
+  .vu-channel-leds .vu-ch-label{
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim);
+    width:12px; flex:0 0 auto;
+  }
+  .vu-led-row{display:flex; gap:3px; height:16px; flex:1 1 auto; align-items:flex-end;}
+  .vu-led-row .led{
+    flex:1; height:100%; border-radius:2px; background:#1a1b1d; border:1px solid var(--line);
+    opacity:0.4; transition: opacity 0.08s linear, box-shadow 0.08s linear;
+  }
+  .vu-led-row .led.on{opacity:1;}
+  /* Zona de saturacion (ambar/rojo) marcada en la escala aunque el segmento
+     este apagado, como en un VU-metro de barras real. */
+  .vu-led-row .led.zone-amber{background:rgba(255,176,32,0.16); border-color:rgba(255,176,32,0.3);}
+  .vu-led-row .led.zone-red{background:rgba(230,90,90,0.16); border-color:rgba(230,90,90,0.3);}
+  .vu-led-row .led.zone-green.on{background:#3ddc73; box-shadow:0 0 6px rgba(61,220,115,0.55);}
+  .vu-led-row .led.zone-amber.on{background:var(--amber); box-shadow:0 0 6px rgba(255,176,32,0.55);}
+  .vu-led-row .led.zone-red.on{background:var(--danger); box-shadow:0 0 6px rgba(230,90,90,0.55);}
+  .vu-db-label{
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim);
+    width:46px; flex:0 0 auto; text-align:right;
+  }
+
+  .vu-meter-needle{display:flex; gap:0.8rem; width:100%;}
+  .vu-channel-needle{flex:1 1 0; min-width:0; text-align:center;}
+  /* Ancho completo SIN deformar: aspect-ratio igual al viewBox (200/110),
+     así el SVG escala de forma uniforme (sin preserveAspectRatio="none").
+     max-height evita que crecer en ancho dispare la altura y desborde la
+     columna -- al tocar el tope, el navegador reduce el ancho efectivo
+     manteniendo la proporción, en vez de estirar. */
+  .vu-channel-needle svg{width:100%; aspect-ratio: 200 / 110; max-height:90px; display:block; margin:0 auto;}
+  .vu-channel-needle .vu-arc{fill:none; stroke:var(--line); stroke-width:3; stroke-linecap:round;}
+  .vu-channel-needle .vu-arc-amber{fill:none; stroke:var(--amber); stroke-width:3; opacity:0.6;}
+  .vu-channel-needle .vu-arc-red{fill:none; stroke:var(--danger); stroke-width:3; opacity:0.6;}
+  .vu-channel-needle .vu-tick{stroke:var(--text-dim); stroke-width:1.5;}
+  .vu-channel-needle .vu-label{fill:var(--text-dim); font-family:'JetBrains Mono', monospace; font-size:9px; text-anchor:middle;}
+  .vu-channel-needle .vu-needle{stroke:var(--amber); stroke-width:2.5; stroke-linecap:round;
+    transform-origin: 100px 100px; transform: rotate(-55deg); transition: transform 0.1s ease-out;
+    filter: drop-shadow(0 0 3px rgba(255,176,32,0.6));}
+  .vu-channel-needle .vu-pivot{fill:var(--panel-raised); stroke:var(--line);}
+  .vu-channel-needle .vu-needle-footer{
+    display:flex; justify-content:space-between; align-items:baseline;
+    gap:0.4rem; margin-top:-8px; padding:0 0.3rem;
+  }
+  .vu-channel-needle .vu-ch-label{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim);}
+  /* En la aguja el hueco es mas estrecho que en las barras LED: que el
+     ancho se ajuste al contenido ("-Inf dB" incluido) en vez de partirse
+     en dos lineas por el width:46px fijo de .vu-db-label. */
+  .vu-channel-needle .vu-db-label{width:auto; white-space:nowrap;}
+
   .transport{display:flex; align-items:center; gap:1.1rem; margin-top:0.6vh;}
   .tbtn{
     width:64px; height:64px; border-radius:50%; border:1px solid var(--line);
@@ -268,6 +325,11 @@
         <div class="tbtn play" id="btn-play">⏯</div>
         <div class="tbtn" id="btn-next">⏭</div>
       </div>
+
+      <div class="vu-meter">
+        <div class="vu-meter-leds" id="vu-meter-leds" hidden></div>
+        <div class="vu-meter-needle" id="vu-meter-needle" hidden></div>
+      </div>
     </div>
 
     <div class="side-actions">
@@ -332,6 +394,13 @@
             <label>Spotify Client Secret</label>
             <input type="password" id="inp-spotify-secret" placeholder="Client Secret de tu App">
           </div>
+          <div class="form-group">
+            <label>Estilo del VU-metro</label>
+            <div style="display:flex; gap:0.6rem;">
+              <div class="btn" id="vu-style-leds" style="flex:1;" onclick="setVuMeterStyle('leds')">Barras LED</div>
+              <div class="btn" id="vu-style-needle" style="flex:1;" onclick="setVuMeterStyle('needle')">Aguja vintage</div>
+            </div>
+          </div>
           <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-dim);">
             Para autorizar Spotify por primera vez con estas credenciales, usa un dispositivo conectado a la misma red y entra a <code>http://IP_DE_ESTE_PC:5005/login</code>.
           </div>
@@ -364,6 +433,7 @@
 <script>
   const API_BASE = "";
   let currentSource = null;
+  let vuMeterStyle = "leds";
   const el = (id) => document.getElementById(id);
 
   // ---------- WEBSOCKETS REAL-TIME ----------
@@ -372,8 +442,155 @@
     console.log("Conectado por WebSockets al servidor local");
     // Pedir estado inicial
     fetch(API_BASE + "/api/now-playing").then(r=>r.json()).then(render);
+    fetch(API_BASE + "/api/config").then(r=>r.json()).then(cfg => applyVuMeterStyle(cfg.VU_METER_STYLE)).catch(()=>{});
   });
-  
+
+  // ---------- VU-METER (nivel real de audio, estereo) ----------
+  const VU_DB_MIN = -60, VU_DB_MAX = 0;
+  const VU_LED_COUNT = 20;
+  const VU_NEEDLE_SVG = `
+    <svg viewBox="0 0 200 110">
+      <path class="vu-arc" d="M26.3,48.4 A90,90 0 0,1 173.7,48.4"/>
+      <path class="vu-arc-amber" d="M117.2,11.7 A90,90 0 0,1 156.0,29.6"/>
+      <path class="vu-arc-red" d="M156.0,29.6 A90,90 0 0,1 173.7,48.4"/>
+      <line class="vu-tick" x1="36.1" y1="55.3" x2="26.3" y2="48.4"/>
+      <line class="vu-tick" x1="64.0" y1="30.8" x2="58.4" y2="20.2"/>
+      <line class="vu-tick" x1="100" y1="22" x2="100" y2="10"/>
+      <line class="vu-tick" x1="136.0" y1="30.8" x2="141.6" y2="20.2"/>
+      <line class="vu-tick" x1="163.9" y1="55.3" x2="173.7" y2="48.4"/>
+      <text class="vu-label" x="18" y="46">-60</text>
+      <text class="vu-label" x="54" y="15">-30</text>
+      <text class="vu-label" x="100" y="8">-15</text>
+      <text class="vu-label" x="146" y="15">-5</text>
+      <text class="vu-label" x="182" y="46">0</text>
+      <line class="vu-needle" id="vu-needle-{ch}" x1="100" y1="100" x2="100" y2="20"/>
+      <circle class="vu-pivot" cx="100" cy="100" r="5"/>
+    </svg>
+    <div class="vu-needle-footer">
+      <span class="vu-ch-label">{chLabel}</span>
+      <span class="vu-db-label" id="vu-db-needle-{ch}">-- dB</span>
+    </div>
+  `;
+
+  let vuChannelCount = 0;
+
+  function vuChannelLabel(ch, total){
+    if(total <= 1) return "M";
+    return ch === 0 ? "L" : ch === 1 ? "R" : ("C" + (ch + 1));
+  }
+
+  function buildVuChannels(n){
+    if(n === vuChannelCount) return;
+    vuChannelCount = n;
+
+    const ledsRoot = el("vu-meter-leds");
+    ledsRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const row = document.createElement("div");
+      row.className = "vu-channel-leds";
+      const label = document.createElement("span");
+      label.className = "vu-ch-label";
+      label.textContent = vuChannelLabel(ch, n);
+      const ledRow = document.createElement("div");
+      ledRow.className = "vu-led-row";
+      ledRow.id = "vu-led-row-" + ch;
+      for(let i = 0; i < VU_LED_COUNT; i++){
+        const led = document.createElement("div");
+        const zone = i < VU_LED_COUNT * 0.6 ? "zone-green" : i < VU_LED_COUNT * 0.85 ? "zone-amber" : "zone-red";
+        led.className = "led " + zone;
+        ledRow.appendChild(led);
+      }
+      const dbLabel = document.createElement("span");
+      dbLabel.className = "vu-db-label";
+      dbLabel.id = "vu-db-leds-" + ch;
+      dbLabel.textContent = "-- dB";
+      row.append(label, ledRow, dbLabel);
+      ledsRoot.appendChild(row);
+    }
+
+    const needleRoot = el("vu-meter-needle");
+    needleRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const wrap = document.createElement("div");
+      wrap.className = "vu-channel-needle";
+      wrap.innerHTML = VU_NEEDLE_SVG.replaceAll("{ch}", ch).replace("{chLabel}", vuChannelLabel(ch, n));
+      needleRoot.appendChild(wrap);
+    }
+  }
+
+  function applyVuMeterStyle(style){
+    vuMeterStyle = style === "needle" ? "needle" : "leds";
+    el("vu-meter-leds").hidden = vuMeterStyle !== "leds";
+    el("vu-meter-needle").hidden = vuMeterStyle !== "needle";
+    el("vu-style-leds").classList.toggle("btn-primary", vuMeterStyle === "leds");
+    el("vu-style-needle").classList.toggle("btn-primary", vuMeterStyle === "needle");
+  }
+
+  function setVuMeterStyle(style){
+    applyVuMeterStyle(style);
+    fetch(API_BASE + "/api/config", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({VU_METER_STYLE: style})
+    }).catch(()=>{});
+  }
+
+  function formatDb(db){
+    return (db <= VU_DB_MIN ? "-Inf" : Math.round(db)) + " dB";
+  }
+
+  function updateVuMeter(dbList){
+    if(!Array.isArray(dbList)) dbList = [dbList];
+    buildVuChannels(dbList.length);
+    dbList.forEach((db, ch) => {
+      const pct = Math.max(0, Math.min(1, (db - VU_DB_MIN) / (VU_DB_MAX - VU_DB_MIN)));
+      const dbText = formatDb(db);
+
+      const needle = el("vu-needle-" + ch);
+      if(needle) needle.style.transform = `rotate(${-55 + pct * 110}deg)`;
+      const needleLabel = el("vu-db-needle-" + ch);
+      if(needleLabel) needleLabel.textContent = dbText;
+
+      const ledRow = el("vu-led-row-" + ch);
+      if(ledRow){
+        const lit = Math.round(pct * VU_LED_COUNT);
+        Array.from(ledRow.children).forEach((led, i) => led.classList.toggle("on", i < lit));
+      }
+      const ledsLabel = el("vu-db-leds-" + ch);
+      if(ledsLabel) ledsLabel.textContent = dbText;
+    });
+  }
+
+  // Si dejan de llegar eventos (audio en silencio, stream sin datos nuevos,
+  // reproduccion parada...) el medidor debe volver solo a -60dB de forma
+  // progresiva, como una aguja de VU de verdad -- no quedarse congelado en
+  // el ultimo valor recibido.
+  let vuCurrentDb = [];
+  let vuLastEventAt = 0;
+  const VU_IDLE_MS = 200;
+  const VU_WATCHDOG_TICK_MS = 60;
+  const VU_RELEASE_SECONDS = 0.3; // misma constante que el release del backend
+  // Curva exponencial (no lineal): decelera al acercarse al reposo, como una
+  // aguja de VU real -- un decremento fijo por tick se veia mecanico/falso.
+  const VU_RELEASE_ALPHA = 1 - Math.exp(-(VU_WATCHDOG_TICK_MS / 1000) / VU_RELEASE_SECONDS);
+
+  socket.on("audio_level", (data) => {
+    vuCurrentDb = Array.isArray(data.db) ? data.db.slice() : [data.db];
+    vuLastEventAt = performance.now();
+    updateVuMeter(vuCurrentDb);
+  });
+
+  setInterval(() => {
+    if(vuCurrentDb.length === 0) return;
+    if(performance.now() - vuLastEventAt < VU_IDLE_MS) return;
+    let changed = false;
+    vuCurrentDb = vuCurrentDb.map(db => {
+      if(db <= VU_DB_MIN + 0.1) return VU_DB_MIN;
+      changed = true;
+      return Math.max(VU_DB_MIN, db + VU_RELEASE_ALPHA * (VU_DB_MIN - db));
+    });
+    if(changed) updateVuMeter(vuCurrentDb);
+  }, VU_WATCHDOG_TICK_MS);
+
   socket.on("playback_update", (data) => {
     render(data);
   });
@@ -625,6 +842,7 @@
       el("inp-kodi-port").value = cfg.KODI_PORT || "";
       el("inp-spotify-id").value = cfg.SPOTIFY_CLIENT_ID || "";
       el("inp-spotify-secret").value = cfg.SPOTIFY_CLIENT_SECRET || "";
+      applyVuMeterStyle(cfg.VU_METER_STYLE);
     } catch(e){}
   });
 

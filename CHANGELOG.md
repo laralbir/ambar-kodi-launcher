@@ -7,6 +7,69 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- **VU-metro estéreo con nivel real de audio** (un medidor por canal,
+  L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
+  "Aguja vintage"). El nivel se mide capturando de verdad la salida de
+  audio del sistema (loopback), no es una animación decorativa:
+  - Cada canal muestra su propia lectura en dB junto al medidor
+    (leyenda numérica, ej. "-25 dB"; "-Inf dB" en silencio total, como
+    en cualquier equipo de audio real — escala logarítmica).
+  - Zonas de saturación (ámbar/rojo) dibujadas en la propia escala —
+    arco de color en la aguja, segmentos con fondo tintado en las
+    barras LED — no solo cuando el nivel las alcanza.
+  - Si deja de recibirse audio (silencio prolongado, reproducción
+    parada), el medidor cae de forma progresiva hasta el suelo
+    (-60dB) en vez de quedarse congelado — vigilado también desde el
+    frontend (`VU_IDLE_MS`/watchdog de decaimiento en `index.html`)
+    como red de seguridad, independiente de si el backend sigue
+    mandando eventos o no.
+  - **macOS** (entorno de desarrollo): `ScreenCaptureKit` (macOS 13+),
+    sin driver adicional — pide permiso de "Grabación de pantalla" la
+    primera vez. El audio estéreo que entrega ScreenCaptureKit es
+    *planar*, no intercalado (todo el canal 0 seguido de todo el canal
+    1 en el mismo buffer, no muestras L/R alternadas) — verificado en
+    vivo con el `AudioStreamBasicDescription`
+    (`kAudioFormatFlagIsNonInterleaved`) antes de asumirlo. Verificado
+    end-to-end con audio real (`say`), incluido el WebSocket hasta el
+    navegador, con capturas de pantalla de ambos estilos.
+    **Limitación conocida de macOS (no de la app):** al compilar con
+    `python build.py` la app queda firmada de forma *ad-hoc* (sin
+    certificado de Apple Developer). Esto puede provocar que la app no
+    aparezca sola en Ajustes del Sistema → Privacidad y Seguridad →
+    Grabación de pantalla (hay que añadirla a mano con "+"), y que el
+    permiso se pierda en cada recompilación (firma distinta = macOS la
+    trata como app nueva). Documentado en `README.md` y en la guía de
+    usuario (`docs/index.html`). Arreglo definitivo pendiente: firmar
+    con un certificado de código estable (ver `TODO.md`).
+  - **Windows** (producción): captura WASAPI loopback vía el paquete
+    `soundcard`, que ya entrega los canales separados
+    (`(numframes, nchannels)`, sin mezclar). **Sin verificar en
+    hardware Windows real en esta sesión** (desarrollada en macOS) —
+    probar en el mini PC antes de dar por bueno.
+  - Si la captura no está disponible en la plataforma (import ausente,
+    permiso denegado, error de cualquier tipo), el medidor
+    simplemente queda inactivo — el resto de la app sigue funcionando
+    con normalidad (`NullAudioLevelSource`).
+  - Nuevas piezas: `ambar/domain/audio.py` (`LevelMeter`, conversión
+    RMS→dBFS con ballística de integración ~300ms tipo VU analógico
+    clásico — uno por canal), `ambar/ports/audio_level_source.py`
+    (entrega una lista de fragmentos de muestras, una por canal),
+    `ambar/adapters/audio/` (un adapter por plataforma),
+    `ambar/application/audio_level.py` (`AudioLevelService`, un
+    `LevelMeter` por canal, publica `AudioLevelChanged(db: list[float])`
+    en el `EventBus` con limitación a ~20Hz). `SocketIOBridge` emite
+    `audio_level` por WebSocket con `db` como lista.
+  - Nota de implementación no obvia: la extracción de PCM del
+    `CMSampleBuffer` de ScreenCaptureKit usa `CMBlockBufferCopyDataBytes`
+    y no `CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer` —
+    esta última tiene metadatos de bridging rotos en
+    `pyobjc-framework-CoreMedia` 12.2.1 para su parámetro de salida
+    `AudioBufferList` (rechaza `bytearray`/`ctypes`/`NSMutableData`/
+    `objc.createStructType` con `ValueError("depythonifying 'pointer'...")`
+    de forma consistente). Ver comentario en
+    `ambar/adapters/audio/macos_screencapturekit.py`.
+
 ### Changed
 - Refactor interno del backend a arquitectura hexagonal / DDD-lite /
   event-driven: `kiosk_server.py` (antes 417 líneas con todo mezclado)
@@ -36,6 +99,34 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `kiosk_server.py` ya no necesita `eventlet.monkey_patch()`.
 
 ### Fixed
+- **Carátulas de Kodi que no cargaban nunca** (`/api/art` devolvía 404).
+  Causa: `KodiGateway.art_proxy` reenviaba a Kodi la URL `image://...`
+  del thumbnail sin volver a codificarla — Flask ya la había
+  decodificado una vez al leer el query param, así que Kodi recibía
+  barras/dos-puntos sueltos en vez de un único segmento de path
+  codificado, y no la resolvía. Verificado con una imagen real (JPEG
+  640x640) cargando correctamente tras el fix.
+- **"Ambar-x se ha cerrado inesperadamente" al salir de la app en
+  macOS.** `SystemService.execute("exit")` cerraba la ventana pero
+  nunca paraba `AudioLevelService`/`ScreenCaptureKitAudioSource` — el
+  proceso de Python empezaba a finalizar mientras el stream de
+  ScreenCaptureKit seguía disparando callbacks nativos de ObjC en un
+  hilo de fondo, y el intérprete reventaba. Ahora `exit` para la
+  captura de audio (con confirmación, hasta 5s) antes de cerrar la
+  ventana. Verificado disparando la acción `exit` vía API con la
+  ventana real activa, en dev y en el `.app` compilado — proceso
+  terminado limpio, sin informe de crash en
+  `~/Library/Logs/DiagnosticReports`.
+- **VU-metro compilado sin captura de audio real** con el error
+  `No module named 'CoreMedia'`: no era un problema de permisos ni de
+  firma, sino que el venv usado para `python build.py` no tenía
+  instaladas las dependencias nuevas de `requirements.txt`
+  (`pyobjc-framework-ScreenCaptureKit`/`CoreMedia`) — sin ellas
+  instaladas, `--collect-all` no encuentra nada que empaquetar y el
+  `.app` arranca pero le falta el módulo. `build.py` ahora comprueba
+  las dependencias de la plataforma *antes* de invocar a PyInstaller y
+  para con un mensaje claro si falta algo, en vez de producir un
+  binario que falla en silencio.
 - **Pantalla en negro / launcher colgado al abrir la ventana en
   macOS.** Causa raíz: cuando `webview.start()` toma el hilo principal
   (bucle nativo de Cocoa vía PyObjC), acapara el GIL de tal forma que

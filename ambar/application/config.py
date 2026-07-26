@@ -27,6 +27,7 @@ class ConfigService:
             "SPOTIFY_CLIENT_SECRET": self._config.get("SPOTIFY_CLIENT_SECRET", ""),
             "KODI_HOST": self._config.get("KODI_HOST", self._kodi_default_host),
             "KODI_PORT": self._config.get("KODI_PORT", self._kodi_default_port),
+            "VU_METER_STYLE": self._config.get("VU_METER_STYLE", "leds"),
         }
 
     def update(self, data: dict) -> None:
