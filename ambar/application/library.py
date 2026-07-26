@@ -21,6 +21,9 @@ class LibraryService:
     def kodi_directory(self, path: str) -> list:
         return self._kodi.get_directory(path)
 
+    def kodi_cd_available(self) -> bool:
+        return self._kodi.has_audio_cd()
+
     def kodi_play(self, body: dict) -> None:
         item = {}
         if "songid" in body:

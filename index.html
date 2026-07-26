@@ -209,6 +209,7 @@
     color:var(--text-dim); cursor:pointer; font-size:0.9rem; font-weight:500;
   }
   .lib-tab.active{background:var(--text); color:#000; border-color:var(--text);}
+  .lib-tab.disabled{opacity:0.35; cursor:default; pointer-events:none;}
 
   .lib-content{
     flex:1 1 auto; overflow-y:auto; padding:2rem; position:relative;
@@ -358,7 +359,8 @@
       </div>
       <div class="lib-topbar-right" id="lib-tabs">
         <div class="lib-tab active" data-tab="artists">Artistas (Kodi)</div>
-        <div class="lib-tab" data-tab="folders">Carpetas / CD</div>
+        <div class="lib-tab" data-tab="folders">Carpetas</div>
+        <div class="lib-tab disabled" data-tab="cd" id="lib-tab-cd">CD</div>
         <div class="lib-tab" data-tab="spotify-pl">Listas (Spotify)</div>
       </div>
     </div>
@@ -673,7 +675,16 @@
     }
   });
 
-  el("open-library-kodi").addEventListener("click", () => openLibrary("artists"));
+  el("open-library-kodi").addEventListener("click", () => {
+    openLibrary("artists");
+    refreshCdTabAvailability();
+  });
+
+  function refreshCdTabAvailability(){
+    fetch("/api/library/kodi/cd-available").then(r => r.json()).then(data => {
+      el("lib-tab-cd").classList.toggle("disabled", !data.available);
+    }).catch(() => {});
+  }
   el("open-library-spotify").addEventListener("click", () => openLibrary("spotify-pl"));
 
   async function loadView(viewNode) {
@@ -695,8 +706,8 @@
           el("lib-title").textContent = viewNode.title;
           const res = await fetch("/api/library/kodi/albums?artist_id=" + viewNode.id);
           const items = await res.json();
-          renderGrid(items, "title", "albumid", (item) => {
-            libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.title});
+          renderGrid(items, "label", "albumid", (item) => {
+            libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
           }, "year");
         }
@@ -710,39 +721,17 @@
       
       else if(viewNode.tab === "folders") {
         const path = viewNode.path || "sources://music/";
-        el("lib-title").textContent = path === "sources://music/" ? "Carpetas / CD" : path;
+        el("lib-title").textContent = path === "sources://music/" ? "Carpetas" : path;
         const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent(path));
         const items = await res.json();
-        
-        let html = '<div class="list-view">';
-        // Play whole folder button if not root
-        if(path !== "sources://music/") {
-          html += `<div class="list-item" style="border-color:var(--kodi);" onclick="playKodi({file: '${path}'})">
-            <div class="list-item-icon" style="color:var(--kodi)">▶</div>
-            <div class="list-item-info"><div class="list-item-title">Reproducir Carpeta / CD entero</div></div>
-          </div>`;
-        }
-        
-        html += items.map((it, idx) => `
-          <div class="list-item" id="fitem-${idx}">
-            <div class="list-item-icon">${it.filetype === 'directory' ? '📁' : '🎵'}</div>
-            <div class="list-item-info">
-              <div class="list-item-title">${it.label}</div>
-            </div>
-          </div>
-        `).join('') + '</div>';
-        content.innerHTML = html;
-        
-        items.forEach((it, idx) => {
-          document.getElementById(`fitem-${idx}`).addEventListener('click', () => {
-            if(it.filetype === 'directory') {
-              libHistory.push({type: 'folder', tab: 'folders', path: it.file});
-              loadView(libHistory[libHistory.length-1]);
-            } else {
-              playKodi({file: it.file});
-            }
-          });
-        });
+        renderDirectoryList(items, path === "sources://music/" ? null : path, "folders", "Reproducir Carpeta entera");
+      }
+
+      else if(viewNode.tab === "cd") {
+        el("lib-title").textContent = "CD de audio";
+        const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/"));
+        const items = await res.json();
+        renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero");
       }
 
       else if(viewNode.tab === "spotify-pl") {
@@ -797,6 +786,35 @@
     el("lib-content").innerHTML = html;
     items.forEach((it, idx) => {
       document.getElementById(`sitem-${idx}`).addEventListener("click", () => onClick(it));
+    });
+  }
+
+  function renderDirectoryList(items, playWholePath, tab, playWholeLabel) {
+    let html = '<div class="list-view">';
+    if(playWholePath) {
+      html += `<div class="list-item" style="border-color:var(--kodi);" onclick="playKodi({file: '${playWholePath}'})">
+        <div class="list-item-icon" style="color:var(--kodi)">▶</div>
+        <div class="list-item-info"><div class="list-item-title">${playWholeLabel}</div></div>
+      </div>`;
+    }
+    html += items.map((it, idx) => `
+      <div class="list-item" id="fitem-${idx}">
+        <div class="list-item-icon">${it.filetype === 'directory' ? '📁' : '🎵'}</div>
+        <div class="list-item-info">
+          <div class="list-item-title">${it.label}</div>
+        </div>
+      </div>
+    `).join('') + '</div>';
+    el("lib-content").innerHTML = html;
+    items.forEach((it, idx) => {
+      document.getElementById(`fitem-${idx}`).addEventListener('click', () => {
+        if(it.filetype === 'directory') {
+          libHistory.push({type: 'folder', tab, path: it.file});
+          loadView(libHistory[libHistory.length-1]);
+        } else {
+          playKodi({file: it.file});
+        }
+      });
     });
   }
 

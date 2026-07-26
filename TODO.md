@@ -4,6 +4,17 @@ Lista de trabajo pendiente. Cuando se complete un punto, muévelo al
 `CHANGELOG.md` (sección `[Unreleased]`) en vez de simplemente borrarlo
 de aquí.
 
+## Bugs conocidos (biblioteca)
+
+- Las carátulas no aparecen en el listado de artistas. **Investigado:
+  no es un bug de la app** — Kodi devuelve `thumbnail: ""` para todos
+  los artistas de esta biblioteca (no tiene imágenes de artista
+  scrapeadas/asignadas; los álbumes sí tienen carátula). El código ya
+  gestiona bien el caso sin imagen (muestra el icono de nota musical
+  en vez de una imagen rota). Posible mejora futura: usar la carátula
+  del primer álbum como sustituto cuando no hay imagen de artista —
+  no implementado, decir si se quiere.
+
 ## Pendiente
 
 - **VU-meter**: nivel real de audio, estéreo (L/R), configurable
@@ -19,7 +30,10 @@ de aquí.
   certificado de código local estable (o uno de Apple Developer)
   fijaría la identidad entre builds y evitaría tener que re-conceder
   el permiso cada vez. Documentado como limitación conocida en
-  `README.md` y `docs/index.html` mientras tanto.
+  `README.md` y `docs/index.html` mientras tanto. Ya se estabilizaron
+  `--osx-bundle-identifier` y el nombre del binario (`Ambar`, sin
+  versión) para reducir cuánto cambia entre builds — la firma ad-hoc
+  en sí sigue siendo la causa raíz que falta arreglar del todo.
 - Skins personalizadas cargables desde un directorio `/skins` +
   documentar en la guía de usuario (`docs/`) cómo crearlas.
 - Barra lateral de volumen: subir/bajar/mute, con el % visible y
@@ -44,6 +58,21 @@ de aquí.
   - Evitar el copy/paste manual de URLs para autorizar.
   - Wizard inicial de configuración si no hay `config.json` previo.
   - Poder relanzar ese wizard en cualquier momento desde Ajustes.
+- Spinner/loading visible mientras carga la carátula en reproducción,
+  y mientras se consultan los listados de álbumes/artistas/canciones
+  (la biblioteca ya tiene un `.loader` para las vistas de lista, pero
+  la carátula de "ahora suena" no muestra nada mientras carga).
+- Lista de reproducción actual visible en el home: da igual si viene
+  de un artista, álbum, carpeta, CD o de Spotify, debe mostrarse la
+  lista completa (no solo la pista actual) con la canción en curso
+  resaltada. La lista se puede ocultar/mostrar, y ese estado
+  (visible/oculta) debe persistir entre sesiones (como el resto de
+  ajustes, vía `config.json`/`/api/config`).
+- Marquee (desplazamiento lateral) para título/artista/álbum cuando el
+  texto no cabe y se corta (`text-overflow:ellipsis` actual en
+  `.track-title`/`.track-meta`): que se desplace lateralmente hasta
+  leerse entero, con una pausa inicial antes de empezar a moverse,
+  como en los displays de las autorradios.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -54,3 +83,9 @@ de aquí.
   verificado; Windows vía WASAPI/`soundcard` pendiente de probar).
 - Fix de las carátulas de Kodi que no cargaban (doble-decodificación
   de la URL `image://` al hacer de proxy hacia Kodi).
+- Fix del título "undefined" en el listado de álbumes (el frontend
+  pedía el campo `title`, Kodi solo devuelve `label`).
+- Fix de la pestaña CD/carpetas, que no funcionaba nunca: Kodi
+  devuelve "Invalid params" para `Files.GetDirectory` con
+  `directory="sources://music/"` en esta build (bug/limitación de
+  Kodi, no nuestro) — se usa `Files.GetSources` para el nivel raíz.

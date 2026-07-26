@@ -30,7 +30,7 @@ El backlog vive en `TODO.md`. Al completar algo, muévelo a
   - Los hilos de fondo de Kodi/Spotify publican `PlaybackStateChanged` en el `EventBus`, no llaman a `socketio.emit()` directamente.
   - `tests/` con `pytest` sobre `NowPlayingService` (`requirements-dev.txt`).
 - **Frontend:** Vanilla HTML/CSS/JS contenido en `index.html` (no tocado por el refactor del backend).
-- **Empaquetado:** PyInstaller (`build.py` / `kiosk_server.spec`, este último autogenerado, no versionado) hacia `.exe` (Windows) / `.app` (macOS) con `pywebview` como ventana nativa.
+- **Empaquetado:** PyInstaller (`build.py` / `Ambar.spec`, este último autogenerado, no versionado) hacia `.exe` (Windows) / `.app` (macOS) con `pywebview` como ventana nativa. El binario se llama siempre `Ambar` (sin versión en el nombre; la versión va en el manifest).
 - **Reproductores:**
   - **Kodi:** Principal. Reproduce FLAC, MP3 y CD de audio (`cdda://`). Emplea el addon Chorus2 para la vista de biblioteca.
   - **Spotify:** Vía API web (Spotipy) y Spotify Connect. El audio se lanza desde móvil y se refleja/controla en el panel.
@@ -85,6 +85,9 @@ El backlog vive en `TODO.md`. Al completar algo, muévelo a
   de Grabación de pantalla puede perderse en cada recompilación y la
   app puede no aparecer sola en Ajustes del Sistema (añadir a mano con
   "+"). Tras conceder el permiso, cerrar del todo y reabrir la app.
+  El permiso es independiente entre `python kiosk_server.py` (modo
+  desarrollo, aparece como `kiosk_server`/`Python`/`python3.x`) y el
+  `.app` compilado — hay que darlo a los dos por separado.
   **Al salir de la app** (`SystemService.execute("exit")`) hay que
   llamar a `AudioLevelService.stop()` antes de cerrar la ventana, o el
   interprete revienta si el proceso finaliza con el stream de
@@ -108,7 +111,7 @@ El backlog vive en `TODO.md`. Al completar algo, muévelo a
 
 ## Versionado y releases
 
-- Fuente única de la versión: fichero `VERSION` (semver, sin `v`). `build.py` lo lee para nombrar el ejecutable (`Ambar-{version}`).
+- Fuente única de la versión: fichero `VERSION` (semver, sin `v`). `build.py` la escribe en el manifest (Info.plist en macOS, recurso de versión en Windows) — el ejecutable se llama siempre `Ambar`, sin versión en el nombre (nombre estable = menos motivos para que macOS resetee el permiso del VU-metro entre builds).
 - Historial de cambios en `CHANGELOG.md` (formato Keep a Changelog).
 - `.github/workflows/release.yml`: al empujar un tag `vX.Y.Z`, compila con PyInstaller en `macos-latest` y `windows-latest` y publica una release en GitHub con los `.zip` de ambos SO adjuntos.
 

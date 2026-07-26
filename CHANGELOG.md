@@ -71,6 +71,21 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
     `ambar/adapters/audio/macos_screencapturekit.py`.
 
 ### Changed
+- **Biblioteca de Kodi: pestaña "CD" separada de "Carpetas"**, activa
+  solo cuando Kodi detecta de verdad un CD de audio (Redbook/CDDA)
+  reproducible en la unidad (`system.hasmediadvdaudio` vía
+  `XBMC.GetInfoBooleans`) — un disco de datos con FLAC/MP3 no cuenta,
+  se navega como una fuente de archivos normal. Nuevo método
+  `KodiGateway.has_audio_cd()` y ruta
+  `GET /api/library/kodi/cd-available`.
+- `build.py`: el binario ya no lleva la versión en el nombre —
+  siempre se llama `Ambar` (`Ambar.app`/`Ambar.exe`), para que cambie
+  lo mínimo posible entre compilaciones (ayuda a que macOS no trate
+  cada build como una app distinta a efectos de permisos). La versión
+  se sigue escribiendo, pero solo en el manifest: `CFBundleShortVersionString`/
+  `CFBundleVersion` en macOS (via `PlistBuddy` tras el build, porque
+  PyInstaller no tiene flag de CLI para esto), recurso de versión
+  (`--version-file`) en Windows.
 - Refactor interno del backend a arquitectura hexagonal / DDD-lite /
   event-driven: `kiosk_server.py` (antes 417 líneas con todo mezclado)
   pasa a ser un entrypoint fino que arranca el composition root en
@@ -99,6 +114,21 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `kiosk_server.py` ya no necesita `eventlet.monkey_patch()`.
 
 ### Fixed
+- **Título "undefined" en el listado de álbumes de la biblioteca.**
+  El frontend pedía el campo `title` para el título de la tarjeta,
+  pero `AudioLibrary.GetAlbums` de Kodi no devuelve ese campo — el
+  título real viene en `label` (igual que ya se usaba correctamente
+  para artistas y canciones). Verificado contra la respuesta real de
+  Kodi antes y después del fix.
+- **La pestaña "CD" / carpetas no funcionaba nunca** (listado vacío
+  siempre). Causa: `Files.GetDirectory` con
+  `directory="sources://music/"` devuelve `Invalid params` en esta
+  build de Kodi para *cualquier* combinación de `properties` (incluso
+  ninguna) — un bug/limitación de Kodi específico de `media: "music"`
+  con esa ruta virtual (con `media: "video"` sí funciona). Ahora se
+  usa `Files.GetSources(media="music")` para el nivel raíz, que
+  devuelve las fuentes reales configuradas y navega correctamente a
+  partir de ahí. Verificado contra el JSON-RPC de Kodi directamente.
 - **Carátulas de Kodi que no cargaban nunca** (`/api/art` devolvía 404).
   Causa: `KodiGateway.art_proxy` reenviaba a Kodi la URL `image://...`
   del thumbnail sin volver a codificarla — Flask ya la había

@@ -65,6 +65,10 @@ def create_app(container) -> Flask:
         path = request.args.get("path", "sources://music/")
         return jsonify(container.library_service.kodi_directory(path))
 
+    @app.route("/api/library/kodi/cd-available")
+    def kodi_cd_available():
+        return jsonify({"available": container.library_service.kodi_cd_available()})
+
     @app.route("/api/library/kodi/play", methods=["POST"])
     def kodi_play():
         body = request.get_json(force=True) or {}

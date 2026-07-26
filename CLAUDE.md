@@ -125,7 +125,7 @@ dimensionados para esa resolución exacta.
 - `config.json` — credenciales/host de Kodi y Spotify persistidos en
   disco (no versionar, ver `.gitignore`).
 - `.spotify-cache` — se genera solo tras autorizar Spotify (no versionar).
-- `build.py` / `kiosk_server.spec` — empaquetado con PyInstaller
+- `build.py` / `Ambar.spec` — empaquetado con PyInstaller
   (`--windowed`, icono, `collect-all` de engineio/socketio,
   `hidden-import` de websocket/spotipy/simple_websocket). Genera
   `.exe` en Windows y `.app` en macOS; el binario siempre corresponde
@@ -210,8 +210,12 @@ dimensionados para esa resolución exacta.
   Grabación de pantalla (añadirla a mano con "+"), y que el permiso se
   pierda en cada recompilación (firma distinta ⇒ macOS la trata como
   app nueva) — hay que volver a concederlo y **cerrar del todo y
-  reabrir la app** tras hacerlo. Documentado en `README.md` y
-  `docs/index.html`.
+  reabrir la app** tras hacerlo. Además, el permiso es independiente
+  entre `python kiosk_server.py` (modo desarrollo, identidad = el
+  interprete del venv, aparece en la lista como `kiosk_server` o
+  `Python`/`python3.x`) y el `.app` compilado — concederlo a uno no
+  vale para el otro, hay que darlo a ambos por separado. Documentado
+  en `README.md` y `docs/index.html`.
   **Importante:** al cerrar la app (`SystemService.execute("exit")`)
   hay que llamar a `AudioLevelService.stop()` ANTES de cerrar la
   ventana — si el proceso empieza a finalizar mientras el stream de
@@ -248,12 +252,16 @@ Backlog completo en [`TODO.md`](TODO.md). Aquí solo lo más inmediato:
 ## Versionado y releases
 
 - Fuente única de la versión: fichero `VERSION` (semver, sin `v`).
-  `build.py` lo lee para nombrar el ejecutable (`Ambar-{version}`).
+  `build.py` lo lee para escribirla en el manifest (`CFBundleShortVersionString`/
+  `CFBundleVersion` en macOS, recurso de versión en Windows) — el
+  ejecutable en sí se llama siempre `Ambar` (sin versión en el nombre,
+  a propósito: ver "VU-metro" para por qué el nombre estable importa
+  también para los permisos de macOS).
 - Historial de cambios en `CHANGELOG.md` (formato Keep a Changelog).
 - `.github/workflows/release.yml`: al empujar un tag `vX.Y.Z`, compila
   con PyInstaller en `macos-latest` y `windows-latest` y publica una
   release en GitHub con los `.zip` de ambos SO adjuntos. Ver sección
   "Versionado y releases" del `README.md` para el flujo paso a paso.
-- `kiosk_server.spec` es un artefacto generado por `build.py` (se
-  borra y recrea en cada build) — no se versiona en git (`.gitignore`
-  ya lo cubre con `*.spec`).
+- `Ambar.spec` es un artefacto generado por `build.py` (se borra y
+  recrea en cada build) — no se versiona en git (`.gitignore` ya lo
+  cubre con `*.spec`).

@@ -93,12 +93,34 @@ class KodiGateway:
         return res.get("songs", []) if res else []
 
     def get_directory(self, path: str = "sources://music/") -> list:
+        if path == "sources://music/":
+            # Files.GetDirectory con directory="sources://music/" devuelve
+            # "Invalid params" en esta build de Kodi (probado en vivo con
+            # varias combinaciones de properties, incluso sin ninguna) --
+            # parece un bug/limitacion de Kodi especifico de "music" como
+            # media con la ruta virtual sources:// (con "video" si funciona).
+            # Files.GetSources es el equivalente para listar el nivel raiz.
+            res = self.rpc("Files.GetSources", {"media": "music"})
+            sources = res.get("sources", []) if res else []
+            for source in sources:
+                source["filetype"] = "directory"
+            return sources
         res = self.rpc("Files.GetDirectory", {
             "directory": path,
             "media": "music",
             "properties": ["thumbnail", "file", "mimetype"],
         })
         return res.get("files", []) if res else []
+
+    def has_audio_cd(self) -> bool:
+        """True si Kodi detecta un CD de audio (Redbook/CDDA) reproducible
+        en la unidad -- no confundir con un disco de datos con FLAC/MP3
+        (esos se navegan como una fuente de archivos normal, no por aqui).
+        XBMC.GetInfoBooleans, no System.GetInfoBooleans (probado en vivo:
+        el namespace System.* da "Method not found" para esto en esta
+        build de Kodi, el namespace legacy XBMC.* si funciona)."""
+        res = self.rpc("XBMC.GetInfoBooleans", {"booleans": ["system.hasmediadvdaudio"]})
+        return bool(res and res.get("system.hasmediadvdaudio"))
 
     def play(self, item: dict) -> None:
         self.rpc("Playlist.Clear", {"playlistid": 0})

@@ -196,7 +196,8 @@
     </ul>
 
     <div class="note">
-      <p><strong>VU-metro en macOS (solo si compilas/ejecutas Ámbar en un Mac):</strong> la primera vez, macOS pedirá permiso de "Grabación de pantalla y del audio del sistema" (Ajustes del Sistema → Privacidad y Seguridad). Si la app no aparece sola en esa lista tras concederlo, añádela a mano con el botón "+" navegando hasta el `.app`. Como la app se firma de forma ad-hoc (sin certificado de Apple Developer), macOS puede pedir el permiso otra vez tras recompilarla — es una limitación conocida de macOS con este tipo de firma, no un fallo de la app. Tras conceder el permiso, cierra del todo y vuelve a abrir Ámbar.</p>
+      <p><strong>VU-metro en macOS (solo si compilas/ejecutas Ámbar en un Mac):</strong> la primera vez, macOS pedirá permiso de "Grabación de pantalla y del audio del sistema" (Ajustes del Sistema → Privacidad y Seguridad). Si la app no aparece sola en esa lista tras concederlo, añádela a mano con el botón "+" navegando hasta el `.app`. Como la app se firma de forma ad-hoc (sin certificado de Apple Developer), macOS puede pedir el permiso otra vez tras recompilarla — es una limitación conocida de macOS con este tipo de firma, no un fallo de la app. Tras conceder el permiso, cierra del todo y vuelve a abrir Ámbar. <br><br>
+      Si ejecutas el proyecto en modo desarrollo (<code>python kiosk_server.py</code>) en vez del binario compilado, el permiso hay que concederlo aparte: aparecerá en la lista como <code>kiosk_server</code> (o <code>Python</code>/<code>python3.x</code>, según la versión de macOS), no como "Ámbar". Concederlo al binario compilado no vale para el modo desarrollo, y viceversa.</p>
     </div>
   </section>
 
