@@ -67,3 +67,6 @@ jobs:
         with:
           files: artifacts/*.zip
           generate_release_notes: true
+          # Tags con un identificador de pre-release semver (v1.2.3-beta.1)
+          # se publican como "Pre-release" en GitHub, no como "Latest".
+          prerelease: ${{ contains(github.ref_name, '-') }}

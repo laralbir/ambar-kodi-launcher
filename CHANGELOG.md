@@ -7,6 +7,8 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.2.0-beta.1] - 2026-07-27
+
 ### Added
 - **Imagen por defecto de "sin carátula" rediseñada**: antes un icono
   genérico de nota musical, ahora un vinilo (surcos, brillo, etiqueta
@@ -289,6 +291,11 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   payload ni comportamiento observable cambia; verificado con
   `pytest` (nuevos tests de `NowPlayingService`) y comparando
   manualmente los endpoints antes/después.
+- Documentación (`CLAUDE.md`, `.agents`, `docs/index.html`) ya no
+  menciona el addon Chorus2 para la vista de biblioteca — quedó
+  obsoleto desde que la navegación de artistas/álbumes/canciones/
+  carpetas/CD se implementó de forma nativa contra la API JSON-RPC de
+  Kodi, sin iframe ni webinterface externo.
 
 ### Removed
 - Se elimina `eventlet` por completo (dependencia deprecada por sus
@@ -435,8 +442,6 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   español), que codifica la "Á" de "Ámbar" como el byte `0xC1` —
   inválido cuando PyInstaller relee el fichero forzando UTF-8.
   Detectado y corregido probando el build real en una VM Windows 11.
-
-### Changed
 - Documentación (`CLAUDE.md`, `.agents`, `docs/index.html`) ya no
   menciona el addon Chorus2 para la vista de biblioteca — quedó
   obsoleto desde que la navegación de artistas/álbumes/canciones/
@@ -463,5 +468,6 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   nativa sin bordes.
 - Manual de usuario en `docs/`.
 
-[Unreleased]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.2.0-beta.1...HEAD
+[0.2.0-beta.1]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.1.0...v0.2.0-beta.1
 [0.1.0]: https://github.com/laralbir/ambar-kodi-launcher/releases/tag/v0.1.0

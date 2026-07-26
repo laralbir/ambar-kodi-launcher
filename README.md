@@ -81,15 +81,15 @@ Si esto resulta demasiado incómodo para uso diario, la solución definitiva es 
 
 ## Versionado y releases
 
-El número de versión vive en un único sitio: el fichero [`VERSION`](VERSION) (versionado semántico, sin la `v` inicial). `build.py` lo lee para nombrar el ejecutable generado.
+El número de versión vive en un único sitio: el fichero [`VERSION`](VERSION) (versionado semántico, sin la `v` inicial; admite un sufijo de pre-release tipo `0.2.0-beta.1`). `build.py` lo lee para escribirlo en el manifest del ejecutable (`Info.plist` en macOS, recurso de versión en Windows) — el binario en sí siempre se llama `Ambar`, sin versión en el nombre.
 
 Para publicar una nueva release:
 
-1. Actualiza `VERSION` (p. ej. `0.2.0`) y añade una entrada en [`CHANGELOG.md`](CHANGELOG.md) bajo esa versión.
+1. Actualiza `VERSION` (p. ej. `0.2.0` o `0.2.0-beta.1`) y añade una entrada en [`CHANGELOG.md`](CHANGELOG.md) bajo esa versión.
 2. Haz commit de ambos cambios.
-3. Crea y empuja un tag `vX.Y.Z` que coincida con `VERSION`:
+3. Crea y empuja un tag que coincida con `VERSION`, con el prefijo `v`:
    ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag v0.2.0-beta.1
+   git push origin v0.2.0-beta.1
    ```
-4. El workflow de GitHub Actions [`release.yml`](.github/workflows/release.yml) construye el ejecutable para Windows y macOS con PyInstaller y publica automáticamente una release en GitHub con ambos `.zip` adjuntos.
+4. El workflow de GitHub Actions [`release.yml`](.github/workflows/release.yml) construye el ejecutable para Windows y macOS con PyInstaller y publica automáticamente una release en GitHub con ambos `.zip` adjuntos. Si el tag lleva un sufijo de pre-release (`-beta.1`, `-rc.1`...), la release se marca sola como "Pre-release" en vez de "Latest".

@@ -13,7 +13,13 @@ def read_version():
 
 
 def version_tuple(version: str) -> tuple[int, int, int, int]:
-    parts = [int(p) for p in version.split(".")]
+    # El recurso de version de Windows (FixedFileInfo) es 4 enteros de 16
+    # bits -- no puede representar un sufijo de pre-release semver
+    # ("0.2.0-beta.1"), asi que se descarta aqui. El string completo
+    # (con el sufijo) se sigue mostrando tal cual en FileVersion/
+    # ProductVersion (StringStruct), solo el tuple numerico lo pierde.
+    release_part = version.split("-")[0]
+    parts = [int(p) for p in release_part.split(".")]
     while len(parts) < 4:
         parts.append(0)
     return tuple(parts[:4])
