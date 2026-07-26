@@ -4,14 +4,14 @@ import sys
 
 def build():
     print("Construyendo el ejecutable para Ámbar Kodi Launcher...")
-    # Separador para add-data depende del SO: ';' en Windows, ':' en Unix
     sep = ';' if sys.platform == 'win32' else ':'
     
     cmd = [
         "pyinstaller",
         "--noconfirm",
-        "--windowed",       # No muestra la consola
+        "--windowed",
         f"--add-data=index.html{sep}.",
+        "--icon=ambar_icon.png",
         "kiosk_server.py"
     ]
     

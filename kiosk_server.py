@@ -2,35 +2,14 @@
 Servidor local para el launcher tactil del HiFi.
 
 Sirve index.html y expone una API que unifica el estado de
-reproduccion de Kodi y de Spotify, para que el navegador del
-kiosko solo tenga que hablar con este servidor (evita problemas
-de CORS al llamar directamente a Kodi o a Spotify desde el HTML).
-
-INSTALACION
-    pip install flask requests spotipy
-
-CONFIGURACION DE SPOTIFY (opcional, solo si quieres ver el
-"ahora suena" y los controles tambien para Spotify):
-    1. Crea una app en https://developer.spotify.com/dashboard
-    2. Anade como Redirect URI: http://localhost:5005/callback
-    3. Define estas variables de entorno antes de arrancar:
-         SPOTIFY_CLIENT_ID=xxxx
-         SPOTIFY_CLIENT_SECRET=xxxx
-    4. La primera vez, abre http://localhost:5005/login una vez
-       desde un navegador con sesion en tu cuenta de Spotify para
-       autorizar la app (solo hace falta una vez, el token se cachea).
-
-Si no configuras Spotify, el launcher sigue funcionando solo con
-Kodi (biblioteca FLAC/MP3/CD): el panel de Spotify simplemente no
-mostrara datos hasta que lo configures.
-
-ARRANQUE
-    python kiosk_server.py
-Luego abre http://localhost:5005 en el navegador del kiosko.
+reproduccion de Kodi y de Spotify.
 """
 
 import os
+import json
 import threading
+import sys
+import subprocess
 from flask import Flask, jsonify, request, send_from_directory, redirect
 import requests
 
@@ -42,22 +21,54 @@ except ImportError:
     SPOTIPY_AVAILABLE = False
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-KODI_HOST = os.environ.get("KODI_HOST", "localhost")
-KODI_PORT = os.environ.get("KODI_PORT", "8080")
+CONFIG_FILE = os.path.join(APP_DIR, "config.json")
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_config(data):
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print("Error al guardar config:", e)
+
+# Load configuration initially
+app_config = load_config()
+
+KODI_HOST = app_config.get("KODI_HOST") or os.environ.get("KODI_HOST", "localhost")
+KODI_PORT = app_config.get("KODI_PORT") or os.environ.get("KODI_PORT", "8080")
 KODI_RPC_URL = f"http://{KODI_HOST}:{KODI_PORT}/jsonrpc"
 
 app = Flask(__name__)
 
 sp_oauth = None
-if SPOTIPY_AVAILABLE and os.environ.get("SPOTIFY_CLIENT_ID"):
-    sp_oauth = SpotifyOAuth(
-        client_id=os.environ["SPOTIFY_CLIENT_ID"],
-        client_secret=os.environ["SPOTIFY_CLIENT_SECRET"],
-        redirect_uri=os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5005/callback"),
-        scope="user-read-playback-state user-modify-playback-state",
-        cache_path=os.path.join(APP_DIR, ".spotify-cache"),
-        open_browser=False,
-    )
+
+def init_spotify():
+    global sp_oauth
+    client_id = app_config.get("SPOTIFY_CLIENT_ID") or os.environ.get("SPOTIFY_CLIENT_ID")
+    client_secret = app_config.get("SPOTIFY_CLIENT_SECRET") or os.environ.get("SPOTIFY_CLIENT_SECRET")
+    redirect_uri = app_config.get("SPOTIFY_REDIRECT_URI") or os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5005/callback")
+    
+    if SPOTIPY_AVAILABLE and client_id and client_secret:
+        sp_oauth = SpotifyOAuth(
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            scope="user-read-playback-state user-modify-playback-state",
+            cache_path=os.path.join(APP_DIR, ".spotify-cache"),
+            open_browser=False,
+        )
+    else:
+        sp_oauth = None
+
+init_spotify()
 
 
 # ---------- Kodi ----------
@@ -71,7 +82,6 @@ def kodi_rpc(method, params=None):
         return r.json().get("result")
     except requests.RequestException:
         return None
-
 
 def kodi_now_playing():
     players = kodi_rpc("Player.GetActivePlayers")
@@ -139,7 +149,6 @@ def spotify_now_playing():
 def index():
     return send_from_directory(APP_DIR, "index.html")
 
-
 @app.route("/api/now-playing")
 def now_playing():
     data = kodi_now_playing() or spotify_now_playing()
@@ -147,7 +156,6 @@ def now_playing():
         data = {"source": None, "playing": False, "title": "", "artist": "",
                  "album": "", "art": None, "progress": 0}
     return jsonify(data)
-
 
 @app.route("/api/art")
 def art_proxy():
@@ -158,7 +166,6 @@ def art_proxy():
         return r.content, r.status_code, {"Content-Type": r.headers.get("Content-Type", "image/jpeg")}
     except requests.RequestException:
         return "", 404
-
 
 @app.route("/api/control", methods=["POST"])
 def control():
@@ -197,32 +204,76 @@ def control():
 
     return jsonify({"ok": True})
 
+@app.route("/api/system", methods=["POST"])
+def api_system():
+    body = request.get_json(force=True) or {}
+    action = body.get("action")
+    
+    if action == "fullscreen":
+        import webview
+        if webview.windows:
+            webview.windows[0].toggle_fullscreen()
+    elif action == "exit":
+        import webview
+        if webview.windows:
+            webview.windows[0].destroy()
+    elif action == "shutdown":
+        if sys.platform == "win32":
+            os.system("shutdown /s /t 0")
+        else:
+            os.system("sudo shutdown -h now")
+    elif action == "restart":
+        if sys.platform == "win32":
+            os.system("shutdown /r /t 0")
+        else:
+            os.system("sudo shutdown -r now")
+            
+    return jsonify({"ok": True})
+
+@app.route("/api/config", methods=["GET", "POST"])
+def api_config():
+    global app_config, KODI_HOST, KODI_PORT, KODI_RPC_URL
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        app_config.update(data)
+        save_config(app_config)
+        
+        KODI_HOST = app_config.get("KODI_HOST", KODI_HOST)
+        KODI_PORT = app_config.get("KODI_PORT", KODI_PORT)
+        KODI_RPC_URL = f"http://{KODI_HOST}:{KODI_PORT}/jsonrpc"
+        init_spotify()
+        return jsonify({"ok": True})
+    
+    # Return config without secret tokens if preferred, but for this private UI it's fine
+    return jsonify({
+        "SPOTIFY_CLIENT_ID": app_config.get("SPOTIFY_CLIENT_ID", ""),
+        "SPOTIFY_CLIENT_SECRET": app_config.get("SPOTIFY_CLIENT_SECRET", ""),
+        "KODI_HOST": app_config.get("KODI_HOST", KODI_HOST),
+        "KODI_PORT": app_config.get("KODI_PORT", KODI_PORT)
+    })
 
 @app.route("/login")
 def login():
     if not sp_oauth:
-        return "Configura SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET antes de usar esto."
+        return "Configura SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en Ajustes antes de usar esto."
     return redirect(sp_oauth.get_authorize_url())
-
 
 @app.route("/callback")
 def callback():
     code = request.args.get("code")
     if sp_oauth and code:
         sp_oauth.get_access_token(code, as_dict=False)
-        return "Spotify autorizado correctamente. Ya puedes cerrar esta pestana."
+        return "Spotify autorizado correctamente. Ya puedes cerrar esta pestana o recargar el kiosko."
     return "Falta configurar Spotify o no se recibio el codigo de autorizacion."
 
 
 if __name__ == "__main__":
-    import sys
     try:
         import webview
         WEBVIEW_AVAILABLE = True
     except ImportError:
         WEBVIEW_AVAILABLE = False
 
-    # Arrancar Flask en un hilo en segundo plano
     server_thread = threading.Thread(
         target=app.run,
         kwargs={"host": "0.0.0.0", "port": 5005, "debug": False, "use_reloader": False}
@@ -231,14 +282,14 @@ if __name__ == "__main__":
     server_thread.start()
 
     if WEBVIEW_AVAILABLE and "--no-window" not in sys.argv:
-        # Iniciar la ventana nativa apuntando a Flask
+        # Modo pantalla completa por defecto
         webview.create_window(
             title="Ámbar",
             url="http://localhost:5005",
             width=1920,
             height=720,
             frameless=True,
-            fullscreen=False, # Si prefieres que ocupe todo sin respetar resolución, cambia a True
+            fullscreen=True,
             background_color="#17181a"
         )
         webview.start()
