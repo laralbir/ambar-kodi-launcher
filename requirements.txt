@@ -4,3 +4,6 @@ spotipy==2.23.0
 pywebview==4.4.1
 pyinstaller
 Pillow
+Flask-SocketIO==5.3.6
+websocket-client==1.7.0
+eventlet==0.35.2

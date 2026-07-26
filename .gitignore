@@ -1,23 +1,25 @@
-# OS X
+# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
+# Entornos virtuales Python
 venv/
 env/
-.env
+.env/
 
-# PyInstaller
-build/
+# Caché y compilados
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ficheros de la app y empaquetado
+config.json
+.spotify-cache
 dist/
+build/
 *.spec
 
-# Spotify Cache
-.spotify-cache
-
-# Configuraciones locales
-config.json
+# IDEs
+.idea/
+.vscode/
+.gemini/

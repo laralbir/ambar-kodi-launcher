@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>kiosk_server</string>
 	<key>CFBundleIconFile</key>
-	<string>icon-windowed.icns</string>
+	<string>generated-760212431a8345f8aae7ac2b84e40d2d3ab9043a21f675a1c2a0047543bf36a7.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>kiosk_server</string>
 	<key>CFBundleInfoDictionaryVersion</key>

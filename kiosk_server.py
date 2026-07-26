@@ -1,17 +1,23 @@
 """
 Servidor local para el launcher tactil del HiFi.
-
-Sirve index.html y expone una API que unifica el estado de
-reproduccion de Kodi y de Spotify.
+Implementa WebSockets y APIs de Biblioteca Nativa (Kodi + Spotify).
 """
+
+import eventlet
+eventlet.monkey_patch()
 
 import os
 import json
 import threading
+import time
 import sys
 import subprocess
-from flask import Flask, jsonify, request, send_from_directory, redirect
 import requests
+import websocket
+from urllib.parse import quote
+
+from flask import Flask, jsonify, request, send_from_directory, redirect
+from flask_socketio import SocketIO
 
 try:
     import spotipy
@@ -39,16 +45,18 @@ def save_config(data):
     except Exception as e:
         print("Error al guardar config:", e)
 
-# Load configuration initially
 app_config = load_config()
 
 KODI_HOST = app_config.get("KODI_HOST") or os.environ.get("KODI_HOST", "localhost")
 KODI_PORT = app_config.get("KODI_PORT") or os.environ.get("KODI_PORT", "8080")
 KODI_RPC_URL = f"http://{KODI_HOST}:{KODI_PORT}/jsonrpc"
+KODI_WS_URL = f"ws://{KODI_HOST}:9090/jsonrpc"
 
 app = Flask(__name__)
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 sp_oauth = None
+last_playback_state = None
 
 def init_spotify():
     global sp_oauth
@@ -61,7 +69,7 @@ def init_spotify():
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=redirect_uri,
-            scope="user-read-playback-state user-modify-playback-state",
+            scope="user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-library-read",
             cache_path=os.path.join(APP_DIR, ".spotify-cache"),
             open_browser=False,
         )
@@ -71,19 +79,19 @@ def init_spotify():
 init_spotify()
 
 
-# ---------- Kodi ----------
+# ---------- KODI JSON-RPC ----------
 
 def kodi_rpc(method, params=None):
     payload = {"jsonrpc": "2.0", "id": 1, "method": method}
     if params:
         payload["params"] = params
     try:
-        r = requests.post(KODI_RPC_URL, json=payload, timeout=1.5)
+        r = requests.post(KODI_RPC_URL, json=payload, timeout=2)
         return r.json().get("result")
-    except requests.RequestException:
+    except Exception:
         return None
 
-def kodi_now_playing():
+def get_kodi_state():
     players = kodi_rpc("Player.GetActivePlayers")
     if not players:
         return None
@@ -102,7 +110,7 @@ def kodi_now_playing():
     art = None
     thumb = info.get("thumbnail")
     if thumb:
-        art = "/api/art?path=" + requests.utils.quote(thumb, safe="")
+        art = "/api/art?path=" + quote(thumb, safe="")
     return {
         "source": "kodi",
         "playing": bool(props and props.get("speed", 0) != 0),
@@ -114,9 +122,9 @@ def kodi_now_playing():
     }
 
 
-# ---------- Spotify ----------
+# ---------- SPOTIFY API ----------
 
-def spotify_now_playing():
+def get_spotify_state():
     if not sp_oauth:
         return None
     token_info = sp_oauth.get_cached_token()
@@ -143,7 +151,52 @@ def spotify_now_playing():
     }
 
 
-# ---------- Rutas ----------
+# ---------- EMISION DE ESTADO (SOCKETIO) ----------
+
+def emit_playback_update():
+    global last_playback_state
+    state = get_kodi_state() or get_spotify_state()
+    if not state:
+        state = {"source": None, "playing": False, "title": "", "artist": "", "album": "", "art": None, "progress": 0}
+    
+    # Send only if state has meaningful changes (or just send every time event triggers)
+    socketio.emit("playback_update", state)
+    last_playback_state = state
+
+
+# ---------- HILOS DE BACKGROUND (WEBSOCKETS + POLLING) ----------
+
+def kodi_ws_thread():
+    while True:
+        try:
+            ws = websocket.WebSocket()
+            ws.connect(KODI_WS_URL, timeout=3)
+            # Fetch initial state
+            eventlet.spawn(emit_playback_update)
+            while True:
+                msg = ws.recv()
+                if msg:
+                    data = json.loads(msg)
+                    method = data.get("method", "")
+                    if method.startswith("Player.On") or method == "Playlist.OnAdd":
+                        eventlet.spawn(emit_playback_update)
+        except Exception:
+            time.sleep(5) # Reconnect loop if Kodi is down
+
+def spotify_polling_thread():
+    while True:
+        try:
+            if sp_oauth and (not last_playback_state or last_playback_state.get("source") != "kodi"):
+                # Poll spotify every 3s to not abuse API
+                state = get_spotify_state()
+                if state:
+                    socketio.emit("playback_update", state)
+        except Exception:
+            pass
+        time.sleep(3)
+
+
+# ---------- RUTAS Y APIS (FRONTEND + CONTROL) ----------
 
 @app.route("/")
 def index():
@@ -151,11 +204,10 @@ def index():
 
 @app.route("/api/now-playing")
 def now_playing():
-    data = kodi_now_playing() or spotify_now_playing()
-    if not data:
-        data = {"source": None, "playing": False, "title": "", "artist": "",
-                 "album": "", "art": None, "progress": 0}
-    return jsonify(data)
+    state = get_kodi_state() or get_spotify_state()
+    if not state:
+        state = {"source": None, "playing": False, "title": "", "artist": "", "album": "", "art": None, "progress": 0}
+    return jsonify(state)
 
 @app.route("/api/art")
 def art_proxy():
@@ -164,7 +216,7 @@ def art_proxy():
     try:
         r = requests.get(img_url, timeout=3)
         return r.content, r.status_code, {"Content-Type": r.headers.get("Content-Type", "image/jpeg")}
-    except requests.RequestException:
+    except Exception:
         return "", 404
 
 @app.route("/api/control", methods=["POST"])
@@ -201,38 +253,31 @@ def control():
                     sp.previous_track()
             except Exception:
                 pass
-
     return jsonify({"ok": True})
 
 @app.route("/api/system", methods=["POST"])
 def api_system():
     body = request.get_json(force=True) or {}
     action = body.get("action")
-    
     if action == "fullscreen":
-        import webview
-        if webview.windows:
-            webview.windows[0].toggle_fullscreen()
+        try:
+            import webview
+            if webview.windows: webview.windows[0].toggle_fullscreen()
+        except: pass
     elif action == "exit":
-        import webview
-        if webview.windows:
-            webview.windows[0].destroy()
+        try:
+            import webview
+            if webview.windows: webview.windows[0].destroy()
+        except: pass
     elif action == "shutdown":
-        if sys.platform == "win32":
-            os.system("shutdown /s /t 0")
-        else:
-            os.system("sudo shutdown -h now")
+        os.system("shutdown /s /t 0" if sys.platform == "win32" else "sudo shutdown -h now")
     elif action == "restart":
-        if sys.platform == "win32":
-            os.system("shutdown /r /t 0")
-        else:
-            os.system("sudo shutdown -r now")
-            
+        os.system("shutdown /r /t 0" if sys.platform == "win32" else "sudo shutdown -r now")
     return jsonify({"ok": True})
 
 @app.route("/api/config", methods=["GET", "POST"])
 def api_config():
-    global app_config, KODI_HOST, KODI_PORT, KODI_RPC_URL
+    global app_config, KODI_HOST, KODI_PORT, KODI_RPC_URL, KODI_WS_URL
     if request.method == "POST":
         data = request.get_json(force=True) or {}
         app_config.update(data)
@@ -241,16 +286,84 @@ def api_config():
         KODI_HOST = app_config.get("KODI_HOST", KODI_HOST)
         KODI_PORT = app_config.get("KODI_PORT", KODI_PORT)
         KODI_RPC_URL = f"http://{KODI_HOST}:{KODI_PORT}/jsonrpc"
+        KODI_WS_URL = f"ws://{KODI_HOST}:9090/jsonrpc"
         init_spotify()
         return jsonify({"ok": True})
-    
-    # Return config without secret tokens if preferred, but for this private UI it's fine
     return jsonify({
         "SPOTIFY_CLIENT_ID": app_config.get("SPOTIFY_CLIENT_ID", ""),
         "SPOTIFY_CLIENT_SECRET": app_config.get("SPOTIFY_CLIENT_SECRET", ""),
         "KODI_HOST": app_config.get("KODI_HOST", KODI_HOST),
         "KODI_PORT": app_config.get("KODI_PORT", KODI_PORT)
     })
+
+# ---------- APIS DE BIBLIOTECA NATIVA ----------
+
+@app.route("/api/library/kodi/artists")
+def kodi_artists():
+    res = kodi_rpc("AudioLibrary.GetArtists", {"properties": ["thumbnail"]})
+    return jsonify(res.get("artists", []) if res else [])
+
+@app.route("/api/library/kodi/albums")
+def kodi_albums():
+    artist_id = request.args.get("artist_id", type=int)
+    params = {"properties": ["thumbnail", "year", "artist"]}
+    if artist_id is not None:
+        params["filter"] = {"artistid": artist_id}
+    res = kodi_rpc("AudioLibrary.GetAlbums", params)
+    return jsonify(res.get("albums", []) if res else [])
+
+@app.route("/api/library/kodi/songs")
+def kodi_songs():
+    album_id = request.args.get("album_id", type=int)
+    params = {"properties": ["duration", "track", "thumbnail"]}
+    if album_id is not None:
+        params["filter"] = {"albumid": album_id}
+    res = kodi_rpc("AudioLibrary.GetSongs", params)
+    return jsonify(res.get("songs", []) if res else [])
+
+@app.route("/api/library/kodi/directory")
+def kodi_directory():
+    path = request.args.get("path", "sources://music/")
+    res = kodi_rpc("Files.GetDirectory", {"directory": path, "media": "music", "properties": ["thumbnail", "file", "mimetype"]})
+    return jsonify(res.get("files", []) if res else [])
+
+@app.route("/api/library/kodi/play", methods=["POST"])
+def kodi_play():
+    body = request.get_json(force=True) or {}
+    item = {}
+    if "songid" in body: item["songid"] = body["songid"]
+    elif "albumid" in body: item["albumid"] = body["albumid"]
+    elif "file" in body: item["file"] = body["file"]
+    
+    # Clear playlist and play item
+    kodi_rpc("Playlist.Clear", {"playlistid": 0})
+    kodi_rpc("Playlist.Add", {"playlistid": 0, "item": item})
+    kodi_rpc("Player.Open", {"item": {"playlistid": 0}})
+    return jsonify({"ok": True})
+
+@app.route("/api/library/spotify/playlists")
+def spot_playlists():
+    if not sp_oauth: return jsonify([])
+    token_info = sp_oauth.get_cached_token()
+    if not token_info: return jsonify([])
+    sp = spotipy.Spotify(auth=token_info["access_token"])
+    try:
+        res = sp.current_user_playlists()
+        return jsonify(res.get("items", []))
+    except:
+        return jsonify([])
+
+@app.route("/api/library/spotify/play", methods=["POST"])
+def spot_play():
+    body = request.get_json(force=True) or {}
+    context_uri = body.get("context_uri")
+    if not sp_oauth or not context_uri: return jsonify({"ok": False})
+    token_info = sp_oauth.get_cached_token()
+    sp = spotipy.Spotify(auth=token_info["access_token"])
+    try:
+        sp.start_playback(context_uri=context_uri)
+    except: pass
+    return jsonify({"ok": True})
 
 @app.route("/login")
 def login():
@@ -268,21 +381,17 @@ def callback():
 
 
 if __name__ == "__main__":
+    eventlet.spawn(kodi_ws_thread)
+    eventlet.spawn(spotify_polling_thread)
+
     try:
         import webview
         WEBVIEW_AVAILABLE = True
     except ImportError:
         WEBVIEW_AVAILABLE = False
 
-    server_thread = threading.Thread(
-        target=app.run,
-        kwargs={"host": "0.0.0.0", "port": 5005, "debug": False, "use_reloader": False}
-    )
-    server_thread.daemon = True
-    server_thread.start()
-
-    if WEBVIEW_AVAILABLE and "--no-window" not in sys.argv:
-        # Modo pantalla completa por defecto
+    def start_webview():
+        time.sleep(1) # wait for server
         webview.create_window(
             title="Ámbar",
             url="http://localhost:5005",
@@ -293,6 +402,10 @@ if __name__ == "__main__":
             background_color="#17181a"
         )
         webview.start()
-    else:
-        print("Servidor corriendo en http://localhost:5005 (sin ventana nativa).")
-        server_thread.join()
+
+    if WEBVIEW_AVAILABLE and "--no-window" not in sys.argv:
+        threading.Thread(target=start_webview, daemon=True).start()
+
+    # Flask-SocketIO usa eventlet bajo el capó gracias al async_mode="eventlet"
+    print("Servidor corriendo en http://localhost:5005")
+    socketio.run(app, host="0.0.0.0", port=5005, debug=False, use_reloader=False)

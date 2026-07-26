@@ -32,6 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['ambar_icon.png'],
 )
 coll = COLLECT(
     exe,
@@ -45,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='kiosk_server.app',
-    icon=None,
+    icon='ambar_icon.png',
     bundle_identifier=None,
 )

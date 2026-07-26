@@ -90,7 +90,7 @@
     overflow:hidden; margin-top:0.6vh; position:relative;
   }
   .vu-fill{
-    height:100%; width:0%; transition: width 0.6s linear;
+    height:100%; width:0%; transition: width 0.3s ease;
     background-image: repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 7px, #0000 7px, #0000 10px);
     box-shadow: 0 0 12px rgba(255,176,32,0.35);
   }
@@ -127,22 +127,67 @@
   .action-card.settings{flex: 0 0 auto; height: 12vh; border-left:4px solid var(--line);}
   .action-card .hint{font-size:0.85rem; color:var(--text-dim);}
 
-  /* ---------- LIBRARY VIEW ---------- */
+  /* ---------- LIBRARY VIEW (NATIVE) ---------- */
   #view-library{
     display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
   }
   #view-library.visible{display:flex;}
   .lib-topbar{
-    flex:0 0 auto; height:7vh; display:flex; align-items:center; gap:0.8rem;
+    flex:0 0 auto; height:8vh; display:flex; align-items:center; justify-content:space-between;
     padding: 0 1.2rem; border-bottom:1px solid var(--line); background: var(--panel);
   }
+  .lib-topbar-left { display:flex; align-items:center; gap:1rem; }
+  .lib-topbar-right { display:flex; gap:0.5rem; }
+  
   .back-btn{
-    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    width:45px; height:45px; border-radius:50%; border:1px solid var(--line);
     background:var(--panel-raised); color:var(--text); display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:1.1rem;
+    cursor:pointer; font-size:1.2rem;
   }
-  .lib-title{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.04em; font-size:0.95rem; color:var(--text-dim);}
-  #kodi-frame{flex:1 1 auto; width:100%; border:0; background:#000;}
+  .back-btn:active{background:var(--amber-dim);}
+  .lib-title{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.04em; font-size:1.2rem; color:var(--text);}
+  
+  .lib-tab{
+    padding:0.6rem 1rem; border:1px solid var(--line); border-radius:6px; background:var(--panel-raised);
+    color:var(--text-dim); cursor:pointer; font-size:0.9rem; font-weight:500;
+  }
+  .lib-tab.active{background:var(--text); color:#000; border-color:var(--text);}
+
+  .lib-content{
+    flex:1 1 auto; overflow-y:auto; padding:2rem; position:relative;
+  }
+  
+  .grid-view{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:1.5rem;
+  }
+  .grid-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;
+    cursor:pointer; transition: transform 0.1s;
+  }
+  .grid-card:active{transform:scale(0.97); background:var(--panel-raised);}
+  .grid-card-img{
+    width:100%; aspect-ratio:1/1; background:#111; display:flex; align-items:center; justify-content:center;
+  }
+  .grid-card-img img{width:100%; height:100%; object-fit:cover;}
+  .grid-card-info{padding:0.8rem;}
+  .grid-card-title{font-weight:600; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .grid-card-sub{font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  .list-view{display:flex; flex-direction:column; gap:0.5rem; max-width:800px; margin:0 auto;}
+  .list-item{
+    display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; cursor:pointer;
+  }
+  .list-item:active{background:var(--panel-raised);}
+  .list-item-icon{width:40px; height:40px; background:var(--line); border-radius:4px; display:flex; align-items:center; justify-content:center;}
+  .list-item-info{flex:1;}
+  .list-item-title{font-weight:600; font-size:1.1rem;}
+  .list-item-sub{font-size:0.85rem; color:var(--text-dim);}
+
+  .loader{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--bg); z-index:5; font-family:'JetBrains Mono', monospace; color:var(--amber);
+  }
 
   /* ---------- SETTINGS MODAL ---------- */
   #view-settings{
@@ -226,15 +271,15 @@
     </div>
 
     <div class="side-actions">
-      <div class="action-card kodi" id="open-library">
+      <div class="action-card kodi" id="open-library-kodi">
         <div class="eyebrow">FLAC · MP3 · CD</div>
         <div class="label">Biblioteca</div>
-        <div class="hint">Buscar localmente</div>
+        <div class="hint">Explorar Local / Red</div>
       </div>
-      <div class="action-card spotify">
+      <div class="action-card spotify" id="open-library-spotify">
         <div class="eyebrow">Spotify Connect</div>
         <div class="label">Spotify</div>
-        <div class="hint">Lanzar desde móvil</div>
+        <div class="hint">Tus Listas y Álbumes</div>
       </div>
       <div class="action-card settings" id="open-settings">
         <div class="label" style="font-size:1.1rem;">⚙ Ajustes y Sistema</div>
@@ -242,13 +287,22 @@
     </div>
   </div>
 
-  <!-- LIBRARY VIEW -->
+  <!-- NATIVE LIBRARY VIEW -->
   <div id="view-library">
     <div class="lib-topbar">
-      <div class="back-btn" id="btn-back">←</div>
-      <div class="lib-title">Biblioteca · Kodi</div>
+      <div class="lib-topbar-left">
+        <div class="back-btn" id="lib-btn-back">←</div>
+        <div class="lib-title" id="lib-title">Biblioteca</div>
+      </div>
+      <div class="lib-topbar-right" id="lib-tabs">
+        <div class="lib-tab active" data-tab="artists">Artistas (Kodi)</div>
+        <div class="lib-tab" data-tab="folders">Carpetas / CD</div>
+        <div class="lib-tab" data-tab="spotify-pl">Listas (Spotify)</div>
+      </div>
     </div>
-    <iframe id="kodi-frame" src="about:blank"></iframe>
+    <div class="lib-content" id="lib-content">
+      <!-- Injected by JS -->
+    </div>
   </div>
 
   <!-- SETTINGS MODAL -->
@@ -279,9 +333,8 @@
             <input type="password" id="inp-spotify-secret" placeholder="Client Secret de tu App">
           </div>
           <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-dim);">
-            Para autorizar Spotify por primera vez con estas credenciales, haz clic en el botón de abajo (se abrirá en tu navegador por defecto o usa un móvil conectado a la red local y entra a <code>http://IP:5005/login</code>).
+            Para autorizar Spotify por primera vez con estas credenciales, usa un dispositivo conectado a la misma red y entra a <code>http://IP_DE_ESTE_PC:5005/login</code>.
           </div>
-          <a href="/login" target="_blank" class="btn" style="text-decoration:none; display:inline-block; margin-top:0.5rem;">Autorizar Spotify</a>
         </div>
 
         <div class="settings-col" style="border-left:1px solid var(--line); padding-left:2rem;">
@@ -306,22 +359,26 @@
 
 </div>
 
+<!-- Socket.IO -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
   const API_BASE = "";
   let currentSource = null;
   const el = (id) => document.getElementById(id);
 
-  async function refresh(){
-    if(el("view-settings").classList.contains("visible")) return; // Pause refresh if settings open
-    try{
-      const res = await fetch(API_BASE + "/api/now-playing");
-      const data = await res.json();
-      render(data);
-    }catch(e){
-      render({source:null, playing:false, title:"", artist:"", album:"", art:null, progress:0});
-    }
-  }
+  // ---------- WEBSOCKETS REAL-TIME ----------
+  const socket = io();
+  socket.on("connect", () => {
+    console.log("Conectado por WebSockets al servidor local");
+    // Pedir estado inicial
+    fetch(API_BASE + "/api/now-playing").then(r=>r.json()).then(render);
+  });
+  
+  socket.on("playback_update", (data) => {
+    render(data);
+  });
 
+  // Render UI
   function render(data){
     currentSource = data.source;
     const badge = el("source-badge");
@@ -352,6 +409,7 @@
     }
   }
 
+  // Playback Control
   async function control(action){
     if(!currentSource) return;
     try{
@@ -361,32 +419,203 @@
         body: JSON.stringify({action, source: currentSource})
       });
     }catch(e){}
-    setTimeout(refresh, 300);
   }
 
   el("btn-play").addEventListener("click", () => control("playpause"));
   el("btn-next").addEventListener("click", () => control("next"));
   el("btn-prev").addEventListener("click", () => control("previous"));
 
-  // Library
-  el("open-library").addEventListener("click", async () => {
-    try {
-      const res = await fetch("/api/config");
-      const cfg = await res.json();
-      const host = cfg.KODI_HOST || "localhost";
-      const port = cfg.KODI_PORT || "8080";
-      el("kodi-frame").src = `http://${host}:${port}`;
-    } catch(e) {
-      el("kodi-frame").src = "http://localhost:8080";
-    }
+  // ---------- NATIVE LIBRARY ----------
+  let libHistory = []; // Stack for navigation
+  
+  function openLibrary(tab){
     el("view-library").classList.add("visible");
-  });
-  el("btn-back").addEventListener("click", () => {
-    el("view-library").classList.remove("visible");
-    el("kodi-frame").src = "about:blank";
+    libHistory = [];
+    switchTab(tab);
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll(".lib-tab").forEach(t => t.classList.remove("active"));
+    const activeTab = document.querySelector(`.lib-tab[data-tab="${tab}"]`);
+    if(activeTab) activeTab.classList.add("active");
+    
+    libHistory = [{type: 'root', tab}];
+    loadView(libHistory[0]);
+  }
+
+  document.querySelectorAll(".lib-tab").forEach(t => {
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
   });
 
-  // Settings
+  el("lib-btn-back").addEventListener("click", () => {
+    if(libHistory.length > 1){
+      libHistory.pop();
+      loadView(libHistory[libHistory.length - 1]);
+    } else {
+      el("view-library").classList.remove("visible");
+    }
+  });
+
+  el("open-library-kodi").addEventListener("click", () => openLibrary("artists"));
+  el("open-library-spotify").addEventListener("click", () => openLibrary("spotify-pl"));
+
+  async function loadView(viewNode) {
+    const content = el("lib-content");
+    content.innerHTML = `<div class="loader">Cargando...</div>`;
+    
+    try {
+      if(viewNode.tab === "artists") {
+        if(viewNode.type === 'root') {
+          el("lib-title").textContent = "Artistas (Kodi)";
+          const res = await fetch("/api/library/kodi/artists");
+          const items = await res.json();
+          renderGrid(items, "artist", "artistid", (item) => {
+            libHistory.push({type: 'albums', tab: 'artists', id: item.artistid, title: item.artist});
+            loadView(libHistory[libHistory.length-1]);
+          });
+        }
+        else if (viewNode.type === 'albums') {
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/kodi/albums?artist_id=" + viewNode.id);
+          const items = await res.json();
+          renderGrid(items, "title", "albumid", (item) => {
+            libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.title});
+            loadView(libHistory[libHistory.length-1]);
+          }, "year");
+        }
+        else if (viewNode.type === 'songs') {
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id);
+          const items = await res.json();
+          renderList(items, "label", (item) => playKodi({songid: item.songid}));
+        }
+      }
+      
+      else if(viewNode.tab === "folders") {
+        const path = viewNode.path || "sources://music/";
+        el("lib-title").textContent = path === "sources://music/" ? "Carpetas / CD" : path;
+        const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent(path));
+        const items = await res.json();
+        
+        let html = '<div class="list-view">';
+        // Play whole folder button if not root
+        if(path !== "sources://music/") {
+          html += `<div class="list-item" style="border-color:var(--kodi);" onclick="playKodi({file: '${path}'})">
+            <div class="list-item-icon" style="color:var(--kodi)">▶</div>
+            <div class="list-item-info"><div class="list-item-title">Reproducir Carpeta / CD entero</div></div>
+          </div>`;
+        }
+        
+        html += items.map((it, idx) => `
+          <div class="list-item" id="fitem-${idx}">
+            <div class="list-item-icon">${it.filetype === 'directory' ? '📁' : '🎵'}</div>
+            <div class="list-item-info">
+              <div class="list-item-title">${it.label}</div>
+            </div>
+          </div>
+        `).join('') + '</div>';
+        content.innerHTML = html;
+        
+        items.forEach((it, idx) => {
+          document.getElementById(`fitem-${idx}`).addEventListener('click', () => {
+            if(it.filetype === 'directory') {
+              libHistory.push({type: 'folder', tab: 'folders', path: it.file});
+              loadView(libHistory[libHistory.length-1]);
+            } else {
+              playKodi({file: it.file});
+            }
+          });
+        });
+      }
+
+      else if(viewNode.tab === "spotify-pl") {
+        el("lib-title").textContent = "Playlists (Spotify)";
+        const res = await fetch("/api/library/spotify/playlists");
+        const items = await res.json();
+        if(items.length === 0){
+          content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay listas o falta autorizar Spotify en Ajustes.</div>`;
+          return;
+        }
+        renderGridSpotify(items, (item) => playSpotify(item.uri));
+      }
+
+    } catch(err) {
+      content.innerHTML = `<div class="loader" style="color:var(--danger)">Error al cargar</div>`;
+    }
+  }
+
+  function renderGrid(items, titleKey, idKey, onClick, subKey=null) {
+    const html = `<div class="grid-view">` + items.map((it, idx) => {
+      let thumb = it.thumbnail ? `/api/art?path=${encodeURIComponent(it.thumbnail)}` : '';
+      let imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
+      return `
+      <div class="grid-card" id="gitem-${idx}">
+        <div class="grid-card-img">${imgHtml}</div>
+        <div class="grid-card-info">
+          <div class="grid-card-title">${it[titleKey]}</div>
+          ${subKey && it[subKey] ? `<div class="grid-card-sub">${it[subKey]}</div>` : ''}
+        </div>
+      </div>
+      `;
+    }).join('') + `</div>`;
+    el("lib-content").innerHTML = html;
+    items.forEach((it, idx) => {
+      document.getElementById(`gitem-${idx}`).addEventListener("click", () => onClick(it));
+    });
+  }
+
+  function renderGridSpotify(items, onClick) {
+    const html = `<div class="grid-view">` + items.map((it, idx) => {
+      let thumb = (it.images && it.images.length > 0) ? it.images[0].url : '';
+      let imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
+      return `
+      <div class="grid-card" id="sitem-${idx}">
+        <div class="grid-card-img">${imgHtml}</div>
+        <div class="grid-card-info">
+          <div class="grid-card-title">${it.name}</div>
+        </div>
+      </div>
+      `;
+    }).join('') + `</div>`;
+    el("lib-content").innerHTML = html;
+    items.forEach((it, idx) => {
+      document.getElementById(`sitem-${idx}`).addEventListener("click", () => onClick(it));
+    });
+  }
+
+  function renderList(items, titleKey, onClick) {
+    const html = `<div class="list-view">` + items.map((it, idx) => `
+      <div class="list-item" id="litem-${idx}">
+        <div class="list-item-icon">🎵</div>
+        <div class="list-item-info">
+          <div class="list-item-title">${it[titleKey]}</div>
+          <div class="list-item-sub">Duración: ${Math.floor(it.duration/60)}:${('0'+(it.duration%60)).slice(-2)}</div>
+        </div>
+      </div>
+    `).join('') + `</div>`;
+    el("lib-content").innerHTML = html;
+    items.forEach((it, idx) => {
+      document.getElementById(`litem-${idx}`).addEventListener("click", () => onClick(it));
+    });
+  }
+
+  async function playKodi(itemDict) {
+    await fetch("/api/library/kodi/play", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(itemDict)
+    });
+    el("view-library").classList.remove("visible");
+  }
+  async function playSpotify(context_uri) {
+    await fetch("/api/library/spotify/play", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({context_uri})
+    });
+    el("view-library").classList.remove("visible");
+  }
+
+
+  // ---------- SETTINGS MODAL ----------
   el("open-settings").addEventListener("click", async () => {
     el("view-settings").classList.add("visible");
     try {
@@ -399,9 +628,7 @@
     } catch(e){}
   });
 
-  function closeSettings(){
-    el("view-settings").classList.remove("visible");
-  }
+  function closeSettings(){ el("view-settings").classList.remove("visible"); }
   el("btn-close-settings").addEventListener("click", closeSettings);
   el("btn-cancel-settings").addEventListener("click", closeSettings);
 
@@ -413,37 +640,20 @@
       SPOTIFY_CLIENT_SECRET: el("inp-spotify-secret").value
     };
     try {
-      await fetch("/api/config", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-      });
+      await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       closeSettings();
-    } catch(e) {
-      alert("Error guardando la configuración.");
-    }
+      alert("Guardado. El servidor se ha reconfigurado.");
+    } catch(e) { alert("Error guardando la configuración."); }
   });
 
-  // System Controls
   async function systemAction(action){
     let msg = "";
     if(action === 'shutdown') msg = "¿Apagar el equipo por completo?";
     if(action === 'restart') msg = "¿Reiniciar el equipo?";
     if(action === 'exit') msg = "¿Cerrar el launcher Ámbar?";
-    
     if(msg && !confirm(msg)) return;
-
-    try{
-      await fetch("/api/system", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({action})
-      });
-    }catch(e){}
+    try{ await fetch("/api/system", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action}) }); }catch(e){}
   }
-
-  refresh();
-  setInterval(refresh, 2500);
 </script>
 </body>
 </html>
