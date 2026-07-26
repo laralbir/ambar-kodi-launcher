@@ -20,6 +20,14 @@ def create_app(container) -> Flask:
     def now_playing_playlist():
         return jsonify(container.now_playing_service.get_playlist())
 
+    @app.route("/api/now-playing/playlist/play", methods=["POST"])
+    def now_playing_playlist_play():
+        body = request.get_json(force=True) or {}
+        container.playback_control_service.play_playlist_item(
+            body.get("source"), body.get("position"), body.get("uri")
+        )
+        return jsonify({"ok": True})
+
     @app.route("/api/skins")
     def list_skins():
         return jsonify(container.skin_service.list_skins())

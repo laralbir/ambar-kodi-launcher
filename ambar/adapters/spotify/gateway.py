@@ -72,12 +72,14 @@ class SpotifyGateway:
             playlist.append({
                 "title": current.get("name", ""),
                 "artist": ", ".join(a["name"] for a in current.get("artists", [])),
+                "uri": current.get("uri", ""),
                 "current": True,
             })
         for item in data.get("queue", []):
             playlist.append({
                 "title": item.get("name", ""),
                 "artist": ", ".join(a["name"] for a in item.get("artists", [])),
+                "uri": item.get("uri", ""),
                 "current": False,
             })
         return playlist
@@ -106,6 +108,8 @@ class SpotifyGateway:
             album=item.get("album", {}).get("name", ""),
             art=images[0]["url"] if images else None,
             progress=int(100 * current.get("progress_ms", 0) / duration),
+            elapsed_seconds=current.get("progress_ms", 0) // 1000,
+            total_seconds=duration // 1000,
         )
 
     def control(self, action: str) -> None:

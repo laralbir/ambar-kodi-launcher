@@ -210,7 +210,7 @@
     <div class="block">
       <h3>Cómo crear una skin:</h3>
       <ol>
-        <li>Junto al ejecutable (o a <code>kiosk_server.py</code> en modo desarrollo), crea una carpeta <code>skins/</code> si no existe.</li>
+        <li>Crea una carpeta <code>skins/</code> si no existe: en modo desarrollo, junto a <code>kiosk_server.py</code>; si usas el <code>.exe</code>/<code>.app</code> compilado, dentro de la carpeta de datos de Ámbar (<code>%APPDATA%\Ambar\skins\</code> en Windows, <code>~/Library/Application Support/Ambar/skins/</code> en macOS — la misma carpeta donde vive <code>config.json</code>, no junto al ejecutable).</li>
         <li>Dentro, crea una subcarpeta con el nombre de tu skin, por ejemplo <code>skins/vaporwave/</code>.</li>
         <li>Añade un fichero <code>style.css</code> dentro de esa carpeta: <code>skins/vaporwave/style.css</code>.</li>
         <li>Escribe en ese fichero solo las reglas que quieras cambiar — se carga <strong>después</strong> de los estilos por defecto, así que basta con sobreescribir lo necesario, no hace falta rehacer toda la hoja de estilos.</li>

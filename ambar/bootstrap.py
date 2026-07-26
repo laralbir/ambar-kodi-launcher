@@ -28,6 +28,7 @@ from ambar.application.now_playing import NowPlayingService
 from ambar.application.playback_control import PlaybackControlService
 from ambar.application.skins import SkinService
 from ambar.application.system import SystemService
+from ambar.domain.audio import VU_SMOOTHING_PRESETS
 from ambar.domain.events import AudioLevelChanged, PlaybackStateChanged
 
 DEFAULT_SPOTIFY_REDIRECT_URI = "http://localhost:5005/callback"
@@ -112,8 +113,44 @@ def _get_available_screens() -> list:
         return []
 
 
+def _get_data_dir(resource_dir: str) -> str:
+    """Directorio persistente para config.json/.spotify-cache/skins.
+
+    En modo desarrollo, junto al codigo (comodo para iterar): igual que
+    siempre. En el binario compilado, NO "junto al ejecutable" -- se
+    probo en vivo compilando el .app en macOS y confirmando que
+    config.json terminaba dentro de Ambar.app/Contents/Frameworks/, una
+    carpeta que `python build.py` borra y recrea entera en cada build
+    (--clean elimina dist/Ambar.app por completo) -- cualquier ajuste
+    guardado se perdia en el siguiente build, pareciendo que "no
+    persistia" nunca. La causa de fondo: en un app frozen de PyInstaller,
+    __file__ no apunta junto al .exe/.app real, sino dentro del bundle
+    interno -- un problema conocido de PyInstaller, no un bug de esta app.
+    Ademas, si el usuario instala el .app/.exe en una carpeta protegida
+    (Program Files, /Applications), escribir ahi puede fallar por
+    permisos. Por eso el binario compilado usa el directorio de datos de
+    usuario estandar de cada SO (persiste entre builds/reinstalaciones,
+    siempre escribible sin admin):
+    - Windows: %APPDATA%\\Ambar
+    - macOS:   ~/Library/Application Support/Ambar
+    - Linux:   $XDG_DATA_HOME/Ambar (o ~/.local/share/Ambar)
+    """
+    if not getattr(sys, "frozen", False):
+        return resource_dir
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    data_dir = os.path.join(base, "Ambar")
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
 def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
-    config_repository = JsonConfigRepository(os.path.join(app_dir, "config.json"))
+    data_dir = _get_data_dir(app_dir)
+    config_repository = JsonConfigRepository(os.path.join(data_dir, "config.json"))
     is_first_run = not config_repository.exists()
     app_config = config_repository.load()
 
@@ -121,22 +158,31 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     kodi_port = app_config.get("KODI_PORT") or os.environ.get("KODI_PORT", "8080")
     kodi_gateway = KodiGateway(kodi_host, kodi_port)
 
-    spotify_gateway = SpotifyGateway(os.path.join(app_dir, ".spotify-cache"))
+    spotify_gateway = SpotifyGateway(os.path.join(data_dir, ".spotify-cache"))
     _configure_spotify(spotify_gateway, app_config)
 
     event_bus = EventBus()
     now_playing_service = NowPlayingService(kodi_gateway, spotify_gateway, event_bus)
     playback_control_service = PlaybackControlService(kodi_gateway, spotify_gateway)
     library_service = LibraryService(kodi_gateway, spotify_gateway)
-    audio_level_service = AudioLevelService(_build_audio_level_source(), event_bus)
+    smoothing_preset = VU_SMOOTHING_PRESETS.get(
+        app_config.get("VU_METER_SMOOTHING", "normal"), VU_SMOOTHING_PRESETS["normal"]
+    )
+    audio_level_service = AudioLevelService(
+        _build_audio_level_source(), event_bus,
+        attack_seconds=smoothing_preset["attack"], release_seconds=smoothing_preset["release"],
+    )
     system_service = SystemService(WebviewWindowController(), audio_level_service, _build_volume_controller())
-    skins_dir = os.path.join(app_dir, "skins")
+    skins_dir = os.path.join(data_dir, "skins")
     skin_service = SkinService(skins_dir)
 
     def on_config_updated(config: dict) -> None:
         kodi_gateway.host = config.get("KODI_HOST", kodi_gateway.host)
         kodi_gateway.port = config.get("KODI_PORT", kodi_gateway.port)
         _configure_spotify(spotify_gateway, config)
+        if "VU_METER_SMOOTHING" in config:
+            preset = VU_SMOOTHING_PRESETS.get(config["VU_METER_SMOOTHING"], VU_SMOOTHING_PRESETS["normal"])
+            audio_level_service.set_smoothing(preset["attack"], preset["release"])
 
     config_service = ConfigService(
         config_repository,

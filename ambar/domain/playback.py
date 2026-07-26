@@ -12,3 +12,5 @@ class PlaybackState:
     album: str = ""
     art: str | None = None
     progress: int = 0
+    elapsed_seconds: int = 0
+    total_seconds: int = 0

@@ -126,8 +126,15 @@ dimensionados para esa resolución exacta.
   `PlaybackSource`, sin red real). `requirements-dev.txt` añade
   `pytest` sobre `requirements.txt` sin inflar el build de PyInstaller.
 - `config.json` — credenciales/host de Kodi y Spotify persistidos en
-  disco (no versionar, ver `.gitignore`).
-- `.spotify-cache` — se genera solo tras autorizar Spotify (no versionar).
+  disco (no versionar, ver `.gitignore`). En modo desarrollo vive
+  junto al código (`ambar/bootstrap.py:_get_data_dir`); en el binario
+  compilado vive en el directorio de datos de usuario del SO
+  (`%APPDATA%\Ambar` en Windows, `~/Library/Application Support/Ambar`
+  en macOS), no junto al `.exe`/`.app` — necesario porque `__file__` no
+  apunta ahí en un app frozen de PyInstaller, y porque el `.app`/`.exe`
+  se puede reconstruir/reinstalar sin perder los ajustes del usuario.
+- `.spotify-cache` — se genera solo tras autorizar Spotify (no
+  versionar), en el mismo directorio que `config.json` (ver arriba).
 - `build.py` / `Ambar.spec` — empaquetado con PyInstaller
   (`--windowed`, icono, `collect-all` de engineio/socketio,
   `hidden-import` de websocket/spotipy/simple_websocket). Genera

@@ -60,3 +60,19 @@ def test_release_is_slower_than_attack():
     up_progress = db_up - DB_FLOOR
     down_progress = DB_CEILING - db_down
     assert up_progress > down_progress
+
+
+def test_set_ballistics_changes_response_speed():
+    meter = LevelMeter(attack_seconds=0.4, release_seconds=0.4)
+    meter.update([0.0] * 100)
+    time.sleep(0.05)
+    db_slow = meter.update([1.0] * 100)
+
+    meter.set_ballistics(attack_seconds=0.02, release_seconds=0.02)
+    meter.update([0.0] * 100)
+    time.sleep(0.05)
+    db_fast = meter.update([1.0] * 100)
+
+    # Con un ataque mas rapido, en el mismo intervalo el medidor avanza mas
+    # hacia el objetivo.
+    assert (db_fast - DB_FLOOR) > (db_slow - DB_FLOOR)

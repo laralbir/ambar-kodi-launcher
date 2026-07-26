@@ -41,7 +41,7 @@ class KodiGateway:
         })
         props = self.rpc("Player.GetProperties", {
             "playerid": player_id,
-            "properties": ["percentage", "speed"],
+            "properties": ["percentage", "speed", "time", "totaltime"],
         })
         if not item or "item" not in item:
             return None
@@ -58,7 +58,15 @@ class KodiGateway:
             album=info.get("album", ""),
             art=art,
             progress=(props or {}).get("percentage", 0),
+            elapsed_seconds=self._time_to_seconds((props or {}).get("time")),
+            total_seconds=self._time_to_seconds((props or {}).get("totaltime")),
         )
+
+    @staticmethod
+    def _time_to_seconds(time_obj: dict | None) -> int:
+        if not time_obj:
+            return 0
+        return time_obj.get("hours", 0) * 3600 + time_obj.get("minutes", 0) * 60 + time_obj.get("seconds", 0)
 
     def control(self, action: str) -> None:
         players = self.rpc("Player.GetActivePlayers")
@@ -141,12 +149,19 @@ class KodiGateway:
         items = res.get("items", []) if res else []
         return [
             {
+                "position": idx,
                 "title": it.get("title") or it.get("label") or "Pista sin titulo",
                 "artist": ", ".join(it.get("artist", [])),
                 "current": idx == current_position,
             }
             for idx, it in enumerate(items)
         ]
+
+    def goto_position(self, position: int) -> None:
+        players = self.rpc("Player.GetActivePlayers")
+        if not players:
+            return
+        self.rpc("Player.GoTo", {"playerid": players[0]["playerid"], "to": position})
 
     def is_reachable(self) -> bool:
         return self.rpc("JSONRPC.Ping") == "pong"

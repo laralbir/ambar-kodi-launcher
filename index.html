@@ -236,8 +236,9 @@
   .playlist-content{flex:1; overflow-y:auto; padding:1.2rem;}
   .playlist-item{
     display:flex; align-items:center; gap:1rem; padding:0.9rem 1rem; border-radius:8px;
-    border:1px solid var(--line); margin-bottom:0.5rem;
+    border:1px solid var(--line); margin-bottom:0.5rem; cursor:pointer;
   }
+  .playlist-item:active{background:var(--panel-raised);}
   .playlist-item.current{border-color:var(--amber); background:rgba(255,176,32,0.08);}
   .playlist-item-icon{color:var(--amber); width:1.2rem; text-align:center; flex:0 0 auto;}
   .playlist-item-info{flex:1; min-width:0;}
@@ -391,7 +392,11 @@
       <div class="track-meta" id="track-meta"><span class="marquee-inner">Elige música desde la biblioteca o desde Spotify en tu móvil</span></div>
 
       <div class="vu-bar" id="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
-      <div class="time-row"><span id="pct-label">0%</span><span id="state-label">—</span></div>
+      <div class="time-row">
+        <span id="time-elapsed-total">0:00 / 0:00</span>
+        <span id="state-label">—</span>
+        <span id="time-remaining">-0:00</span>
+      </div>
 
       <div class="transport">
         <div class="tbtn" id="btn-prev">⏮</div>
@@ -466,9 +471,9 @@
       <div class="volume-value" id="volume-value">--%</div>
       <input type="range" id="volume-slider" min="0" max="100" step="1" value="0">
       <div class="volume-row">
-        <div class="btn" id="volume-down">− 5</div>
-        <div class="btn" id="volume-mute">Silenciar</div>
-        <div class="btn" id="volume-up">+ 5</div>
+        <div class="btn" id="volume-down">🔉 −5</div>
+        <div class="btn" id="volume-mute">🔇 Silenciar</div>
+        <div class="btn" id="volume-up">🔊 +5</div>
       </div>
     </div>
   </div>
@@ -515,6 +520,14 @@
             </div>
           </div>
           <div class="form-group">
+            <label>Fluidez del VU-metro</label>
+            <div style="display:flex; gap:0.6rem;">
+              <div class="btn" id="vu-smoothing-fast" style="flex:1;" onclick="setVuMeterSmoothing('fast')">Rápido</div>
+              <div class="btn" id="vu-smoothing-normal" style="flex:1;" onclick="setVuMeterSmoothing('normal')">Normal</div>
+              <div class="btn" id="vu-smoothing-smooth" style="flex:1;" onclick="setVuMeterSmoothing('smooth')">Fluido</div>
+            </div>
+          </div>
+          <div class="form-group">
             <label>Skin personalizada</label>
             <select id="inp-skin"><option value="">Por defecto</option></select>
           </div>
@@ -558,6 +571,17 @@
   const API_BASE = "";
   let currentSource = null;
   let lastArtSrc = null;
+  let lastKnownTotalSeconds = 0;
+
+  function formatTime(totalSeconds){
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+    const ss = String(s).padStart(2, "0");
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  }
   let vuMeterStyle = "leds";
   const el = (id) => document.getElementById(id);
 
@@ -569,6 +593,7 @@
     fetch(API_BASE + "/api/now-playing").then(r=>r.json()).then(render);
     fetch(API_BASE + "/api/config").then(r=>r.json()).then(cfg => {
       applyVuMeterStyle(cfg.VU_METER_STYLE);
+      applyVuMeterSmoothing(cfg.VU_METER_SMOOTHING);
       applyPlaylistVisibility(!!cfg.SHOW_PLAYLIST);
       applySkin(cfg.SKIN);
       // Guia inicial automatica solo la primera vez que arranca sin
@@ -691,6 +716,29 @@
     }).catch(()=>{});
   }
 
+  // Presets de fluidez: deben coincidir con VU_SMOOTHING_PRESETS en
+  // ambar/domain/audio.py (solo se usa el "release" aqui, para que el
+  // watchdog de caida en silencio del frontend se comporte igual que la
+  // ballistica real del backend mientras hay audio sonando).
+  const VU_SMOOTHING_RELEASE_SECONDS = { fast: 0.15, normal: 0.3, smooth: 0.7 };
+  let vuMeterSmoothing = "normal";
+
+  function applyVuMeterSmoothing(preset){
+    vuMeterSmoothing = VU_SMOOTHING_RELEASE_SECONDS[preset] ? preset : "normal";
+    vuReleaseAlpha = 1 - Math.exp(-(VU_WATCHDOG_TICK_MS / 1000) / VU_SMOOTHING_RELEASE_SECONDS[vuMeterSmoothing]);
+    ["fast", "normal", "smooth"].forEach(p =>
+      el(`vu-smoothing-${p}`).classList.toggle("btn-primary", p === vuMeterSmoothing)
+    );
+  }
+
+  function setVuMeterSmoothing(preset){
+    applyVuMeterSmoothing(preset);
+    fetch(API_BASE + "/api/config", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({VU_METER_SMOOTHING: preset})
+    }).catch(()=>{});
+  }
+
   function formatDb(db){
     return (db <= VU_DB_MIN ? "-Inf" : Math.round(db)) + " dB";
   }
@@ -725,10 +773,10 @@
   let vuLastEventAt = 0;
   const VU_IDLE_MS = 200;
   const VU_WATCHDOG_TICK_MS = 60;
-  const VU_RELEASE_SECONDS = 0.3; // misma constante que el release del backend
   // Curva exponencial (no lineal): decelera al acercarse al reposo, como una
   // aguja de VU real -- un decremento fijo por tick se veia mecanico/falso.
-  const VU_RELEASE_ALPHA = 1 - Math.exp(-(VU_WATCHDOG_TICK_MS / 1000) / VU_RELEASE_SECONDS);
+  // Recalculado por applyVuMeterSmoothing() segun el preset de fluidez elegido.
+  let vuReleaseAlpha = 1 - Math.exp(-(VU_WATCHDOG_TICK_MS / 1000) / 0.3);
 
   socket.on("audio_level", (data) => {
     vuCurrentDb = Array.isArray(data.db) ? data.db.slice() : [data.db];
@@ -743,7 +791,7 @@
     vuCurrentDb = vuCurrentDb.map(db => {
       if(db <= VU_DB_MIN + 0.1) return VU_DB_MIN;
       changed = true;
-      return Math.max(VU_DB_MIN, db + VU_RELEASE_ALPHA * (VU_DB_MIN - db));
+      return Math.max(VU_DB_MIN, db + vuReleaseAlpha * (VU_DB_MIN - db));
     });
     if(changed) updateVuMeter(vuCurrentDb);
   }, VU_WATCHDOG_TICK_MS);
@@ -751,6 +799,16 @@
   socket.on("playback_update", (data) => {
     render(data);
   });
+
+  // Red de seguridad independiente del WebSocket: si se pierde algun evento
+  // de playback_update (p. ej. el listener de eventos de Kodi no llega a
+  // reconectar, o el WebSocket falla silenciosamente), el estado mostrado
+  // -- "Reproduciendo"/"Pausa", tiempos, carátula -- se quedaria congelado
+  // para siempre sin esto. Mismo principio que el watchdog de caida del
+  // VU-metro: no confiar solo en que el backend siga publicando eventos.
+  setInterval(() => {
+    fetch(API_BASE + "/api/now-playing").then(r => r.json()).then(render).catch(() => {});
+  }, 5000);
 
   // Marquee: si el texto no cabe, se desplaza lateralmente hasta leerse
   // entero (con una pausa inicial), como en los displays de las autorradios.
@@ -797,7 +855,10 @@
     }
 
     el("vu-fill").style.width = (data.progress || 0) + "%";
-    el("pct-label").textContent = Math.round(data.progress || 0) + "%";
+    const elapsed = data.elapsed_seconds || 0, total = data.total_seconds || 0;
+    lastKnownTotalSeconds = total;
+    el("time-elapsed-total").textContent = formatTime(elapsed) + " / " + formatTime(total);
+    el("time-remaining").textContent = "-" + formatTime(Math.max(0, total - elapsed));
     el("state-label").textContent = data.playing ? "Reproduciendo" : (data.source ? "Pausa" : "—");
 
     const img = el("art-img"), ph = el("art-placeholder"), spinner = el("art-spinner");
@@ -853,8 +914,8 @@
       content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay lista de reproducción activa.</div>`;
       return;
     }
-    content.innerHTML = items.map(it => `
-      <div class="playlist-item ${it.current ? 'current' : ''}">
+    content.innerHTML = items.map((it, idx) => `
+      <div class="playlist-item ${it.current ? 'current' : ''}" id="plitem-${idx}">
         <div class="playlist-item-icon">${it.current ? '▶' : '♪'}</div>
         <div class="playlist-item-info">
           <div class="playlist-item-title ${it.current ? 'current' : ''}">${it.title}</div>
@@ -862,6 +923,20 @@
         </div>
       </div>
     `).join('');
+    items.forEach((it, idx) => {
+      document.getElementById(`plitem-${idx}`).addEventListener('click', () => playPlaylistItem(it));
+    });
+  }
+
+  async function playPlaylistItem(item){
+    if(!currentSource || item.current) return;
+    try{
+      await fetch(API_BASE + "/api/now-playing/playlist/play", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({source: currentSource, position: item.position, uri: item.uri})
+      });
+    }catch(e){}
+    refreshPlaylist();
   }
 
   el("playlist-toggle-btn").addEventListener("click", () => togglePlaylistVisibility(!showPlaylist));
@@ -880,7 +955,7 @@
     currentVolumeMuted = !!data.muted;
     el("volume-slider").value = data.level;
     el("volume-value").textContent = (data.muted ? "Silenciado" : data.level + "%");
-    el("volume-mute").textContent = data.muted ? "Reactivar" : "Silenciar";
+    el("volume-mute").textContent = data.muted ? "🔊 Reactivar" : "🔇 Silenciar";
     el("volume-mute").classList.toggle("active", data.muted);
   }
 
@@ -955,7 +1030,11 @@
     // Actualizacion optimista: refleja el click al instante, sin esperar
     // al proximo playback_update (que puede tardar unos segundos en Spotify).
     el("vu-fill").style.width = percentage + "%";
-    el("pct-label").textContent = Math.round(percentage) + "%";
+    if(lastKnownTotalSeconds > 0){
+      const elapsed = Math.round(lastKnownTotalSeconds * percentage / 100);
+      el("time-elapsed-total").textContent = formatTime(elapsed) + " / " + formatTime(lastKnownTotalSeconds);
+      el("time-remaining").textContent = "-" + formatTime(Math.max(0, lastKnownTotalSeconds - elapsed));
+    }
     try{
       await fetch(API_BASE + "/api/seek", {
         method:"POST",
@@ -1269,6 +1348,7 @@
       el("inp-spotify-id").value = cfg.SPOTIFY_CLIENT_ID || "";
       el("inp-spotify-secret").value = cfg.SPOTIFY_CLIENT_SECRET || "";
       applyVuMeterStyle(cfg.VU_METER_STYLE);
+      applyVuMeterSmoothing(cfg.VU_METER_SMOOTHING);
       const skinSelect = el("inp-skin");
       const skins = await (await fetch("/api/skins")).json().catch(() => []);
       skinSelect.innerHTML = `<option value="">Por defecto</option>` +

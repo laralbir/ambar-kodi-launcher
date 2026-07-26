@@ -12,6 +12,17 @@ DB_CEILING = 0.0
 VU_ATTACK_SECONDS = 0.08
 VU_RELEASE_SECONDS = 0.3
 
+# Presets de "fluidez" configurables desde Ajustes: escalan la misma
+# ballistica asimetrica de arriba. "fast" reacciona casi al instante (mas
+# nervioso/vivo, sigue de cerca cada transitorio); "smooth" es mas lento y
+# amortiguado (movimiento mas fluido/cinematografico, menos fiel al pico
+# exacto). "normal" son las constantes de siempre.
+VU_SMOOTHING_PRESETS = {
+    "fast": {"attack": 0.04, "release": 0.15},
+    "normal": {"attack": VU_ATTACK_SECONDS, "release": VU_RELEASE_SECONDS},
+    "smooth": {"attack": 0.18, "release": 0.7},
+}
+
 
 @dataclass
 class AudioLevel:
@@ -29,6 +40,10 @@ class LevelMeter:
         self._release_seconds = release_seconds
         self._smoothed_db = DB_FLOOR
         self._last_update: float | None = None
+
+    def set_ballistics(self, attack_seconds: float, release_seconds: float) -> None:
+        self._attack_seconds = attack_seconds
+        self._release_seconds = release_seconds
 
     def update(self, samples: Sequence[float]) -> float:
         raw_db = self._rms_db(samples)

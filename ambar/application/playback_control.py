@@ -20,3 +20,14 @@ class PlaybackControlService:
             self._kodi.seek(percentage)
         elif source == "spotify":
             self._spotify.seek(percentage)
+
+    def play_playlist_item(self, source: str | None, position: int | None, uri: str | None) -> None:
+        # Saltar a una pista de la playlist en curso -- distinto de
+        # LibraryService.kodi_play/spotify_play (esos arrancan una
+        # reproduccion nueva desde la biblioteca con exclusion mutua); aqui
+        # ya estamos dentro de la playlist activa de una fuente, asi que no
+        # hace falta parar la otra fuente (ya deberia estar parada).
+        if source == "kodi" and position is not None:
+            self._kodi.goto_position(position)
+        elif source == "spotify" and uri:
+            self._spotify.play_track(uri)

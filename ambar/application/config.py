@@ -30,6 +30,7 @@ class ConfigService:
             "KODI_HOST": self._config.get("KODI_HOST", self._kodi_default_host),
             "KODI_PORT": self._config.get("KODI_PORT", self._kodi_default_port),
             "VU_METER_STYLE": self._config.get("VU_METER_STYLE", "leds"),
+            "VU_METER_SMOOTHING": self._config.get("VU_METER_SMOOTHING", "normal"),
             "SHOW_PLAYLIST": self._config.get("SHOW_PLAYLIST", False),
             "SKIN": self._config.get("SKIN", ""),
             "IS_FIRST_RUN": self._is_first_run,

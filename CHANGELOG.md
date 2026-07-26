@@ -8,6 +8,32 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Fluidez del VU-metro configurable** (Ajustes → "Fluidez del
+  VU-metro": Rápido/Normal/Fluido). Tres presets que escalan la misma
+  ballística de ataque/liberación (`VU_SMOOTHING_PRESETS` en
+  `ambar/domain/audio.py`): "Rápido" reacciona casi al instante (más
+  nervioso, sigue de cerca cada transitorio), "Fluido" es más lento y
+  amortiguado (movimiento más suave/cinematográfico). Nuevo
+  `LevelMeter.set_ballistics()` y `AudioLevelService.set_smoothing()`
+  para reconfigurar en caliente sin reiniciar el launcher, persistido
+  como `VU_METER_SMOOTHING` en `config.json`. El watchdog de caída del
+  frontend usa la misma tabla de presets para no desentonar con la
+  ballística real del backend.
+- **Tiempo de reproducción visible**: junto a la barra de progreso
+  ahora se ve el tiempo transcurrido, el total de la pista y el que
+  queda por sonar (antes solo se veía un "%"). Nuevos campos
+  `elapsed_seconds`/`total_seconds` en `PlaybackState`, rellenados por
+  Kodi (`Player.GetProperties` con `time`/`totaltime`) y Spotify
+  (`progress_ms`/`duration_ms`).
+- **Seleccionar una canción concreta de la lista de reproducción**
+  actual (antes solo se podía ver, no interactuar): nuevo
+  `KodiGateway.goto_position()` (`Player.GoTo` con una posición
+  numérica de la playlist, verificado en vivo) y reutilización de
+  `SpotifyGateway.play_track()` para Spotify. Enrutado por
+  `PlaybackControlService.play_playlist_item()` vía
+  `POST /api/now-playing/playlist/play`.
+- **Iconos descriptivos en los botones de volumen** (🔉 −5, 🔇/🔊
+  Silenciar/Reactivar según el estado actual, 🔊 +5).
 - **Kodi/Spotify se deshabilitan solos en el home si no están
   disponibles**: nuevo `KodiGateway.is_reachable()` (`JSONRPC.Ping`) y
   `SpotifyGateway.is_configured()` (credenciales + token cacheado
@@ -240,6 +266,34 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `kiosk_server.py` ya no necesita `eventlet.monkey_patch()`.
 
 ### Fixed
+- **`config.json`/`.spotify-cache`/skins no persistían en el binario
+  compilado.** Causa raíz: en un `.app`/`.exe` empaquetado con
+  PyInstaller, `__file__` no apunta junto al ejecutable real, sino
+  dentro del bundle interno (`Contents/Frameworks/` en macOS,
+  confirmado en vivo compilando y viendo dónde acababa `config.json`)
+  — una carpeta que `python build.py` borra y recrea entera en cada
+  build (`--clean`), así que cualquier ajuste guardado se perdía en el
+  siguiente build. Ahora el binario compilado (`sys.frozen`) usa el
+  directorio de datos de usuario estándar de cada SO en vez de "junto
+  al ejecutable" (`%APPDATA%\Ambar` en Windows, `~/Library/Application
+  Support/Ambar` en macOS, `$XDG_DATA_HOME/Ambar` en Linux) — persiste
+  entre builds/reinstalaciones y no requiere permisos de admin aunque
+  el `.app`/`.exe` esté instalado en una carpeta protegida. El modo
+  desarrollo (`python kiosk_server.py`) no cambia: sigue guardando
+  junto al código, como siempre. Verificado en vivo compilando dos
+  veces seguidas en macOS y confirmando que un ajuste guardado
+  sobrevive a la segunda compilación.
+- **El estado "Reproduciendo"/"Pausa" (y la carátula) podían quedarse
+  congelados** si se perdía algún evento `playback_update` del
+  WebSocket (p. ej. por el mismo tipo de problema de conectividad ya
+  visto con el listener de eventos de Kodi en la VM de Windows). El
+  frontend dependía al 100% del WebSocket, sin ningún sondeo de
+  respaldo. Ahora hay un sondeo cada 5s a `/api/now-playing`
+  independiente del WebSocket (mismo principio que el watchdog de
+  caída del VU-metro: no confiar solo en que el backend siga
+  publicando eventos), lo que de paso también arregla el spinner de
+  carátula (dependía de que `render()` se llamase para detectar un
+  cambio de pista).
 - **"Reproducir Carpeta entera" (y "Reproducir CD entero") no hacía
   nada.** Causa: se llamaba a `Playlist.Add` con
   `item: {file: <ruta-de-carpeta>}` — `file` es para un fichero
