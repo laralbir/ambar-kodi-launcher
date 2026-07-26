@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de Usuario - Ámbar Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #17181a;
+    --panel: #1f2124;
+    --line: #34363a;
+    --text: #f2ede4;
+    --text-dim: #9a9a9e;
+    --amber: #ffb020;
+    --kodi: #5aa9e6;
+    --spotify: #1DB954;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+  }
+
+  header {
+    border-bottom: 2px solid var(--amber);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  h1 {
+    font-size: 3rem;
+    color: var(--amber);
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    margin-top: 3rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  h3 {
+    font-size: 1.3rem;
+    color: var(--text-dim);
+    margin-top: 2rem;
+  }
+
+  p, li {
+    font-size: 1.05rem;
+    color: var(--text-dim);
+  }
+
+  ul, ol {
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.8rem;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--panel);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 0.9em;
+  }
+
+  .block {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .badge-kodi { color: var(--kodi); }
+  .badge-spotify { color: var(--spotify); }
+
+  .note {
+    border-left: 4px solid var(--amber);
+    background: rgba(255, 176, 32, 0.05);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .note strong {
+    color: var(--amber);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Ámbar</h1>
+    <div class="subtitle">Guía de Configuración y Manual de Usuario</div>
+  </header>
+
+  <section>
+    <p>Bienvenido al manual de <strong>Ámbar</strong>, tu panel táctil de control para sistemas HiFi multimedia. Esta guía te explicará cómo preparar tus reproductores y arrancar la interfaz.</p>
+  </section>
+
+  <section>
+    <h2><span class="badge-kodi">1.</span> Configuración de Kodi</h2>
+    <p>Ámbar utiliza la API web (JSON-RPC) de Kodi para leer lo que está sonando y mostrar la carátula, además de cargar la interfaz de navegación interna (Chorus2).</p>
+    
+    <div class="block">
+      <h3>Pasos a seguir en Kodi:</h3>
+      <ol>
+        <li>Abre Kodi y dirígete a <strong>Ajustes</strong> (icono de engranaje).</li>
+        <li>Entra en <strong>Servicios</strong> y luego en la pestaña <strong>Control</strong>.</li>
+        <li>Activa la opción: <code>Permitir control remoto vía HTTP</code>.</li>
+        <li>Verifica que el <strong>Puerto</strong> esté establecido en <code>8080</code> (valor por defecto).</li>
+        <li>Asegúrate de que la <strong>Interfaz web</strong> seleccionada sea <code>Kodi web interface - Chorus2</code>.</li>
+        <li>Si estableces un nombre de usuario y contraseña, deberás incluirlos en el launcher (por defecto, puedes dejarlo sin contraseña para uso en red local segura).</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="badge-spotify">2.</span> Configuración de Spotify</h2>
+    <p>Para controlar Spotify, Ámbar se comunica con la API de desarrolladores de Spotify. No es necesario iniciar sesión en un reproductor web, ya que funciona mediante <strong>Spotify Connect</strong> (lanzando la música desde tu móvil al PC).</p>
+
+    <div class="block">
+      <h3>Creación de credenciales:</h3>
+      <ol>
+        <li>Ve al <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--spotify)">Spotify Developer Dashboard</a> e inicia sesión con tu cuenta.</li>
+        <li>Haz clic en <strong>Create App</strong>. Rellena el nombre (ej. Ámbar) y una descripción.</li>
+        <li>En el apartado de <strong>Redirect URIs</strong>, añade exactamente esto: <code>http://localhost:5005/callback</code></li>
+        <li>Guarda la aplicación. Entra en <strong>Settings</strong> de tu nueva App.</li>
+        <li>Copia el <code>Client ID</code> y haz clic en "View client secret" para copiar tu <code>Client Secret</code>. Los necesitarás para arrancar el launcher.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2><span style="color:var(--amber)">3.</span> Configuración y Arranque del Launcher</h2>
+    <p>Una vez que Kodi está escuchando en el puerto 8080 y tienes tus claves de Spotify, puedes ejecutar el launcher.</p>
+
+    <div class="block">
+      <h3>Definir Variables de Entorno (Primera Vez)</h3>
+      <p>Si estás usando el ejecutable (<code>.exe</code> o <code>.app</code>) o ejecutando desde Python, asegúrate de proporcionar las claves. En Windows, puedes crear un archivo <code>.bat</code> para ejecutarlo cómodamente:</p>
+      <code>
+        set SPOTIFY_CLIENT_ID=tu_client_id_aqui<br>
+        set SPOTIFY_CLIENT_SECRET=tu_client_secret_aqui<br>
+        start kiosk_server.exe
+      </code>
+    </div>
+
+    <div class="note">
+      <p><strong>Autorización de Spotify:</strong> La primera vez que abras el launcher con credenciales nuevas, deberás autorizar a la aplicación. <br><br>
+      Abre tu navegador de escritorio, ve a <code>http://localhost:5005/login</code>, inicia sesión en Spotify y acepta los permisos. Sólo debes hacerlo <strong>una vez</strong>; después, Ámbar creará el archivo oculto <code>.spotify-cache</code> para recordar tu sesión para siempre.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Uso en el Día a Día</h2>
+    <ul>
+      <li><strong>Escuchar música local (FLAC, MP3, CD):</strong> Haz clic en el botón "Biblioteca" de la parte derecha de la pantalla. Se abrirá la interfaz de Chorus2 donde puedes navegar por todos tus discos. Al darle a Play, toca la flecha de la esquina superior izquierda (←) para volver a la pantalla de reproducción.</li>
+      <li><strong>Escuchar Spotify:</strong> Abre la app de Spotify en tu móvil. Selecciona la música y toca el icono de "Dispositivos" (Connect). Elige tu Mini PC HiFi como destino de sonido. Automáticamente, Ámbar detectará el cambio y mostrará la carátula y el título en la pantalla táctil, permitiéndote pausar o cambiar de canción.</li>
+    </ul>
+  </section>
+
+</div>
+
+</body>
+</html>
