@@ -9,10 +9,19 @@ from ambar.ports.window_controller import WindowController
 class SystemService:
     """Comandos de sistema del kiosko: pantalla completa, salir, apagar, reiniciar."""
 
-    def __init__(self, window: WindowController, audio_level_service: AudioLevelService, volume_controller):
+    def __init__(
+        self,
+        window: WindowController,
+        audio_level_service: AudioLevelService,
+        volume_controller,
+        kodi_gateway,
+        spotify_gateway,
+    ):
         self._window = window
         self._audio_level_service = audio_level_service
         self._volume_controller = volume_controller
+        self._kodi_gateway = kodi_gateway
+        self._spotify_gateway = spotify_gateway
 
     def get_volume(self) -> dict:
         return self._volume_controller.get()
@@ -41,11 +50,17 @@ class SystemService:
         if action == "fullscreen":
             self._window.toggle_fullscreen()
         elif action == "exit":
-            # Parar la captura de audio ANTES de cerrar: si el proceso empieza
-            # a apagarse mientras ScreenCaptureKit sigue disparando callbacks
-            # nativos de ObjC en un hilo de fondo, el interprete puede
-            # reventar al finalizar (crash visible como "Ambar-x se ha
-            # cerrado inesperadamente" en macOS).
+            # Parar la reproduccion actual (Kodi/Spotify, lo que este sonando)
+            # antes de cerrar -- si no, el audio se queda sonando aunque el
+            # launcher ya no este. Ambas llamadas son best-effort (no lanzan
+            # si esa fuente no esta activa/configurada).
+            self._kodi_gateway.stop()
+            self._spotify_gateway.pause()
+            # Parar la captura de audio ANTES de cerrar la ventana: si el
+            # proceso empieza a apagarse mientras ScreenCaptureKit sigue
+            # disparando callbacks nativos de ObjC en un hilo de fondo, el
+            # interprete puede reventar al finalizar (crash visible como
+            # "Ambar-x se ha cerrado inesperadamente" en macOS).
             self._audio_level_service.stop()
             self._window.close()
         elif action == "shutdown":

@@ -114,38 +114,35 @@ def _get_available_screens() -> list:
 
 
 def _get_data_dir(resource_dir: str) -> str:
-    """Directorio persistente para config.json/.spotify-cache/skins.
+    """Directorio persistente para config.json/.spotify-cache/skins: junto
+    al ejecutable/bundle, igual en Windows y macOS.
 
-    En modo desarrollo, junto al codigo (comodo para iterar): igual que
-    siempre. En el binario compilado, NO "junto al ejecutable" -- se
-    probo en vivo compilando el .app en macOS y confirmando que
-    config.json terminaba dentro de Ambar.app/Contents/Frameworks/, una
-    carpeta que `python build.py` borra y recrea entera en cada build
-    (--clean elimina dist/Ambar.app por completo) -- cualquier ajuste
-    guardado se perdia en el siguiente build, pareciendo que "no
-    persistia" nunca. La causa de fondo: en un app frozen de PyInstaller,
-    __file__ no apunta junto al .exe/.app real, sino dentro del bundle
-    interno -- un problema conocido de PyInstaller, no un bug de esta app.
-    Ademas, si el usuario instala el .app/.exe en una carpeta protegida
-    (Program Files, /Applications), escribir ahi puede fallar por
-    permisos. Por eso el binario compilado usa el directorio de datos de
-    usuario estandar de cada SO (persiste entre builds/reinstalaciones,
-    siempre escribible sin admin):
-    - Windows: %APPDATA%\\Ambar
-    - macOS:   ~/Library/Application Support/Ambar
-    - Linux:   $XDG_DATA_HOME/Ambar (o ~/.local/share/Ambar)
+    En modo desarrollo, junto al codigo (resource_dir, comodo para iterar).
+    En el binario compilado, NO se usa __file__ (en un app frozen de
+    PyInstaller no apunta junto al .exe/.app real, sino dentro del bundle
+    interno -- comprobado en vivo: config.json terminaba en
+    Ambar.app/Contents/Frameworks/). En su lugar se usa sys.executable, que
+    si apunta al binario real:
+    - Windows: sys.executable = dist/Ambar/Ambar.exe -> se usa esa carpeta
+      directamente (ya es "junto al ejecutable").
+    - macOS: sys.executable = Ambar.app/Contents/MacOS/Ambar -- escribir ahi
+      DENTRO del bundle se pierde en cada recompilacion (python build.py
+      borra y recrea Ambar.app entero, confirmado en vivo). Por eso aqui se
+      sube desde el ejecutable hasta encontrar la carpeta ".app" y se usa su
+      carpeta *contenedora* -- el mismo sitio donde el usuario ve el icono
+      de Ambar.app en Finder, junto a el pero fuera del bundle. PyInstaller
+      solo borra/recrea la carpeta Ambar.app en si, no sus hermanos, asi que
+      un fichero ahi si sobrevive a los rebuilds (verificado en vivo).
     """
     if not getattr(sys, "frozen", False):
         return resource_dir
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA") or os.path.expanduser("~")
-    elif sys.platform == "darwin":
-        base = os.path.expanduser("~/Library/Application Support")
-    else:
-        base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
-    data_dir = os.path.join(base, "Ambar")
-    os.makedirs(data_dir, exist_ok=True)
-    return data_dir
+    exe_path = sys.executable
+    if sys.platform == "darwin":
+        path = exe_path
+        while path and path != os.path.dirname(path) and not path.endswith(".app"):
+            path = os.path.dirname(path)
+        return os.path.dirname(path) if path.endswith(".app") else os.path.dirname(exe_path)
+    return os.path.dirname(exe_path)
 
 
 def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
@@ -172,7 +169,10 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         _build_audio_level_source(), event_bus,
         attack_seconds=smoothing_preset["attack"], release_seconds=smoothing_preset["release"],
     )
-    system_service = SystemService(WebviewWindowController(), audio_level_service, _build_volume_controller())
+    system_service = SystemService(
+        WebviewWindowController(), audio_level_service, _build_volume_controller(),
+        kodi_gateway, spotify_gateway,
+    )
     skins_dir = os.path.join(data_dir, "skins")
     skin_service = SkinService(skins_dir)
 

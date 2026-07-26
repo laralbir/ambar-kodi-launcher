@@ -8,6 +8,11 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Al cerrar el launcher, se para la reproducción actual** (Kodi o
+  Spotify, lo que estuviera sonando) antes de cerrar la ventana — antes
+  el audio se quedaba sonando aunque el launcher ya no estuviera.
+  Reutiliza `KodiGateway.stop()`/`SpotifyGateway.pause()`, ya
+  existentes para la exclusión mutua; ambas llamadas son best-effort.
 - **Fluidez del VU-metro configurable** (Ajustes → "Fluidez del
   VU-metro": Rápido/Normal/Fluido). Tres presets que escalan la misma
   ballística de ataque/liberación (`VU_SMOOTHING_PRESETS` en
@@ -273,16 +278,22 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   confirmado en vivo compilando y viendo dónde acababa `config.json`)
   — una carpeta que `python build.py` borra y recrea entera en cada
   build (`--clean`), así que cualquier ajuste guardado se perdía en el
-  siguiente build. Ahora el binario compilado (`sys.frozen`) usa el
-  directorio de datos de usuario estándar de cada SO en vez de "junto
-  al ejecutable" (`%APPDATA%\Ambar` en Windows, `~/Library/Application
-  Support/Ambar` en macOS, `$XDG_DATA_HOME/Ambar` en Linux) — persiste
-  entre builds/reinstalaciones y no requiere permisos de admin aunque
-  el `.app`/`.exe` esté instalado en una carpeta protegida. El modo
-  desarrollo (`python kiosk_server.py`) no cambia: sigue guardando
-  junto al código, como siempre. Verificado en vivo compilando dos
-  veces seguidas en macOS y confirmando que un ajuste guardado
-  sobrevive a la segunda compilación.
+  siguiente build. Arreglado usando `sys.executable` (no `__file__`)
+  para localizar el ejecutable real, manteniendo el requisito de que
+  `config.json` viva **junto al ejecutable** en ambas plataformas: en
+  Windows, `sys.executable` ya apunta directamente a esa carpeta; en
+  macOS, como el ejecutable real vive dentro del bundle
+  (`Ambar.app/Contents/MacOS/Ambar`, que se borra y recrea entero en
+  cada build), se sube hasta encontrar la carpeta `.app` y se usa su
+  carpeta *contenedora* — el mismo sitio donde el usuario ve el icono
+  de `Ambar.app` en Finder, junto a él pero fuera del bundle, así que
+  sobrevive a las recompilaciones (PyInstaller solo borra/recrea
+  `Ambar.app` en sí, no sus hermanos). El modo desarrollo
+  (`python kiosk_server.py`) no cambia: sigue guardando junto al
+  código, como siempre. Verificado en vivo compilando dos veces
+  seguidas en macOS y confirmando que un ajuste guardado sobrevive a
+  la segunda compilación, apareciendo como fichero junto a
+  `Ambar.app`, no dentro.
 - **El estado "Reproduciendo"/"Pausa" (y la carátula) podían quedarse
   congelados** si se perdía algún evento `playback_update` del
   WebSocket (p. ej. por el mismo tipo de problema de conectividad ya

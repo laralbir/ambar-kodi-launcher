@@ -31,6 +31,16 @@ de aquí.
 
 ## Pendiente
 
+- **VU-metro en pantalla completa**: poder ampliar el VU-metro (barras
+  LED o aguja) a pantalla completa, para verlo bien desde lejos.
+- **Controles de volumen integrados en el home**, no en una vista
+  aparte como ahora (`#view-volume`, un overlay que se abre con el
+  icono 🔊): mover el slider/botones directamente al panel principal
+  para no tener que salir de la pantalla de "ahora suena".
+- **Mejorar la imagen por defecto cuando una canción no tiene
+  carátula** — ahora mismo se muestra el icono de nota musical
+  genérico (`#art-placeholder`); valorar algo más elaborado (silueta
+  de disco/vinilo, gradiente con las iniciales del álbum, etc.).
 - **Evitar que la pantalla se apague, salte el salvapantallas o el
   equipo entre en reposo** mientras Ámbar está en ejecución (relevante
   para un kiosko que se supone siempre visible/activo). Necesita un
@@ -154,3 +164,21 @@ de aquí.
   Verificado en macOS con 1 pantalla (comportamiento sin romper el caso
   de un único monitor); sin verificar con más de un monitor conectado a
   la vez, al no haber hardware multi-monitor disponible en esta sesión.
+- Arreglado "Reproducir Carpeta/CD entero", que no hacía nada
+  (`Playlist.Add` con `file` apuntando a una carpeta da "Invalid
+  params" — el campo correcto es `directory`).
+- Fluidez del VU-metro configurable (Rápido/Normal/Fluido).
+- Tiempo transcurrido/total/restante visible junto a la barra de
+  progreso.
+- Arreglada la persistencia de `config.json`/`.spotify-cache`/skins en
+  el binario compilado: no vivían junto al ejecutable de verdad
+  (`__file__` apunta dentro del bundle interno de PyInstaller, no
+  junto al `.exe`/`.app`), así que se perdían en cada recompilación.
+  Ahora usan `sys.executable` para localizar el ejecutable real en
+  ambas plataformas.
+- Arreglado el estado "Reproduciendo"/carátula quedándose congelados
+  si se perdía algún evento del WebSocket: sondeo de respaldo cada 5s.
+- Seleccionar una canción concreta de la lista de reproducción actual.
+- Iconos descriptivos en los botones de volumen.
+- Al cerrar el launcher, se para la reproducción actual (Kodi o
+  Spotify) antes de cerrar la ventana.
