@@ -36,12 +36,23 @@ jobs:
       - name: Construir ejecutable
         run: python build.py
 
-      - name: Empaquetar dist/ en zip
+      # zip no esta disponible por defecto en los runners de windows-latest
+      # (solo en linux/macos) -- Compress-Archive es el equivalente nativo.
+      - name: Empaquetar dist/ en zip (macOS)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           version=$(cat VERSION)
           cd dist
           zip -r "../${{ matrix.asset_name }}-${version}.zip" .
+
+      - name: Empaquetar dist/ en zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = Get-Content VERSION -Raw
+          $version = $version.Trim()
+          Compress-Archive -Path dist\* -DestinationPath "${{ matrix.asset_name }}-$version.zip"
 
       - name: Subir artefacto
         uses: actions/upload-artifact@v4
