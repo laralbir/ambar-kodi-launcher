@@ -109,10 +109,21 @@ def create_app(container) -> Flask:
     def spotify_playlists():
         return jsonify(container.library_service.spotify_playlists())
 
+    @app.route("/api/library/spotify/playlist-tracks")
+    def spotify_playlist_tracks():
+        playlist_id = request.args.get("playlist_id")
+        return jsonify(container.library_service.spotify_playlist_tracks(playlist_id))
+
     @app.route("/api/library/spotify/play", methods=["POST"])
     def spotify_play():
         body = request.get_json(force=True) or {}
         ok = container.library_service.spotify_play(body.get("context_uri"))
+        return jsonify({"ok": ok})
+
+    @app.route("/api/library/spotify/play-track", methods=["POST"])
+    def spotify_play_track():
+        body = request.get_json(force=True) or {}
+        ok = container.library_service.spotify_play_track(body.get("uri"))
         return jsonify({"ok": ok})
 
     # ---------- autenticacion Spotify ----------

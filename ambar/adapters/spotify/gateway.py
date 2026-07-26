@@ -147,6 +147,27 @@ class SpotifyGateway:
         except Exception:
             return []
 
+    def get_playlist_tracks(self, playlist_id: str) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            res = sp.playlist_items(playlist_id, additional_types=["track"])
+        except Exception:
+            return []
+        tracks = []
+        for entry in res.get("items", []):
+            track = entry.get("track")
+            if not track:
+                continue
+            tracks.append({
+                "title": track.get("name", ""),
+                "artist": ", ".join(a["name"] for a in track.get("artists", [])),
+                "uri": track.get("uri", ""),
+                "duration": (track.get("duration_ms") or 0) // 1000,
+            })
+        return tracks
+
     def play_context(self, context_uri: str | None) -> bool:
         if not self._oauth or not context_uri:
             return False
@@ -154,6 +175,17 @@ class SpotifyGateway:
         if sp:
             try:
                 sp.start_playback(context_uri=context_uri)
+            except Exception:
+                pass
+        return True
+
+    def play_track(self, uri: str | None) -> bool:
+        if not self._oauth or not uri:
+            return False
+        sp = self._client()
+        if sp:
+            try:
+                sp.start_playback(uris=[uri])
             except Exception:
                 pass
         return True

@@ -56,9 +56,6 @@ de aquí.
 - Configurar en qué pantalla/monitor arranca el launcher por defecto
   (relevante porque el mini PC saca a la vez a la pantalla táctil y a
   la TV).
-- Navegación de biblioteca consistente entre Kodi y Spotify
-  (artistas/álbumes/playlists con la misma estructura de navegación
-  en ambas fuentes).
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -115,3 +112,8 @@ de aquí.
   placeholder genérico que había que editar a mano. El flujo de
   `/login`→`/callback` en sí ya no requería copiar/pegar URLs (Flask
   captura el `code` del redirect automáticamente).
+- Navegación de biblioteca consistente entre Kodi y Spotify: las
+  playlists de Spotify ahora tienen el mismo patrón de dos niveles que
+  álbumes de Kodi (lista → canciones, con "reproducir lista completa"
+  arriba y cada canción individual reproducible por separado), en vez
+  de reproducir la playlist entera al primer toque.

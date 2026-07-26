@@ -75,6 +75,16 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   (`IP_DE_ESTE_PC`) — se rellena con la IP real del equipo en la red
   local, obtenida vía `SystemService.get_lan_ip()` y
   `GET /api/system/network-info`.
+- **Navegación de biblioteca consistente Kodi/Spotify**: las playlists
+  de Spotify ahora abren primero su lista de canciones (con
+  "Reproducir lista completa" arriba y cada pista reproducible por
+  separado), igual que los álbumes de Kodi, en vez de arrancar la
+  playlist entera al primer toque. Nuevo
+  `SpotifyGateway.get_playlist_tracks()` (`sp.playlist_items()`) y
+  `play_track()` (`sp.start_playback(uris=[...])`), expuestos vía
+  `GET /api/library/spotify/playlist-tracks` y
+  `POST /api/library/spotify/play-track` (con la misma exclusión mutua
+  con Kodi que `spotify_play`).
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

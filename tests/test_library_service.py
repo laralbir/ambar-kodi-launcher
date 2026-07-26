@@ -28,6 +28,14 @@ class FakeSpotifyGateway:
         self.calls.append(("play_context", context_uri))
         return True
 
+    def play_track(self, uri):
+        self.calls.append(("play_track", uri))
+        return True
+
+    def get_playlist_tracks(self, playlist_id):
+        self.calls.append(("get_playlist_tracks", playlist_id))
+        return [{"title": "T", "artist": "A", "uri": "spotify:track:x", "duration": 120}]
+
     def is_configured(self):
         return self._configured
 
@@ -103,3 +111,31 @@ def test_kodi_play_with_artistid_plays_whole_artist():
     service.kodi_play({"artistid": 7})
 
     assert kodi.calls == [("play", {"artistid": 7})]
+
+
+def test_spotify_playlist_tracks_delegates_to_gateway():
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(FakeKodiGateway(), spotify)
+
+    tracks = service.spotify_playlist_tracks("playlist123")
+
+    assert tracks == [{"title": "T", "artist": "A", "uri": "spotify:track:x", "duration": 120}]
+    assert spotify.calls == [("get_playlist_tracks", "playlist123")]
+
+
+def test_spotify_playlist_tracks_empty_without_playlist_id():
+    service = LibraryService(FakeKodiGateway(), FakeSpotifyGateway())
+
+    assert service.spotify_playlist_tracks(None) == []
+
+
+def test_spotify_play_track_stops_kodi_before_playing():
+    kodi = FakeKodiGateway()
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(kodi, spotify)
+
+    ok = service.spotify_play_track("spotify:track:x")
+
+    assert ok is True
+    assert kodi.calls == ["stop"]
+    assert spotify.calls == [("play_track", "spotify:track:x")]

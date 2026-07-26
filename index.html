@@ -987,14 +987,25 @@
       }
 
       else if(viewNode.tab === "spotify-pl") {
-        el("lib-title").textContent = "Playlists (Spotify)";
-        const res = await fetch("/api/library/spotify/playlists");
-        const items = await res.json();
-        if(items.length === 0){
-          content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay listas o falta autorizar Spotify en Ajustes.</div>`;
-          return;
+        if(!viewNode.type || viewNode.type === 'root'){
+          el("lib-title").textContent = "Playlists (Spotify)";
+          const res = await fetch("/api/library/spotify/playlists");
+          const items = await res.json();
+          if(items.length === 0){
+            content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay listas o falta autorizar Spotify en Ajustes.</div>`;
+            return;
+          }
+          renderGridSpotify(items, (item) => {
+            libHistory.push({type: 'tracks', tab: 'spotify-pl', id: item.id, title: item.name, context_uri: item.uri});
+            loadView(libHistory[libHistory.length-1]);
+          });
         }
-        renderGridSpotify(items, (item) => playSpotify(item.uri));
+        else if(viewNode.type === 'tracks'){
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/spotify/playlist-tracks?playlist_id=" + encodeURIComponent(viewNode.id));
+          const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir lista completa", () => playSpotify(viewNode.context_uri));
+        }
       }
 
     } catch(err) {
@@ -1114,6 +1125,13 @@
     await fetch("/api/library/spotify/play", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({context_uri})
+    });
+    el("view-library").classList.remove("visible");
+  }
+  async function playSpotifyTrack(uri) {
+    await fetch("/api/library/spotify/play-track", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({uri})
     });
     el("view-library").classList.remove("visible");
   }

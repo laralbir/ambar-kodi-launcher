@@ -57,6 +57,13 @@ class LibraryService:
     def spotify_playlists(self) -> list:
         return self._spotify.get_playlists()
 
+    def spotify_playlist_tracks(self, playlist_id: str | None) -> list:
+        return self._spotify.get_playlist_tracks(playlist_id) if playlist_id else []
+
     def spotify_play(self, context_uri: str | None) -> bool:
         self._kodi.stop()
         return self._spotify.play_context(context_uri)
+
+    def spotify_play_track(self, uri: str | None) -> bool:
+        self._kodi.stop()
+        return self._spotify.play_track(uri)
