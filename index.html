@@ -225,20 +225,19 @@
     display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
   }
   #view-playlist.visible{display:flex;}
-  #view-volume{
-    display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
+  .volume-inline-row{display:flex; align-items:center; gap:0.6rem; margin-top:0.8vh;}
+  .volume-inline-btn{
+    width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text-dim); display:flex; align-items:center;
+    justify-content:center; font-size:1rem; cursor:pointer; flex:0 0 auto;
   }
-  #view-volume.visible{display:flex;}
-  .volume-content{
-    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:1.5rem; padding:2rem;
+  .volume-inline-btn:active{background:var(--amber-dim);}
+  .volume-inline-btn.active{color:var(--amber); border-color:var(--amber);}
+  #volume-slider-inline{flex:1; accent-color:var(--amber);}
+  .volume-inline-value{
+    font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:var(--text-dim);
+    width:3.4rem; text-align:right; flex:0 0 auto;
   }
-  .volume-value{
-    font-family:'JetBrains Mono', monospace; font-size:4rem; color:var(--amber);
-  }
-  #volume-slider{width:min(70vw, 500px); accent-color:var(--amber); height:2.4rem;}
-  .volume-row{display:flex; gap:1rem;}
-  .volume-row .btn{min-width:120px; text-align:center; padding:1rem;}
 
   #view-vumeter-fullscreen{
     display:none; position:absolute; inset:0; background:var(--bg); z-index:10;
@@ -406,7 +405,6 @@
       <div class="source-row">
         <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
         <div class="header-actions">
-          <div class="playlist-toggle-btn" id="volume-toggle-btn" title="Volumen">🔊</div>
           <div class="playlist-toggle-btn" id="playlist-toggle-btn" title="Lista de reproducción">☰</div>
         </div>
       </div>
@@ -424,6 +422,14 @@
         <div class="tbtn" id="btn-prev">⏮</div>
         <div class="tbtn play" id="btn-play">⏯</div>
         <div class="tbtn" id="btn-next">⏭</div>
+      </div>
+
+      <div class="volume-inline-row">
+        <div class="volume-inline-btn" id="volume-mute-inline" title="Silenciar">🔊</div>
+        <div class="volume-inline-btn" id="volume-down-inline" title="Bajar 5">🔉</div>
+        <input type="range" id="volume-slider-inline" min="0" max="100" step="1" value="0">
+        <div class="volume-inline-btn" id="volume-up-inline" title="Subir 5">🔊</div>
+        <span class="volume-inline-value" id="volume-value-inline">--%</span>
       </div>
 
       <div class="vu-meter" id="vu-meter-home">
@@ -479,25 +485,6 @@
     </div>
     <div class="playlist-content" id="playlist-content">
       <!-- Injected by JS -->
-    </div>
-  </div>
-
-  <!-- VOLUME PANEL -->
-  <div id="view-volume">
-    <div class="lib-topbar">
-      <div class="lib-topbar-left">
-        <div class="back-btn" id="volume-btn-back">←</div>
-        <div class="lib-title">Volumen</div>
-      </div>
-    </div>
-    <div class="volume-content">
-      <div class="volume-value" id="volume-value">--%</div>
-      <input type="range" id="volume-slider" min="0" max="100" step="1" value="0">
-      <div class="volume-row">
-        <div class="btn" id="volume-down">🔉 −5</div>
-        <div class="btn" id="volume-mute">🔇 Silenciar</div>
-        <div class="btn" id="volume-up">🔊 +5</div>
-      </div>
     </div>
   </div>
 
@@ -991,18 +978,18 @@
   // ---------- VOLUMEN DEL SISTEMA ----------
   // Volumen maestro real del equipo (no el de Kodi/Spotify individualmente),
   // vía el mismo adapter por plataforma que el VU-metro (ver
-  // ambar/adapters/audio/*_volume.py). Se sondea cada 2s mientras el panel
-  // esta visible para reflejar cambios hechos desde otro origen (teclado,
-  // mando, o el propio SO), no solo los hechos desde aqui.
+  // ambar/adapters/audio/*_volume.py). Integrado directamente en el home
+  // (no en una vista aparte), sondeado cada 2s para reflejar cambios
+  // hechos desde otro origen (teclado, mando, o el propio SO), no solo
+  // los hechos desde aqui.
   let currentVolumeMuted = false;
-  let volumePollInterval = null;
 
   function applyVolumeUi(data){
     currentVolumeMuted = !!data.muted;
-    el("volume-slider").value = data.level;
-    el("volume-value").textContent = (data.muted ? "Silenciado" : data.level + "%");
-    el("volume-mute").textContent = data.muted ? "🔊 Reactivar" : "🔇 Silenciar";
-    el("volume-mute").classList.toggle("active", data.muted);
+    el("volume-slider-inline").value = data.level;
+    el("volume-value-inline").textContent = (data.muted ? "Mute" : data.level + "%");
+    el("volume-mute-inline").textContent = data.muted ? "🔇" : "🔊";
+    el("volume-mute-inline").classList.toggle("active", data.muted);
   }
 
   async function refreshVolume(){
@@ -1014,8 +1001,8 @@
 
   async function setVolumeLevel(level){
     level = Math.max(0, Math.min(100, Math.round(level)));
-    el("volume-slider").value = level;
-    el("volume-value").textContent = level + "%";
+    el("volume-slider-inline").value = level;
+    el("volume-value-inline").textContent = level + "%";
     try{
       await fetch(API_BASE + "/api/system/volume", {
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -1035,25 +1022,12 @@
     refreshVolume();
   }
 
-  function setVolumePanelVisible(visible){
-    el("view-volume").classList.toggle("visible", visible);
-    el("volume-toggle-btn").classList.toggle("active", visible);
-    if(volumePollInterval) clearInterval(volumePollInterval);
-    volumePollInterval = null;
-    if(visible){
-      refreshVolume();
-      volumePollInterval = setInterval(refreshVolume, 2000);
-    }
-  }
-
-  el("volume-toggle-btn").addEventListener("click", () => {
-    setVolumePanelVisible(!el("view-volume").classList.contains("visible"));
-  });
-  el("volume-btn-back").addEventListener("click", () => setVolumePanelVisible(false));
-  el("volume-slider").addEventListener("change", (e) => setVolumeLevel(e.target.value));
-  el("volume-up").addEventListener("click", () => setVolumeLevel(Number(el("volume-slider").value) + 5));
-  el("volume-down").addEventListener("click", () => setVolumeLevel(Number(el("volume-slider").value) - 5));
-  el("volume-mute").addEventListener("click", toggleVolumeMute);
+  el("volume-slider-inline").addEventListener("change", (e) => setVolumeLevel(e.target.value));
+  el("volume-mute-inline").addEventListener("click", toggleVolumeMute);
+  el("volume-up-inline").addEventListener("click", () => setVolumeLevel(Number(el("volume-slider-inline").value) + 5));
+  el("volume-down-inline").addEventListener("click", () => setVolumeLevel(Number(el("volume-slider-inline").value) - 5));
+  refreshVolume();
+  setInterval(refreshVolume, 2000);
 
   // Playback Control
   async function control(action){

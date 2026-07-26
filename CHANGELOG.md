@@ -8,6 +8,12 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Controles de volumen integrados directamente en el home**, en vez
+  de una vista aparte que había que abrir con un icono 🔊 (`#view-volume`,
+  ya retirada): fila compacta bajo el transporte con
+  silenciar/−5/slider/+5/porcentaje, siempre visible. Se sondea el
+  volumen real cada 2s de forma continua (antes solo mientras la vista
+  aparte estaba abierta).
 - **VU-metro en pantalla completa**: icono ⛶ junto al medidor lo
   amplía a pantalla completa (barras LED o aguja, según el estilo
   elegido), para verlo bien desde lejos. Los mismos elementos del DOM

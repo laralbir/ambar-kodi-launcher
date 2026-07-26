@@ -31,10 +31,6 @@ de aquí.
 
 ## Pendiente
 
-- **Controles de volumen integrados en el home**, no en una vista
-  aparte como ahora (`#view-volume`, un overlay que se abre con el
-  icono 🔊): mover el slider/botones directamente al panel principal
-  para no tener que salir de la pantalla de "ahora suena".
 - **Mejorar la imagen por defecto cuando una canción no tiene
   carátula** — ahora mismo se muestra el icono de nota musical
   genérico (`#art-placeholder`); valorar algo más elaborado (silueta
@@ -184,3 +180,7 @@ de aquí.
   Reutiliza los mismos elementos del DOM (se mueven al overlay y de
   vuelta, no se duplican), así que toda la lógica de actualización en
   tiempo real sigue funcionando igual estén donde estén.
+- Controles de volumen integrados directamente en el home (fila
+  compacta bajo el transporte: silenciar, −5, slider, +5, %), en vez
+  de una vista aparte que había que abrir con un icono 🔊. Se sondea
+  cada 2s siempre (antes solo mientras la vista estaba abierta).
