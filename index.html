@@ -56,6 +56,13 @@
     letter-spacing: 0.08em; text-align:center; padding: 1rem;
   }
   .art-frame .placeholder svg{width:38%; opacity:0.35; margin-bottom:0.6rem;}
+  .art-spinner{
+    position:absolute; width:2.6rem; height:2.6rem; border-radius:50%;
+    border:3px solid var(--line); border-top-color:var(--amber);
+    animation:art-spin 0.8s linear infinite; display:none;
+  }
+  .art-spinner.visible{display:block;}
+  @keyframes art-spin{ to{ transform:rotate(360deg); } }
 
   .now-playing{
     flex: 1 1 auto; min-width:0;
@@ -315,6 +322,7 @@
         SIN REPRODUCCIÓN
       </div>
       <img id="art-img" style="display:none;">
+      <div class="art-spinner" id="art-spinner"></div>
     </div>
 
     <div class="now-playing">
@@ -441,6 +449,7 @@
 <script>
   const API_BASE = "";
   let currentSource = null;
+  let lastArtSrc = null;
   let vuMeterStyle = "leds";
   const el = (id) => document.getElementById(id);
 
@@ -623,12 +632,20 @@
     el("pct-label").textContent = Math.round(data.progress || 0) + "%";
     el("state-label").textContent = data.playing ? "Reproduciendo" : (data.source ? "Pausa" : "—");
 
-    const img = el("art-img"), ph = el("art-placeholder");
+    const img = el("art-img"), ph = el("art-placeholder"), spinner = el("art-spinner");
     if(data.art){
-      img.src = data.art;
-      img.style.display = "block";
-      ph.style.display = "none";
+      if(data.art !== lastArtSrc){
+        lastArtSrc = data.art;
+        spinner.classList.add("visible");
+        img.style.display = "none";
+        ph.style.display = "none";
+        img.onload = () => { spinner.classList.remove("visible"); img.style.display = "block"; };
+        img.onerror = () => { spinner.classList.remove("visible"); ph.style.display = "flex"; };
+        img.src = data.art;
+      }
     }else{
+      lastArtSrc = null;
+      spinner.classList.remove("visible");
       img.style.display = "none";
       ph.style.display = "flex";
     }

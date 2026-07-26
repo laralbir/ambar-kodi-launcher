@@ -17,6 +17,10 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   correspondientes (`open-library-kodi`/`open-library-spotify`,
   pestañas "Artistas"/"Carpetas"/"CD"/"Listas") en vez de dejar entrar
   a una biblioteca que no va a devolver nada.
+- **Spinner de carga en la carátula de "ahora suena"**: al cambiar de
+  pista se muestra un indicador giratorio mientras la imagen se
+  descarga, en vez de dejar el hueco en blanco hasta que termine de
+  cargar (los listados de biblioteca ya tenían su propio `.loader`).
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de
@@ -53,9 +57,10 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
     con un certificado de código estable (ver `TODO.md`).
   - **Windows** (producción): captura WASAPI loopback vía el paquete
     `soundcard`, que ya entrega los canales separados
-    (`(numframes, nchannels)`, sin mezclar). **Sin verificar en
-    hardware Windows real en esta sesión** (desarrollada en macOS) —
-    probar en el mini PC antes de dar por bueno.
+    (`(numframes, nchannels)`, sin mezclar). **Verificado en una VM
+    Windows 11 ARM64 (UTM) con Python x64**: audio real reproducido
+    dentro de la VM, medidor respondiendo correctamente — pendiente
+    solo confirmarlo también en el mini PC real (Intel N100).
   - Si la captura no está disponible en la plataforma (import ausente,
     permiso denegado, error de cualquier tipo), el medidor
     simplemente queda inactivo — el resto de la app sigue funcionando

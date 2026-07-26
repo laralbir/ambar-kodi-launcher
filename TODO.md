@@ -72,10 +72,6 @@ de aquí.
   - Evitar el copy/paste manual de URLs para autorizar.
   - Wizard inicial de configuración si no hay `config.json` previo.
   - Poder relanzar ese wizard en cualquier momento desde Ajustes.
-- Spinner/loading visible mientras carga la carátula en reproducción,
-  y mientras se consultan los listados de álbumes/artistas/canciones
-  (la biblioteca ya tiene un `.loader` para las vistas de lista, pero
-  la carátula de "ahora suena" no muestra nada mientras carga).
 - Lista de reproducción actual visible en el home: da igual si viene
   de un artista, álbum, carpeta, CD o de Spotify, debe mostrarse la
   lista completa (no solo la pista actual) con la canción en curso
@@ -94,7 +90,9 @@ de aquí.
 - Fix de la pantalla en negro en macOS (eliminación de `eventlet`).
 - Gestión de versiones y releases automáticas por GitHub Actions.
 - VU-meter estéreo con nivel real de audio (macOS vía ScreenCaptureKit
-  verificado; Windows vía WASAPI/`soundcard` pendiente de probar).
+  y Windows vía WASAPI/`soundcard` verificados en vivo, este último en
+  una VM Windows 11 ARM64 con Python x64 — audio real reproducido en
+  la propia VM, medidor respondiendo correctamente).
 - Fix de las carátulas de Kodi que no cargaban (doble-decodificación
   de la URL `image://` al hacer de proxy hacia Kodi).
 - Fix del título "undefined" en el listado de álbumes (el frontend
@@ -109,3 +107,5 @@ de aquí.
 - Las pestañas/accesos de Kodi y Spotify se deshabilitan solos si esa
   fuente no responde (Kodi) o no está autorizada todavía (Spotify),
   comprobado al cargar y cada 15s.
+- Spinner de carga en la carátula de "ahora suena" mientras se
+  descarga la imagen (los listados de biblioteca ya tenían uno).
