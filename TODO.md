@@ -60,6 +60,7 @@ de aquí.
   ciegas sin poder verificarlo en el mini PC real es más probable que
   rompa el cambio de salida de audio que lo arregle. Pendiente de
   abordar cuando se pueda probar en hardware real.
+
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
 - Refactor a arquitectura hexagonal/DDD-lite/event-driven (`ambar/`).
