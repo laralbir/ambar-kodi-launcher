@@ -50,6 +50,14 @@ class LibraryService:
             item["albumid"] = body["albumid"]
         elif "artistid" in body:
             item["artistid"] = body["artistid"]
+        elif "directory" in body:
+            # Una carpeta/CD (path VFS) no se reproduce con "file" -- Kodi
+            # espera "file" para un fichero individual y da "Invalid params"
+            # si se le pasa una carpeta ahi. "directory" es el campo correcto
+            # para reproducir el contenido completo de una carpeta (verificado
+            # en vivo contra Kodi: Playlist.Add con file=carpeta -> error,
+            # con directory=carpeta -> expande todas las pistas).
+            item["directory"] = body["directory"]
         elif "file" in body:
             item["file"] = body["file"]
         self._kodi.play(item)

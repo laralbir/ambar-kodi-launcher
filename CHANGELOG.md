@@ -240,6 +240,20 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `kiosk_server.py` ya no necesita `eventlet.monkey_patch()`.
 
 ### Fixed
+- **"Reproducir Carpeta entera" (y "Reproducir CD entero") no hacía
+  nada.** Causa: se llamaba a `Playlist.Add` con
+  `item: {file: <ruta-de-carpeta>}` — `file` es para un fichero
+  individual, y Kodi devuelve `Invalid params` si se le pasa una
+  carpeta ahí (verificado en vivo contra Kodi real). El campo correcto
+  para reproducir el contenido completo de una carpeta es `directory`,
+  no `file` (`Playlist.Add` con `directory` expande todas las pistas
+  correctamente, también verificado en vivo). Ahora
+  `LibraryService.kodi_play()` distingue `directory` de `file`, y el
+  botón de "reproducir entero" en `renderDirectoryList` (usado tanto
+  por Carpetas como por CD) envía `directory`. De paso se sustituye el
+  `onclick` inline de ese botón (interpolaba la ruta sin escapar en un
+  atributo HTML — frágil ante rutas con comillas u otros caracteres
+  especiales) por `addEventListener`, igual que el resto de la app.
 - **Título "undefined" en el listado de álbumes de la biblioteca.**
   El frontend pedía el campo `title` para el título de la tarjeta,
   pero `AudioLibrary.GetAlbums` de Kodi no devuelve ese campo — el

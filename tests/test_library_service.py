@@ -113,6 +113,18 @@ def test_kodi_play_with_artistid_plays_whole_artist():
     assert kodi.calls == [("play", {"artistid": 7})]
 
 
+def test_kodi_play_with_directory_uses_directory_not_file():
+    # Playlist.Add con "file" apuntando a una carpeta da "Invalid params" en
+    # Kodi -- una carpeta/CD entero se reproduce con "directory", verificado
+    # en vivo contra Kodi real.
+    kodi = FakeKodiGateway()
+    service = LibraryService(kodi, FakeSpotifyGateway())
+
+    service.kodi_play({"directory": "/Users/carlos/Music/"})
+
+    assert kodi.calls == [("play", {"directory": "/Users/carlos/Music/"})]
+
+
 def test_spotify_playlist_tracks_delegates_to_gateway():
     spotify = FakeSpotifyGateway()
     service = LibraryService(FakeKodiGateway(), spotify)
