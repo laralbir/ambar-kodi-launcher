@@ -25,6 +25,7 @@ from ambar.application.events import EventBus
 from ambar.application.library import LibraryService
 from ambar.application.now_playing import NowPlayingService
 from ambar.application.playback_control import PlaybackControlService
+from ambar.application.skins import SkinService
 from ambar.application.system import SystemService
 from ambar.domain.events import AudioLevelChanged, PlaybackStateChanged
 
@@ -42,6 +43,8 @@ class AppContainer:
     system_service: SystemService
     config_service: ConfigService
     audio_level_service: AudioLevelService
+    skin_service: SkinService
+    skins_dir: str
 
 
 def _build_audio_level_source():
@@ -89,6 +92,8 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     library_service = LibraryService(kodi_gateway, spotify_gateway)
     audio_level_service = AudioLevelService(_build_audio_level_source(), event_bus)
     system_service = SystemService(WebviewWindowController(), audio_level_service)
+    skins_dir = os.path.join(app_dir, "skins")
+    skin_service = SkinService(skins_dir)
 
     def on_config_updated(config: dict) -> None:
         kodi_gateway.host = config.get("KODI_HOST", kodi_gateway.host)
@@ -113,6 +118,8 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         system_service=system_service,
         config_service=config_service,
         audio_level_service=audio_level_service,
+        skin_service=skin_service,
+        skins_dir=skins_dir,
     )
     return container, event_bus
 

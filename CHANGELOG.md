@@ -55,6 +55,16 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `config.json`/`/api/config`, igual que `VU_METER_STYLE`). Verificado
   en vivo contra Kodi real (playlist con pista en curso resaltada
   correctamente).
+- **Skins personalizadas**: nuevo `SkinService.list_skins()` que
+  detecta carpetas con `style.css` dentro de `/skins` (junto al
+  ejecutable, no versionada — ver `.gitignore`), expuesto vía
+  `GET /api/skins` y servido en `/skins/<archivo>`. Seleccionable
+  desde Ajustes → "Skin personalizada", persistida como `SKIN` en
+  `config.json`/`/api/config` y aplicada al momento (inyecta el
+  `<link>` tras los estilos por defecto, sin recargar la página).
+  Documentado en `docs/index.html` cómo crear una, incluidas las
+  variables CSS de color (`--bg`, `--panel`, `--amber`...) que expone
+  el launcher para facilitar el retema.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

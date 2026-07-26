@@ -20,6 +20,14 @@ def create_app(container) -> Flask:
     def now_playing_playlist():
         return jsonify(container.now_playing_service.get_playlist())
 
+    @app.route("/api/skins")
+    def list_skins():
+        return jsonify(container.skin_service.list_skins())
+
+    @app.route("/skins/<path:filename>")
+    def skins_static(filename):
+        return send_from_directory(container.skins_dir, filename)
+
     @app.route("/api/art")
     def art_proxy():
         path = request.args.get("path", "")

@@ -46,8 +46,6 @@ de aquí.
   `--osx-bundle-identifier` y el nombre del binario (`Ambar`, sin
   versión) para reducir cuánto cambia entre builds — la firma ad-hoc
   en sí sigue siendo la causa raíz que falta arreglar del todo.
-- Skins personalizadas cargables desde un directorio `/skins` +
-  documentar en la guía de usuario (`docs/`) cómo crearlas.
 - Barra lateral de volumen: subir/bajar/mute, con el % visible y
   sincronizado en tiempo real si el volumen cambia desde otro origen
   (teclado, mando/control remoto, control del propio SO) — no solo
@@ -108,3 +106,8 @@ de aquí.
   fuente activa, con la pista en curso resaltada. Se puede
   ocultar/mostrar, y ese estado persiste entre sesiones vía
   `SHOW_PLAYLIST` en `config.json`/`/api/config`.
+- Skins personalizadas cargables desde `/skins/<nombre>/style.css`
+  (carpeta junto al ejecutable, no versionada), seleccionable desde
+  Ajustes y persistida vía `SKIN` en `config.json`. Documentado cómo
+  crear una en la guía de usuario (`docs/index.html`), incluidas las
+  variables CSS de color que expone el launcher.

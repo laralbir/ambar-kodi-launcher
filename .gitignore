@@ -15,6 +15,7 @@ __pycache__/
 # Ficheros de la app y empaquetado
 config.json
 .spotify-cache
+skins/
 dist/
 build/
 *.spec

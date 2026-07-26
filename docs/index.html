@@ -200,6 +200,36 @@
     </div>
   </section>
 
+  <section>
+    <h2><span style="color:var(--amber)">4.</span> Skins personalizadas</h2>
+    <p>Puedes cambiar la apariencia del launcher (colores, tipografías, tamaños...) sin tocar el código de Ámbar, creando tu propia skin.</p>
+
+    <div class="block">
+      <h3>Cómo crear una skin:</h3>
+      <ol>
+        <li>Junto al ejecutable (o a <code>kiosk_server.py</code> en modo desarrollo), crea una carpeta <code>skins/</code> si no existe.</li>
+        <li>Dentro, crea una subcarpeta con el nombre de tu skin, por ejemplo <code>skins/vaporwave/</code>.</li>
+        <li>Añade un fichero <code>style.css</code> dentro de esa carpeta: <code>skins/vaporwave/style.css</code>.</li>
+        <li>Escribe en ese fichero solo las reglas que quieras cambiar — se carga <strong>después</strong> de los estilos por defecto, así que basta con sobreescribir lo necesario, no hace falta rehacer toda la hoja de estilos.</li>
+        <li>Abre <strong>Ajustes y Sistema</strong> → <strong>Skin personalizada</strong> en el launcher, elige tu skin de la lista y guarda. El cambio se aplica al momento, sin reiniciar.</li>
+      </ol>
+      <p>La forma más sencilla de cambiar el aspecto general es redefinir las variables de color que usa toda la interfaz:</p>
+      <code>
+        :root {<br>
+        &nbsp;&nbsp;--bg: #0a0014;<br>
+        &nbsp;&nbsp;--panel: #1a0a2e;<br>
+        &nbsp;&nbsp;--panel-raised: #241040;<br>
+        &nbsp;&nbsp;--line: #3d1a5e;<br>
+        &nbsp;&nbsp;--text: #f0e6ff;<br>
+        &nbsp;&nbsp;--text-dim: #a08cc0;<br>
+        &nbsp;&nbsp;--amber: #ff2ecb;<br>
+        &nbsp;&nbsp;--amber-dim: #7a1c5e;<br>
+        }
+      </code>
+      <p>También puedes sobreescribir clases concretas (por ejemplo <code>.track-title</code> para cambiar la tipografía del título, o <code>.action-card</code> para los accesos de Biblioteca/Spotify) inspeccionando el HTML con las herramientas de desarrollador del navegador.</p>
+    </div>
+  </section>
+
 </div>
 
 </body>

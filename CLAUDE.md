@@ -101,8 +101,10 @@ dimensionados para esa resolución exacta.
     (evento de dominio). Sin dependencias de infraestructura.
   - `application/` — casos de uso: `NowPlayingService` (decide si
     manda Kodi o Spotify), `PlaybackControlService`, `LibraryService`,
-    `SystemService`, `ConfigService`, y `EventBus` (pub/sub interno:
-    desacopla "detectar un cambio" de "emitirlo por WebSocket").
+    `SystemService`, `ConfigService`, `SkinService` (lista las skins
+    personalizadas en `/skins`, ver más abajo), y `EventBus` (pub/sub
+    interno: desacopla "detectar un cambio" de "emitirlo por
+    WebSocket").
   - `ports/` — protocolos que implementan los adapters:
     `PlaybackSource`, `ConfigRepository`, `WindowController`.
   - `adapters/` — infraestructura real: `kodi/` (gateway JSON-RPC +
