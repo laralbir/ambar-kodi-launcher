@@ -1,17 +1,59 @@
 # Antigravity / Gemini Agent Context: Ámbar
 
+> Este fichero debe mantenerse sincronizado con `CLAUDE.md` (misma
+> fuente de verdad, formato adaptado). Cualquier cambio en uno debe
+> reflejarse en el otro en el mismo commit.
+
+## Mantenimiento de la documentación
+
+Cada vez que un cambio afecte a cómo se instala, se usa, se compila o
+se publica el proyecto, hay que mantener actualizados en el mismo
+commit: `README.md`, `CHANGELOG.md` y la guía de usuario en `docs/`.
+
 ## Contexto del Proyecto
 **Nombre:** Ámbar
 **Descripción:** Panel táctil para una estación multimedia HiFi (Mini PC + amplificador Pioneer SA-508).
 **Uso previsto:** El launcher se ejecuta en una pantalla panorámica baja (1920x720) y controla tanto la reproducción en Kodi como en Spotify.
 
 ## Arquitectura y Stack Tecnológico
-- **Sistema Operativo:** Windows 11 (seleccionado para evitar fricción con drivers de pantalla táctil y Spotify).
-- **Backend:** Python con Flask (`kiosk_server.py`). Sirve como unificador de estado entre Kodi (vía JSON-RPC) y Spotify (vía Spotipy).
-- **Frontend:** Vanilla HTML/CSS/JS contenido en `index.html`.
+- **Sistema Operativo del mini PC (producción):** Windows 11 (seleccionado para evitar fricción con drivers de pantalla táctil y Spotify).
+- **Entorno de desarrollo diario:** macOS (este repo). El código es cross-platform (usa `sys.platform` para diferenciar shutdown/restart de Windows vs. Unix), pero hay un par de detalles específicos de macOS a tener en cuenta (ver "Notas de macOS" abajo).
+- **Backend:** Python con Flask + Flask-SocketIO (`async_mode="threading"`, sin eventlet — ver "Notas de macOS"). `kiosk_server.py` es solo el entrypoint (`ambar.bootstrap.run()`); toda la lógica vive en el paquete `ambar/` con arquitectura hexagonal / DDD-lite / event-driven:
+  - `ambar/domain/` — `PlaybackState`, `PlaybackStateChanged` (sin dependencias de infraestructura).
+  - `ambar/application/` — `NowPlayingService` (decide si manda Kodi o Spotify), `PlaybackControlService`, `LibraryService`, `SystemService`, `ConfigService`, `EventBus` (pub/sub interno).
+  - `ambar/ports/` — `PlaybackSource`, `ConfigRepository`, `WindowController` (protocolos que implementan los adapters).
+  - `ambar/adapters/` — `kodi/` (gateway JSON-RPC + listener WS), `spotify/` (gateway Spotipy + poller), `persistence/` (config JSON), `web/` (rutas Flask + `SocketIOBridge`, único sitio que sabe que existe SocketIO), `desktop/` (ventana pywebview).
+  - `ambar/bootstrap.py` — composition root.
+  - Los hilos de fondo de Kodi/Spotify publican `PlaybackStateChanged` en el `EventBus`, no llaman a `socketio.emit()` directamente.
+  - `tests/` con `pytest` sobre `NowPlayingService` (`requirements-dev.txt`).
+- **Frontend:** Vanilla HTML/CSS/JS contenido en `index.html` (no tocado por el refactor del backend).
+- **Empaquetado:** PyInstaller (`build.py` / `kiosk_server.spec`, este último autogenerado, no versionado) hacia `.exe` (Windows) / `.app` (macOS) con `pywebview` como ventana nativa.
 - **Reproductores:**
   - **Kodi:** Principal. Reproduce FLAC, MP3 y CD de audio (`cdda://`). Emplea el addon Chorus2 para la vista de biblioteca.
   - **Spotify:** Vía API web (Spotipy) y Spotify Connect. El audio se lanza desde móvil y se refleja/controla en el panel.
+
+## Notas de macOS (entorno de desarrollo)
+
+- Tras tocar `requirements.txt`, reinstalar en el venv del repo
+  (`venv/bin/pip install -r requirements.txt`).
+- **No usar `eventlet`.** Se probó y se quitó por completo: además de
+  problemas de compatibilidad con Python 3.13 y con el empaquetado de
+  PyInstaller (`dnspython`/`dns`), **causaba una pantalla en negro al
+  abrir la ventana en macOS** — `webview.start()` en el hilo principal
+  (bucle nativo de Cocoa vía PyObjC) acapara el GIL, y el hub de
+  eventlet en el hilo de fondo dejaba de recibir CPU, así que el
+  servidor quedaba escuchando pero nunca respondía. Ahora Flask-
+  SocketIO usa `async_mode="threading"` (+ `simple-websocket` para
+  WebSockets reales) y los hilos de fondo de Kodi/Spotify usan
+  `threading.Thread` normal — con hilos nativos sí convive bien con
+  `webview.start()`. Detalle completo en `CHANGELOG.md`.
+- **pywebview exige correr en el hilo principal en macOS** (Cocoa/
+  AppKit; en Windows no aplica). Por eso el servidor Flask-SocketIO y
+  los hilos de Kodi/Spotify corren en un hilo de fondo, y
+  `webview.start()` se queda en el hilo principal.
+- El primer arranque del `.app` compilado por PyInstaller puede tardar
+  unos segundos más en responder (verificación de Gatekeeper); en
+  arranques posteriores es inmediato.
 
 ## Reglas de Diseño y UI
 - **Estética:** "Receptor HiFi vintage".
@@ -19,13 +61,18 @@
 - **Tipografía:** Oswald (títulos), JetBrains Mono (tiempos/datos), Inter (interfaz general).
 - **Resolución Objetivo:** Estrictamente diseñado para **1920x720** (pantalla completa).
 
+## Versionado y releases
+
+- Fuente única de la versión: fichero `VERSION` (semver, sin `v`). `build.py` lo lee para nombrar el ejecutable (`Ambar-{version}`).
+- Historial de cambios en `CHANGELOG.md` (formato Keep a Changelog).
+- `.github/workflows/release.yml`: al empujar un tag `vX.Y.Z`, compila con PyInstaller en `macos-latest` y `windows-latest` y publica una release en GitHub con los `.zip` de ambos SO adjuntos.
+
 ## Tareas Pendientes o Consideraciones Futuras
-- Configurar y validar credenciales de la API de Spotify (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`).
+- Configurar y validar credenciales de la API de Spotify (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`) — ya hay UI de ajustes para introducirlas.
 - Validar layout físico en la pantalla táctil.
-- Posible creación de `requirements.txt` y documentación de instalación.
 
 ## Reglas para el Agente (Antigravity / Gemini)
 1. NO crear múltiples páginas HTML; la UI vive enteramente en `index.html`.
 2. NO intentar embeber el reproductor web de Spotify; usar exclusivamente la API REST para control remoto.
 3. Preservar la estética ámbar/gunmetal y las tipografías seleccionadas en todos los estilos futuros.
-4. Cualquier nueva ruta en el backend debe ser definida explícitamente en `kiosk_server.py`.
+4. Cualquier nueva ruta HTTP se define en `ambar/adapters/web/app.py`, delegando la lógica a un servicio de `ambar/application/` (nunca lógica de negocio directamente en la ruta). No añadir lógica nueva a `kiosk_server.py`: es solo el entrypoint.

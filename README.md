@@ -66,3 +66,20 @@ Puedes compilar Ámbar como una aplicación independiente (`.exe` en Windows o `
    python build.py
    ```
 3. Al terminar, encontrarás el binario compilado dentro de la carpeta `dist/`. Puedes llevarte esa carpeta o el ejecutable a tu kiosko multimedia.
+
+---
+
+## Versionado y releases
+
+El número de versión vive en un único sitio: el fichero [`VERSION`](VERSION) (versionado semántico, sin la `v` inicial). `build.py` lo lee para nombrar el ejecutable generado.
+
+Para publicar una nueva release:
+
+1. Actualiza `VERSION` (p. ej. `0.2.0`) y añade una entrada en [`CHANGELOG.md`](CHANGELOG.md) bajo esa versión.
+2. Haz commit de ambos cambios.
+3. Crea y empuja un tag `vX.Y.Z` que coincida con `VERSION`:
+   ```bash
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+4. El workflow de GitHub Actions [`release.yml`](.github/workflows/release.yml) construye el ejecutable para Windows y macOS con PyInstaller y publica automáticamente una release en GitHub con ambos `.zip` adjuntos.
