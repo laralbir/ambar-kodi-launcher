@@ -1,0 +1,23 @@
+# OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Spotify Cache
+.spotify-cache
+
+# Configuraciones locales
+config.json
