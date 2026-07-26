@@ -29,6 +29,12 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   llama a `seek_track`), enrutados por `PlaybackControlService.seek()`
   vía `POST /api/seek`. Actualización optimista en el frontend (la
   barra se mueve al click, sin esperar al próximo evento de estado).
+- **Marquee para título/artista/álbum largos**: cuando el texto no
+  cabe en `.track-title`/`.track-meta`, se desplaza lateralmente hasta
+  leerse entero (pausa inicial y final antes de reiniciar), en vez de
+  cortarse con `text-overflow:ellipsis`. Solo se activa si el texto
+  realmente desborda (medido con `scrollWidth` contra el ancho del
+  contenedor); textos cortos no animan.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

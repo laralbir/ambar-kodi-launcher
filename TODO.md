@@ -75,11 +75,6 @@ de aquí.
   resaltada. La lista se puede ocultar/mostrar, y ese estado
   (visible/oculta) debe persistir entre sesiones (como el resto de
   ajustes, vía `config.json`/`/api/config`).
-- Marquee (desplazamiento lateral) para título/artista/álbum cuando el
-  texto no cabe y se corta (`text-overflow:ellipsis` actual en
-  `.track-title`/`.track-meta`): que se desplace lateralmente hasta
-  leerse entero, con una pausa inicial antes de empezar a moverse,
-  como en los displays de las autorradios.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -109,3 +104,6 @@ de aquí.
 - Barra de progreso de reproducción seekable: click en cualquier punto
   de la barra para adelantar/atrasar (`Player.Seek` en Kodi,
   `seek_track` en Spotify).
+- Marquee para título/artista/álbum cuando el texto no cabe: se
+  desplaza lateralmente hasta leerse entero, con pausa inicial y al
+  final antes de reiniciar, como en los displays de las autorradios.

@@ -91,6 +91,16 @@
     font-size: clamp(1rem, 2.2vh, 1.3rem); color: var(--text-dim);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
+  .track-title.marquee, .track-meta.marquee{ text-overflow:clip; }
+  .marquee-inner{ display:inline-block; }
+  .marquee .marquee-inner{
+    animation-name: marquee-scroll; animation-timing-function:linear; animation-iteration-count:infinite;
+    animation-duration: var(--marquee-duration, 10s);
+  }
+  @keyframes marquee-scroll{
+    0%, 8%{ transform:translateX(0); }
+    92%, 100%{ transform:translateX(var(--marquee-distance, 0px)); }
+  }
 
   .vu-bar{
     height: 14px; border-radius:4px; background: #101113; border:1px solid var(--line);
@@ -329,8 +339,8 @@
       <div class="source-row">
         <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
       </div>
-      <div class="track-title" id="track-title">Nada sonando</div>
-      <div class="track-meta" id="track-meta">Elige música desde la biblioteca o desde Spotify en tu móvil</div>
+      <div class="track-title" id="track-title"><span class="marquee-inner">Nada sonando</span></div>
+      <div class="track-meta" id="track-meta"><span class="marquee-inner">Elige música desde la biblioteca o desde Spotify en tu móvil</span></div>
 
       <div class="vu-bar" id="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
       <div class="time-row"><span id="pct-label">0%</span><span id="state-label">—</span></div>
@@ -612,6 +622,34 @@
     render(data);
   });
 
+  // Marquee: si el texto no cabe, se desplaza lateralmente hasta leerse
+  // entero (con una pausa inicial), como en los displays de las autorradios.
+  function applyMarquee(containerEl){
+    containerEl.classList.remove("marquee");
+    containerEl.style.removeProperty("--marquee-distance");
+    containerEl.style.removeProperty("--marquee-duration");
+    const inner = containerEl.querySelector(".marquee-inner");
+    const overflow = inner.scrollWidth - containerEl.clientWidth;
+    if(overflow > 4){
+      const duration = Math.max(6, overflow / 40); // ~40px/s
+      containerEl.style.setProperty("--marquee-distance", (-overflow) + "px");
+      containerEl.style.setProperty("--marquee-duration", duration + "s");
+      containerEl.classList.add("marquee");
+    }
+  }
+
+  function setMarqueeText(containerEl, text){
+    const inner = containerEl.querySelector(".marquee-inner");
+    if(inner.textContent === text) return; // sin cambios, no reiniciar la animacion
+    inner.textContent = text;
+    applyMarquee(containerEl);
+  }
+
+  window.addEventListener("resize", () => {
+    applyMarquee(el("track-title"));
+    applyMarquee(el("track-meta"));
+  });
+
   // Render UI
   function render(data){
     currentSource = data.source;
@@ -621,11 +659,11 @@
       : data.source === "spotify" ? "Spotify" : "Sin fuente";
 
     if(data.source){
-      el("track-title").textContent = data.title || "—";
-      el("track-meta").textContent = [data.artist, data.album].filter(Boolean).join(" · ");
+      setMarqueeText(el("track-title"), data.title || "—");
+      setMarqueeText(el("track-meta"), [data.artist, data.album].filter(Boolean).join(" · "));
     }else{
-      el("track-title").textContent = "Nada sonando";
-      el("track-meta").textContent = "Elige música desde la biblioteca o desde Spotify en tu móvil";
+      setMarqueeText(el("track-title"), "Nada sonando");
+      setMarqueeText(el("track-meta"), "Elige música desde la biblioteca o desde Spotify en tu móvil");
     }
 
     el("vu-fill").style.width = (data.progress || 0) + "%";
