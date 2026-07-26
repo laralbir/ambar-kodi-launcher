@@ -527,7 +527,13 @@
         <div class="settings-col" style="border-left:1px solid var(--line); padding-left:2rem;">
           <h3 style="margin-top:0; color:var(--text); font-weight:500;">Sistema</h3>
           <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom:2rem;">Controles directos para el equipo (solo aplicables si el servidor se está ejecutando nativamente).</p>
-          
+
+          <div class="form-group" style="margin-bottom:2rem;">
+            <label>Pantalla de arranque</label>
+            <select id="inp-screen"><option value="0">Principal</option></select>
+            <p style="color:var(--text-dim); font-size:0.8rem; margin:0.3rem 0 0;">Relevante si el equipo saca imagen a la vez a la pantalla táctil y a la TV. El cambio se aplica al reiniciar el launcher.</p>
+          </div>
+
           <div class="system-controls">
             <div class="btn" onclick="systemAction('fullscreen')">Pantalla Completa</div>
             <div class="btn" onclick="systemAction('exit')">Salir del Launcher</div>
@@ -1262,6 +1268,14 @@
       skinSelect.innerHTML = `<option value="">Por defecto</option>` +
         skins.map(s => `<option value="${s}">${s}</option>`).join('');
       skinSelect.value = cfg.SKIN || "";
+      const screenSelect = el("inp-screen");
+      const screens = await (await fetch("/api/system/screens")).json().catch(() => []);
+      if(screens.length > 0){
+        screenSelect.innerHTML = screens.map(s =>
+          `<option value="${s.index}">Pantalla ${s.index + 1} (${s.width}x${s.height})</option>`
+        ).join('');
+      }
+      screenSelect.value = cfg.DEFAULT_SCREEN ?? 0;
     } catch(e){}
     try {
       const net = await (await fetch("/api/system/network-info")).json();
@@ -1282,7 +1296,8 @@
       KODI_PORT: el("inp-kodi-port").value,
       SPOTIFY_CLIENT_ID: el("inp-spotify-id").value,
       SPOTIFY_CLIENT_SECRET: el("inp-spotify-secret").value,
-      SKIN: el("inp-skin").value
+      SKIN: el("inp-skin").value,
+      DEFAULT_SCREEN: Number(el("inp-screen").value)
     };
     try {
       await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });

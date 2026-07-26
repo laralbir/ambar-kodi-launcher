@@ -46,6 +46,7 @@ class AppContainer:
     audio_level_service: AudioLevelService
     skin_service: SkinService
     skins_dir: str
+    available_screens: list
 
 
 def _build_volume_controller():
@@ -95,6 +96,22 @@ def _configure_spotify(spotify_gateway: SpotifyGateway, config: dict) -> None:
     spotify_gateway.configure(client_id, client_secret, redirect_uri)
 
 
+def _get_available_screens() -> list:
+    """Enumera los monitores disponibles para elegir en cual arranca el
+    kiosko (relevante porque el mini PC saca a la vez a la pantalla tactil y
+    a la TV). DEBE llamarse desde el hilo principal (webview.screens usa
+    APIs nativas -- NSScreen en macOS -- con la misma restriccion de hilo
+    principal que el resto de pywebview), asi que se calcula aqui, en
+    _build_container(), antes de arrancar ningun hilo de fondo, y se guarda
+    como datos planos (int) en el container para que las rutas Flask (que
+    corren en un hilo de fondo) puedan leerlo sin volver a tocar pywebview."""
+    try:
+        import webview
+        return [{"index": i, "width": s.width, "height": s.height} for i, s in enumerate(webview.screens)]
+    except Exception:
+        return []
+
+
 def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     config_repository = JsonConfigRepository(os.path.join(app_dir, "config.json"))
     is_first_run = not config_repository.exists()
@@ -142,6 +159,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         audio_level_service=audio_level_service,
         skin_service=skin_service,
         skins_dir=skins_dir,
+        available_screens=_get_available_screens(),
     )
     return container, event_bus
 
@@ -188,6 +206,19 @@ def run(app_dir: str) -> None:
             target=_start_server, args=(app, socketio, container, event_bus), daemon=True
         ).start()
         time.sleep(1)  # esperar a que el servidor levante
+
+        # Pantalla configurada en Ajustes (DEFAULT_SCREEN, indice sobre
+        # available_screens) -- si el indice no es valido (monitor
+        # desconectado, config antigua, etc.) cae al comportamiento por
+        # defecto de pywebview (pantalla principal) en vez de fallar.
+        screen_kwargs = {}
+        try:
+            screen_index = container.config_service.get_public().get("DEFAULT_SCREEN", 0)
+            if 0 <= screen_index < len(webview.screens):
+                screen_kwargs["screen"] = webview.screens[screen_index]
+        except Exception:
+            pass
+
         webview.create_window(
             title="Ámbar",
             url="http://localhost:5005",
@@ -196,6 +227,7 @@ def run(app_dir: str) -> None:
             frameless=True,
             fullscreen=True,
             background_color="#17181a",
+            **screen_kwargs,
         )
         webview.start()
     else:

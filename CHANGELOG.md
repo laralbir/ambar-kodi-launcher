@@ -101,6 +101,21 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   ver `TODO.md` para la justificación (no hay API pública fiable para
   cambiar el dispositivo por defecto en ninguna de las dos
   plataformas).
+- **Pantalla de arranque configurable** (Ajustes → Sistema → "Pantalla
+  de arranque"), relevante porque el mini PC saca imagen a la vez a la
+  pantalla táctil y a la TV. Usa el parámetro `screen` nativo de
+  `pywebview.create_window()` en vez de coordenadas `x`/`y` a mano
+  (que además tienen forma distinta por plataforma). `webview.screens`
+  se enumera una única vez en el hilo principal al arrancar — antes de
+  lanzar el hilo de fondo del servidor, respetando la misma
+  restricción de hilo principal de pywebview en macOS que ya afecta al
+  resto de la app — y se guarda como datos planos
+  (`AppContainer.available_screens`) para que
+  `GET /api/system/screens` lo sirva sin volver a tocar pywebview
+  desde el hilo del servidor. El cambio se aplica al reiniciar el
+  launcher (la ventana nativa solo se crea una vez al arrancar).
+  Verificado en macOS con una pantalla; sin verificar con varios
+  monitores conectados a la vez.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

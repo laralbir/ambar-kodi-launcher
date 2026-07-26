@@ -60,10 +60,6 @@ de aquí.
   ciegas sin poder verificarlo en el mini PC real es más probable que
   rompa el cambio de salida de audio que lo arregle. Pendiente de
   abordar cuando se pueda probar en hardware real.
-- Configurar en qué pantalla/monitor arranca el launcher por defecto
-  (relevante porque el mini PC saca a la vez a la pantalla táctil y a
-  la TV).
-
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
 - Refactor a arquitectura hexagonal/DDD-lite/event-driven (`ambar/`).
@@ -133,3 +129,19 @@ de aquí.
   (sin verificar en hardware/VM Windows real, mismo patrón que el resto
   de adapters de audio). El selector de dispositivo de salida queda
   fuera de este cambio (ver más arriba, en "Pendiente").
+- Pantalla de arranque configurable desde Ajustes (relevante porque el
+  mini PC saca a la vez a la pantalla táctil y a la TV): usa el
+  parámetro `screen` nativo de `pywebview.create_window()` (no hace
+  falta tocar coordenadas `x`/`y` a mano, que además tienen forma
+  distinta por plataforma — `WorkingArea` en Windows,
+  `NSScreen.frame()` en macOS). `webview.screens` se enumera una única
+  vez en el hilo principal al arrancar (antes de lanzar ningún hilo de
+  fondo, por la misma restricción de hilo principal de pywebview en
+  macOS ya documentada para el resto de la app) y se guarda como datos
+  planos en el `AppContainer` para que la ruta `GET /api/system/screens`
+  pueda servirlo desde el hilo del servidor sin volver a tocar
+  pywebview. El cambio se aplica al reiniciar el launcher, no en
+  caliente (la ventana nativa solo se crea una vez al arrancar).
+  Verificado en macOS con 1 pantalla (comportamiento sin romper el caso
+  de un único monitor); sin verificar con más de un monitor conectado a
+  la vez, al no haber hardware multi-monitor disponible en esta sesión.

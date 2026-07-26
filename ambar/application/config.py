@@ -33,6 +33,7 @@ class ConfigService:
             "SHOW_PLAYLIST": self._config.get("SHOW_PLAYLIST", False),
             "SKIN": self._config.get("SKIN", ""),
             "IS_FIRST_RUN": self._is_first_run,
+            "DEFAULT_SCREEN": self._config.get("DEFAULT_SCREEN", 0),
         }
 
     def update(self, data: dict) -> None:

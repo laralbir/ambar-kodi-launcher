@@ -52,6 +52,10 @@ def create_app(container) -> Flask:
     def network_info():
         return jsonify({"lan_ip": container.system_service.get_lan_ip()})
 
+    @app.route("/api/system/screens")
+    def system_screens():
+        return jsonify(container.available_screens)
+
     @app.route("/api/system/volume", methods=["GET", "POST"])
     def system_volume():
         if request.method == "POST":
