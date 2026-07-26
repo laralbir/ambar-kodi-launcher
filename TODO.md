@@ -31,8 +31,6 @@ de aquí.
 
 ## Pendiente
 
-- **VU-metro en pantalla completa**: poder ampliar el VU-metro (barras
-  LED o aguja) a pantalla completa, para verlo bien desde lejos.
 - **Controles de volumen integrados en el home**, no en una vista
   aparte como ahora (`#view-volume`, un overlay que se abre con el
   icono 🔊): mover el slider/botones directamente al panel principal
@@ -181,3 +179,8 @@ de aquí.
   (`ES_DISPLAY_REQUIRED | ES_CONTINUOUS`, API de `kernel32` vía
   `ctypes`, sin dependencia nueva — sin verificar en hardware/VM
   Windows real).
+- VU-metro en pantalla completa: icono ⛶ junto al medidor lo amplía a
+  pantalla completa (barras LED o aguja, según el estilo elegido).
+  Reutiliza los mismos elementos del DOM (se mueven al overlay y de
+  vuelta, no se duplican), así que toda la lógica de actualización en
+  tiempo real sigue funcionando igual estén donde estén.

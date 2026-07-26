@@ -8,6 +8,11 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **VU-metro en pantalla completa**: icono ⛶ junto al medidor lo
+  amplía a pantalla completa (barras LED o aguja, según el estilo
+  elegido), para verlo bien desde lejos. Los mismos elementos del DOM
+  se mueven al overlay y de vuelta (no se duplican), así que
+  `updateVuMeter()` sigue funcionando igual sin cambios.
 - **La pantalla ya no se apaga ni salta el salvapantallas mientras
   Ámbar está en ejecución** (relevante para un kiosko que se supone
   siempre visible). Nuevo puerto `ScreenWakeLock` con un adapter por

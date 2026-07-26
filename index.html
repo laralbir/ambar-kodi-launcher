@@ -123,10 +123,16 @@
     font-size:0.85rem; color:var(--text-dim); margin-top:0.3vh;}
 
   /* ---------- VU-METER (nivel real de audio, estereo) ---------- */
-  .vu-meter{margin-top:1.6vh;}
+  .vu-meter{margin-top:1.6vh; position:relative;}
   /* Los selectores con id vencen a las reglas de clase display:flex de abajo;
      necesario para que [hidden] realmente oculte (si no, "flex" gana). */
   .vu-meter-leds[hidden], .vu-meter-needle[hidden]{display:none !important;}
+  .vu-meter-expand-btn{
+    position:absolute; top:-1.9rem; right:0; width:28px; height:28px; border-radius:6px;
+    border:1px solid var(--line); background:var(--panel-raised); color:var(--text-dim);
+    display:flex; align-items:center; justify-content:center; font-size:0.9rem; cursor:pointer;
+  }
+  .vu-meter-expand-btn:active{background:var(--amber-dim); color:var(--amber);}
 
   .vu-meter-leds{display:flex; flex-direction:column; gap:5px;}
   .vu-channel-leds{display:flex; align-items:center; gap:0.6rem;}
@@ -233,6 +239,22 @@
   #volume-slider{width:min(70vw, 500px); accent-color:var(--amber); height:2.4rem;}
   .volume-row{display:flex; gap:1rem;}
   .volume-row .btn{min-width:120px; text-align:center; padding:1rem;}
+
+  #view-vumeter-fullscreen{
+    display:none; position:absolute; inset:0; background:var(--bg); z-index:10;
+    align-items:center; justify-content:center;
+  }
+  #view-vumeter-fullscreen.visible{display:flex;}
+  #vumeter-fullscreen-back{position:absolute; top:1.2rem; left:1.2rem;}
+  .vumeter-fullscreen-container{width:min(90vw, 1400px); padding:2rem;}
+  .vumeter-fullscreen-container .vu-meter-leds[hidden],
+  .vumeter-fullscreen-container .vu-meter-needle[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-channel-leds{gap:1.2rem;}
+  .vumeter-fullscreen-container .vu-led-row{height:48px; gap:6px;}
+  .vumeter-fullscreen-container .vu-led-row .led{border-radius:4px;}
+  .vumeter-fullscreen-container .vu-ch-label{font-size:1.1rem; width:auto;}
+  .vumeter-fullscreen-container .vu-db-label{font-size:1.1rem; width:auto;}
+  .vumeter-fullscreen-container .vu-channel-needle svg{max-height:min(60vh, 500px);}
   .playlist-content{flex:1; overflow-y:auto; padding:1.2rem;}
   .playlist-item{
     display:flex; align-items:center; gap:1rem; padding:0.9rem 1rem; border-radius:8px;
@@ -404,7 +426,8 @@
         <div class="tbtn" id="btn-next">⏭</div>
       </div>
 
-      <div class="vu-meter">
+      <div class="vu-meter" id="vu-meter-home">
+        <div class="vu-meter-expand-btn" id="vu-meter-expand-btn" title="VU-metro en pantalla completa">⛶</div>
         <div class="vu-meter-leds" id="vu-meter-leds" hidden></div>
         <div class="vu-meter-needle" id="vu-meter-needle" hidden></div>
       </div>
@@ -476,6 +499,12 @@
         <div class="btn" id="volume-up">🔊 +5</div>
       </div>
     </div>
+  </div>
+
+  <!-- VU-METER FULLSCREEN -->
+  <div id="view-vumeter-fullscreen">
+    <div class="vumeter-fullscreen-container" id="vumeter-fullscreen-container"></div>
+    <div class="back-btn" id="vumeter-fullscreen-back">←</div>
   </div>
 
   <!-- SETTINGS MODAL -->
@@ -738,6 +767,23 @@
       body: JSON.stringify({VU_METER_SMOOTHING: preset})
     }).catch(()=>{});
   }
+
+  // VU-metro en pantalla completa: mueve los mismos elementos (no los
+  // duplica) entre el home y el overlay a pantalla completa, asi que toda
+  // la logica de actualizacion (updateVuMeter, por id) sigue funcionando
+  // igual este donde este el DOM fisicamente.
+  function toggleVuMeterFullscreen(active){
+    const leds = el("vu-meter-leds"), needle = el("vu-meter-needle");
+    const target = active ? el("vumeter-fullscreen-container") : el("vu-meter-home");
+    target.appendChild(leds);
+    target.appendChild(needle);
+    el("view-vumeter-fullscreen").classList.toggle("visible", active);
+  }
+  el("vu-meter-expand-btn").addEventListener("click", () => toggleVuMeterFullscreen(true));
+  el("vumeter-fullscreen-back").addEventListener("click", () => toggleVuMeterFullscreen(false));
+  el("view-vumeter-fullscreen").addEventListener("click", (e) => {
+    if(e.target.id === "view-vumeter-fullscreen") toggleVuMeterFullscreen(false);
+  });
 
   function formatDb(db){
     return (db <= VU_DB_MIN ? "-Inf" : Math.round(db)) + " dB";
