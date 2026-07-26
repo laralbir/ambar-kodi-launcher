@@ -1,4 +1,5 @@
 import os
+import socket
 import sys
 
 from ambar.application.audio_level import AudioLevelService
@@ -11,6 +12,20 @@ class SystemService:
     def __init__(self, window: WindowController, audio_level_service: AudioLevelService):
         self._window = window
         self._audio_level_service = audio_level_service
+
+    def get_lan_ip(self) -> str | None:
+        """IP del equipo en la red local, para mostrar en el asistente de
+        Spotify la URL exacta que hay que abrir desde otro dispositivo
+        (no hace falta que el usuario la busque a mano)."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(("8.8.8.8", 80))
+                return s.getsockname()[0]
+            finally:
+                s.close()
+        except Exception:
+            return None
 
     def execute(self, action: str | None) -> None:
         if action == "fullscreen":

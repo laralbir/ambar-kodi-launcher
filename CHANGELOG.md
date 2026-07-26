@@ -65,6 +65,16 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   Documentado en `docs/index.html` cómo crear una, incluidas las
   variables CSS de color (`--bg`, `--panel`, `--amber`...) que expone
   el launcher para facilitar el retema.
+- **Guía inicial de configuración para Spotify/Kodi**: si no existe
+  `config.json` previo (`JsonConfigRepository.exists()`,
+  `ConfigService(is_first_run=...)`), el launcher abre solo el modal
+  de Ajustes con un banner explicando los dos pasos iniciales (host de
+  Kodi, credenciales de Spotify). Se puede volver a mostrar en
+  cualquier momento con el botón "Mostrar guía inicial". La URL de
+  autorización de Spotify ya no lleva un placeholder genérico
+  (`IP_DE_ESTE_PC`) — se rellena con la IP real del equipo en la red
+  local, obtenida vía `SystemService.get_lan_ip()` y
+  `GET /api/system/network-info`.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

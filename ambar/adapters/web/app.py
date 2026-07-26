@@ -48,6 +48,10 @@ def create_app(container) -> Flask:
         container.playback_control_service.seek(body.get("source"), body.get("percentage"))
         return jsonify({"ok": True})
 
+    @app.route("/api/system/network-info")
+    def network_info():
+        return jsonify({"lan_ip": container.system_service.get_lan_ip()})
+
     @app.route("/api/system", methods=["POST"])
     def api_system():
         body = request.get_json(force=True) or {}

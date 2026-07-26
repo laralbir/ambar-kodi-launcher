@@ -161,28 +161,28 @@
         <li>Haz clic en <strong>Create App</strong>. Rellena el nombre (ej. Ámbar) y una descripción.</li>
         <li>En el apartado de <strong>Redirect URIs</strong>, añade exactamente esto: <code>http://localhost:5005/callback</code></li>
         <li>Guarda la aplicación. Entra en <strong>Settings</strong> de tu nueva App.</li>
-        <li>Copia el <code>Client ID</code> y haz clic en "View client secret" para copiar tu <code>Client Secret</code>. Los necesitarás para arrancar el launcher.</li>
+        <li>Copia el <code>Client ID</code> y haz clic en "View client secret" para copiar tu <code>Client Secret</code>. Los necesitarás en el siguiente paso.</li>
       </ol>
     </div>
   </section>
 
   <section>
     <h2><span style="color:var(--amber)">3.</span> Configuración y Arranque del Launcher</h2>
-    <p>Una vez que Kodi está escuchando en el puerto 8080 y tienes tus claves de Spotify, puedes ejecutar el launcher.</p>
+    <p>Arranca el ejecutable (<code>.exe</code> en Windows, <code>.app</code> en macOS) o <code>python kiosk_server.py</code> en modo desarrollo.</p>
 
     <div class="block">
-      <h3>Definir Variables de Entorno (Primera Vez)</h3>
-      <p>Si estás usando el ejecutable (<code>.exe</code> o <code>.app</code>) o ejecutando desde Python, asegúrate de proporcionar las claves. En Windows, puedes crear un archivo <code>.bat</code> para ejecutarlo cómodamente:</p>
-      <code>
-        set SPOTIFY_CLIENT_ID=tu_client_id_aqui<br>
-        set SPOTIFY_CLIENT_SECRET=tu_client_secret_aqui<br>
-        start kiosk_server.exe
-      </code>
+      <h3>Guía inicial (recomendado)</h3>
+      <p>Si es la primera vez que arrancas Ámbar (no existe aún <code>config.json</code>), el launcher abre solo la pantalla de <strong>Ajustes</strong> con una guía integrada. Desde ahí:</p>
+      <ol>
+        <li>Comprueba el <strong>Host de Kodi</strong> (déjalo en <code>localhost</code> si Kodi corre en el mismo equipo que Ámbar).</li>
+        <li>Pega tu <code>Client ID</code> y <code>Client Secret</code> de Spotify y pulsa <strong>Guardar Cambios</strong>.</li>
+        <li>Ajustes te muestra la URL exacta a abrir para autorizar Spotify (con la IP real de este equipo ya rellenada, sin tener que buscarla a mano) — ábrela desde el navegador de tu móvil u otro PC en la misma red, inicia sesión en Spotify y acepta los permisos. Solo hace falta hacerlo <strong>una vez</strong>; Ámbar guarda la sesión en el archivo oculto <code>.spotify-cache</code>.</li>
+      </ol>
+      <p>Puedes volver a ver esta guía en cualquier momento desde Ajustes → "Mostrar guía inicial", aunque ya no sea tu primer arranque.</p>
     </div>
 
     <div class="note">
-      <p><strong>Autorización de Spotify:</strong> La primera vez que abras el launcher con credenciales nuevas, deberás autorizar a la aplicación. <br><br>
-      Abre tu navegador de escritorio, ve a <code>http://localhost:5005/login</code>, inicia sesión en Spotify y acepta los permisos. Sólo debes hacerlo <strong>una vez</strong>; después, Ámbar creará el archivo oculto <code>.spotify-cache</code> para recordar tu sesión para siempre.</p>
+      <p><strong>Alternativa por variables de entorno:</strong> si prefieres no guardar las claves en <code>config.json</code>, puedes definir <code>SPOTIFY_CLIENT_ID</code> y <code>SPOTIFY_CLIENT_SECRET</code> como variables de entorno antes de arrancar el ejecutable (en Windows, por ejemplo desde un <code>.bat</code> con <code>set SPOTIFY_CLIENT_ID=...</code>). Los campos de Ajustes tienen prioridad si están rellenos.</p>
     </div>
   </section>
 

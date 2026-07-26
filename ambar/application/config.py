@@ -14,12 +14,14 @@ class ConfigService:
         kodi_default_host: str,
         kodi_default_port: str,
         on_update: Callable[[dict], None] | None = None,
+        is_first_run: bool = False,
     ):
         self._repository = repository
         self._config = dict(initial_config)
         self._kodi_default_host = kodi_default_host
         self._kodi_default_port = kodi_default_port
         self._on_update = on_update
+        self._is_first_run = is_first_run
 
     def get_public(self) -> dict:
         return {
@@ -30,6 +32,7 @@ class ConfigService:
             "VU_METER_STYLE": self._config.get("VU_METER_STYLE", "leds"),
             "SHOW_PLAYLIST": self._config.get("SHOW_PLAYLIST", False),
             "SKIN": self._config.get("SKIN", ""),
+            "IS_FIRST_RUN": self._is_first_run,
         }
 
     def update(self, data: dict) -> None:

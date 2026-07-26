@@ -77,6 +77,7 @@ def _configure_spotify(spotify_gateway: SpotifyGateway, config: dict) -> None:
 
 def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     config_repository = JsonConfigRepository(os.path.join(app_dir, "config.json"))
+    is_first_run = not config_repository.exists()
     app_config = config_repository.load()
 
     kodi_host = app_config.get("KODI_HOST") or os.environ.get("KODI_HOST", "localhost")
@@ -106,6 +107,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         kodi_default_host=kodi_host,
         kodi_default_port=kodi_port,
         on_update=on_config_updated,
+        is_first_run=is_first_run,
     )
 
     container = AppContainer(

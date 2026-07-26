@@ -313,7 +313,14 @@
     flex:1; padding:2rem; overflow-y:auto; display:flex; gap:2rem;
   }
   .settings-col{flex:1; display:flex; flex-direction:column; gap:1.5rem;}
-  
+  .wizard-banner{
+    display:none; background:rgba(255,176,32,0.08); border:1px solid var(--amber-dim);
+    border-radius:8px; padding:1rem 1.2rem; font-size:0.9rem; color:var(--text);
+  }
+  .wizard-banner.visible{display:block;}
+  .wizard-banner ol{margin:0.5rem 0 0; padding-left:1.2rem;}
+  .wizard-banner li{margin-bottom:0.4rem;}
+
   .form-group{display:flex; flex-direction:column; gap:0.4rem;}
   .form-group label{font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:var(--text-dim);}
   .form-group input, .form-group select{
@@ -439,6 +446,13 @@
       <div class="settings-body">
         
         <div class="settings-col">
+          <div class="wizard-banner" id="wizard-banner">
+            <strong>¡Bienvenido a Ámbar!</strong> Antes de reproducir nada, dos pasos:
+            <ol>
+              <li>Comprueba el <strong>Host de Kodi</strong> (déjalo en <code>localhost</code> si Kodi corre en este mismo equipo).</li>
+              <li>Si quieres usar Spotify, introduce tus credenciales más abajo, guarda, y luego autoriza desde un móvil u otro PC en la misma red abriendo la URL que se indica al final de esta columna. Si solo vas a usar Kodi, puedes saltarte este paso.</li>
+            </ol>
+          </div>
           <h3 style="margin-top:0; color:var(--text); font-weight:500;">Configuración</h3>
           <div class="form-group">
             <label>Kodi Host (IP)</label>
@@ -468,7 +482,8 @@
             <select id="inp-skin"><option value="">Por defecto</option></select>
           </div>
           <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-dim);">
-            Para autorizar Spotify por primera vez con estas credenciales, usa un dispositivo conectado a la misma red y entra a <code>http://IP_DE_ESTE_PC:5005/login</code>.
+            Para autorizar Spotify, usa un dispositivo conectado a la misma red y entra a <code id="spotify-login-url">http://…:5005/login</code>.
+            <div class="btn" id="btn-show-wizard" style="margin-top:0.8rem; display:inline-block; font-size:0.85rem; padding:0.5rem 0.9rem;">Mostrar guía inicial</div>
           </div>
         </div>
 
@@ -513,8 +528,16 @@
       applyVuMeterStyle(cfg.VU_METER_STYLE);
       applyPlaylistVisibility(!!cfg.SHOW_PLAYLIST);
       applySkin(cfg.SKIN);
+      // Guia inicial automatica solo la primera vez que arranca sin
+      // config.json previo, y solo una vez por carga de pagina (evita
+      // reabrirse en cada reconexion del WebSocket).
+      if(cfg.IS_FIRST_RUN && !wizardAutoShown){
+        wizardAutoShown = true;
+        openSettings(true);
+      }
     }).catch(()=>{});
   });
+  let wizardAutoShown = false;
 
   // ---------- SKINS PERSONALIZADAS ----------
   // Una skin es una carpeta en /skins/<nombre>/style.css, cargada por el
@@ -1096,9 +1119,14 @@
   }
 
 
-  // ---------- SETTINGS MODAL ----------
-  el("open-settings").addEventListener("click", async () => {
+  // ---------- SETTINGS MODAL / GUÍA INICIAL ----------
+  // La guía inicial reutiliza el propio modal de Ajustes (banner superior +
+  // los mismos campos), en vez de duplicar un asistente aparte: se muestra
+  // sola la primera vez que arranca la app sin config.json previo, y se
+  // puede volver a mostrar en cualquier momento con "Mostrar guía inicial".
+  async function openSettings(showWizard){
     el("view-settings").classList.add("visible");
+    el("wizard-banner").classList.toggle("visible", !!showWizard);
     try {
       const res = await fetch("/api/config");
       const cfg = await res.json();
@@ -1113,7 +1141,14 @@
         skins.map(s => `<option value="${s}">${s}</option>`).join('');
       skinSelect.value = cfg.SKIN || "";
     } catch(e){}
-  });
+    try {
+      const net = await (await fetch("/api/system/network-info")).json();
+      if(net.lan_ip) el("spotify-login-url").textContent = `http://${net.lan_ip}:5005/login`;
+    } catch(e){}
+  }
+
+  el("open-settings").addEventListener("click", () => openSettings(false));
+  el("btn-show-wizard").addEventListener("click", () => openSettings(true));
 
   function closeSettings(){ el("view-settings").classList.remove("visible"); }
   el("btn-close-settings").addEventListener("click", closeSettings);

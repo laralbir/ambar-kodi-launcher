@@ -8,6 +8,9 @@ class JsonConfigRepository:
     def __init__(self, path: str):
         self._path = path
 
+    def exists(self) -> bool:
+        return os.path.exists(self._path)
+
     def load(self) -> dict:
         if os.path.exists(self._path):
             try:

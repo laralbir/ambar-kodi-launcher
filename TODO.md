@@ -59,10 +59,6 @@ de aquí.
 - Navegación de biblioteca consistente entre Kodi y Spotify
   (artistas/álbumes/playlists con la misma estructura de navegación
   en ambas fuentes).
-- Conexión con Spotify más amigable:
-  - Evitar el copy/paste manual de URLs para autorizar.
-  - Wizard inicial de configuración si no hay `config.json` previo.
-  - Poder relanzar ese wizard en cualquier momento desde Ajustes.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -111,3 +107,11 @@ de aquí.
   Ajustes y persistida vía `SKIN` en `config.json`. Documentado cómo
   crear una en la guía de usuario (`docs/index.html`), incluidas las
   variables CSS de color que expone el launcher.
+- Conexión con Spotify más amigable: guía inicial integrada en el
+  propio modal de Ajustes (se abre sola si no hay `config.json`
+  previo, y se puede volver a mostrar en cualquier momento con
+  "Mostrar guía inicial"), con la URL de autorización ya rellena con
+  la IP real del equipo (`GET /api/system/network-info`) en vez de un
+  placeholder genérico que había que editar a mano. El flujo de
+  `/login`→`/callback` en sí ya no requería copiar/pegar URLs (Flask
+  captura el `code` del redirect automáticamente).
