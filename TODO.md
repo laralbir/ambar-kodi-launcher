@@ -46,13 +46,20 @@ de aquí.
   `--osx-bundle-identifier` y el nombre del binario (`Ambar`, sin
   versión) para reducir cuánto cambia entre builds — la firma ad-hoc
   en sí sigue siendo la causa raíz que falta arreglar del todo.
-- Barra lateral de volumen: subir/bajar/mute, con el % visible y
-  sincronizado en tiempo real si el volumen cambia desde otro origen
-  (teclado, mando/control remoto, control del propio SO) — no solo
-  reflejar los cambios hechos desde el launcher.
-- Selector de salida de audio del sistema (HDMI TV, analógico,
-  óptico...), con el listado obtenido dinámicamente del sistema
-  operativo.
+- **Selector de salida de audio del sistema** (HDMI TV, analógico,
+  óptico...). **Deliberadamente no implementado todavía**: aunque
+  `soundcard` (ya usado por el VU-metro) permite *listar* los
+  dispositivos de salida en ambas plataformas
+  (`soundcard.all_speakers()`), *cambiar* el dispositivo de salida por
+  defecto del sistema no tiene una API pública fiable — en Windows
+  requiere la interfaz COM no documentada `IPolicyConfig` (sin
+  soporte oficial de Microsoft, con riesgo real de romper en
+  distintas builds de Windows), y en macOS requiere CoreAudio de bajo
+  nivel (`AudioObjectSetPropertyData` sobre
+  `kAudioHardwarePropertyDefaultOutputDevice`). Implementarlo a
+  ciegas sin poder verificarlo en el mini PC real es más probable que
+  rompa el cambio de salida de audio que lo arregle. Pendiente de
+  abordar cuando se pueda probar en hardware real.
 - Configurar en qué pantalla/monitor arranca el launcher por defecto
   (relevante porque el mini PC saca a la vez a la pantalla táctil y a
   la TV).
@@ -117,3 +124,12 @@ de aquí.
   álbumes de Kodi (lista → canciones, con "reproducir lista completa"
   arriba y cada canción individual reproducible por separado), en vez
   de reproducir la playlist entera al primer toque.
+- Control de volumen real del equipo (subir/bajar/silenciar, % visible)
+  desde un panel deslizante en el home, sondeado cada 2s mientras está
+  abierto para reflejar cambios hechos desde otro origen (teclado,
+  mando, Ajustes del propio SO), no solo los del launcher. macOS vía
+  `osascript` (verificado en vivo: volumen real subido/bajado/
+  silenciado y restaurado); Windows vía `pycaw`/`IAudioEndpointVolume`
+  (sin verificar en hardware/VM Windows real, mismo patrón que el resto
+  de adapters de audio). El selector de dispositivo de salida queda
+  fuera de este cambio (ver más arriba, en "Pendiente").

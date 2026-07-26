@@ -26,7 +26,7 @@ def check_platform_dependencies():
     inactivo con 'No module named CoreMedia' por no haber reinstalado
     requirements.txt tras un pull)."""
     if sys.platform == "win32":
-        required = ["soundcard"]
+        required = ["soundcard", "pycaw", "comtypes"]
     elif sys.platform == "darwin":
         required = ["ScreenCaptureKit", "CoreMedia"]
     else:
@@ -134,6 +134,8 @@ def build():
 
     if sys.platform == "win32":
         cmd.append("--hidden-import=soundcard")
+        cmd.append("--hidden-import=pycaw")
+        cmd.append("--hidden-import=comtypes")
         cmd.append(f"--version-file={write_windows_version_file(version)}")
     elif sys.platform == "darwin":
         cmd += [

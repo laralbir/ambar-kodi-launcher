@@ -85,6 +85,22 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `GET /api/library/spotify/playlist-tracks` y
   `POST /api/library/spotify/play-track` (con la misma exclusión mutua
   con Kodi que `spotify_play`).
+- **Control de volumen del sistema**: panel deslizante en el home
+  (botón 🔊 junto a la fuente activa) con slider, botones +5/−5 y
+  silenciar, sondeado cada 2s mientras está visible para reflejar
+  cambios de volumen hechos desde otro origen (teclado, mando, o el
+  propio SO), no solo los del launcher. Nuevo puerto
+  `VolumeController` con un adapter por plataforma
+  (`ambar/adapters/audio/`): `MacVolumeController` (vía `osascript`,
+  **verificado en vivo**: volumen real subido/bajado/silenciado y
+  restaurado en macOS) y `WindowsVolumeController` (vía
+  `pycaw`/`IAudioEndpointVolume`, **sin verificar en hardware/VM
+  Windows real** — mismo patrón de verificación pendiente que el resto
+  de adapters de audio). Expuesto vía `GET/POST /api/system/volume`.
+  **Deliberadamente no incluye selector de dispositivo de salida** —
+  ver `TODO.md` para la justificación (no hay API pública fiable para
+  cambiar el dispositivo por defecto en ninguna de las dos
+  plataformas).
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

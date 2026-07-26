@@ -11,6 +11,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 
 from ambar.adapters.audio.null_source import NullAudioLevelSource
+from ambar.adapters.audio.null_volume import NullVolumeController
 from ambar.adapters.desktop.webview_window import WebviewWindowController
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.kodi.ws_listener import listen as kodi_listen
@@ -45,6 +46,25 @@ class AppContainer:
     audio_level_service: AudioLevelService
     skin_service: SkinService
     skins_dir: str
+
+
+def _build_volume_controller():
+    """Elige el adapter de control de volumen segun la plataforma, con el
+    mismo fallback seguro que _build_audio_level_source(): si falla el
+    import o la construccion, el control de volumen queda inactivo sin
+    romper el arranque del resto de la app."""
+    try:
+        if sys.platform == "win32":
+            from ambar.adapters.audio.windows_volume import WindowsVolumeController
+
+            return WindowsVolumeController()
+        if sys.platform == "darwin":
+            from ambar.adapters.audio.macos_volume import MacVolumeController
+
+            return MacVolumeController()
+    except Exception as e:
+        print(f"Control de volumen no disponible ({e}); quedara inactivo.")
+    return NullVolumeController()
 
 
 def _build_audio_level_source():
@@ -92,7 +112,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     playback_control_service = PlaybackControlService(kodi_gateway, spotify_gateway)
     library_service = LibraryService(kodi_gateway, spotify_gateway)
     audio_level_service = AudioLevelService(_build_audio_level_source(), event_bus)
-    system_service = SystemService(WebviewWindowController(), audio_level_service)
+    system_service = SystemService(WebviewWindowController(), audio_level_service, _build_volume_controller())
     skins_dir = os.path.join(app_dir, "skins")
     skin_service = SkinService(skins_dir)
 

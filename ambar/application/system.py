@@ -9,9 +9,19 @@ from ambar.ports.window_controller import WindowController
 class SystemService:
     """Comandos de sistema del kiosko: pantalla completa, salir, apagar, reiniciar."""
 
-    def __init__(self, window: WindowController, audio_level_service: AudioLevelService):
+    def __init__(self, window: WindowController, audio_level_service: AudioLevelService, volume_controller):
         self._window = window
         self._audio_level_service = audio_level_service
+        self._volume_controller = volume_controller
+
+    def get_volume(self) -> dict:
+        return self._volume_controller.get()
+
+    def set_volume_level(self, level: int) -> None:
+        self._volume_controller.set_level(level)
+
+    def set_volume_muted(self, muted: bool) -> None:
+        self._volume_controller.set_muted(muted)
 
     def get_lan_ip(self) -> str | None:
         """IP del equipo en la red local, para mostrar en el asistente de
