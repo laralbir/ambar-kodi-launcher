@@ -1,0 +1,5 @@
+Flask==3.0.0
+requests==2.31.0
+spotipy==2.23.0
+pywebview==4.4.1
+pyinstaller

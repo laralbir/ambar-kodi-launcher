@@ -30,6 +30,7 @@ Luego abre http://localhost:5005 en el navegador del kiosko.
 """
 
 import os
+import threading
 from flask import Flask, jsonify, request, send_from_directory, redirect
 import requests
 
@@ -214,4 +215,33 @@ def callback():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5005)
+    import sys
+    try:
+        import webview
+        WEBVIEW_AVAILABLE = True
+    except ImportError:
+        WEBVIEW_AVAILABLE = False
+
+    # Arrancar Flask en un hilo en segundo plano
+    server_thread = threading.Thread(
+        target=app.run,
+        kwargs={"host": "0.0.0.0", "port": 5005, "debug": False, "use_reloader": False}
+    )
+    server_thread.daemon = True
+    server_thread.start()
+
+    if WEBVIEW_AVAILABLE and "--no-window" not in sys.argv:
+        # Iniciar la ventana nativa apuntando a Flask
+        webview.create_window(
+            title="Ámbar",
+            url="http://localhost:5005",
+            width=1920,
+            height=720,
+            frameless=True,
+            fullscreen=False, # Si prefieres que ocupe todo sin respetar resolución, cambia a True
+            background_color="#17181a"
+        )
+        webview.start()
+    else:
+        print("Servidor corriendo en http://localhost:5005 (sin ventana nativa).")
+        server_thread.join()
