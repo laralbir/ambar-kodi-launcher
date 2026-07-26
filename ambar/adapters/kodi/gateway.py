@@ -127,6 +127,27 @@ class KodiGateway:
             "value": {"percentage": percentage},
         })
 
+    def get_playlist(self) -> list[dict]:
+        players = self.rpc("Player.GetActivePlayers")
+        if not players:
+            return []
+        pid = players[0]["playerid"]
+        props = self.rpc("Player.GetProperties", {"playerid": pid, "properties": ["position"]})
+        current_position = (props or {}).get("position", -1)
+        res = self.rpc("Playlist.GetItems", {
+            "playlistid": 0,
+            "properties": ["title", "artist", "album"],
+        })
+        items = res.get("items", []) if res else []
+        return [
+            {
+                "title": it.get("title") or it.get("label") or "Pista sin titulo",
+                "artist": ", ".join(it.get("artist", [])),
+                "current": idx == current_position,
+            }
+            for idx, it in enumerate(items)
+        ]
+
     def is_reachable(self) -> bool:
         return self.rpc("JSONRPC.Ping") == "pong"
 

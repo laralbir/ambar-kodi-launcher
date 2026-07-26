@@ -81,6 +81,13 @@
   .source-badge.active.kodi .dot{background:var(--kodi); box-shadow:0 0 8px var(--kodi);}
   .source-badge.active.spotify{color:var(--spotify); border-color:var(--spotify);}
   .source-badge.active.spotify .dot{background:var(--spotify); box-shadow:0 0 8px var(--spotify);}
+  .playlist-toggle-btn{
+    width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; cursor:pointer; flex:0 0 auto;
+  }
+  .playlist-toggle-btn:active{background:var(--amber-dim); color:var(--amber);}
+  .playlist-toggle-btn.active{color:var(--amber); border-color:var(--amber);}
 
   .track-title{
     font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
@@ -207,6 +214,21 @@
     display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
   }
   #view-library.visible{display:flex;}
+  #view-playlist{
+    display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
+  }
+  #view-playlist.visible{display:flex;}
+  .playlist-content{flex:1; overflow-y:auto; padding:1.2rem;}
+  .playlist-item{
+    display:flex; align-items:center; gap:1rem; padding:0.9rem 1rem; border-radius:8px;
+    border:1px solid var(--line); margin-bottom:0.5rem;
+  }
+  .playlist-item.current{border-color:var(--amber); background:rgba(255,176,32,0.08);}
+  .playlist-item-icon{color:var(--amber); width:1.2rem; text-align:center; flex:0 0 auto;}
+  .playlist-item-info{flex:1; min-width:0;}
+  .playlist-item-title{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .playlist-item-title.current{color:var(--amber);}
+  .playlist-item-sub{font-size:0.85rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .lib-topbar{
     flex:0 0 auto; height:8vh; display:flex; align-items:center; justify-content:space-between;
     padding: 0 1.2rem; border-bottom:1px solid var(--line); background: var(--panel);
@@ -338,6 +360,7 @@
     <div class="now-playing">
       <div class="source-row">
         <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
+        <div class="playlist-toggle-btn" id="playlist-toggle-btn" title="Lista de reproducción">☰</div>
       </div>
       <div class="track-title" id="track-title"><span class="marquee-inner">Nada sonando</span></div>
       <div class="track-meta" id="track-meta"><span class="marquee-inner">Elige música desde la biblioteca o desde Spotify en tu móvil</span></div>
@@ -389,6 +412,19 @@
       </div>
     </div>
     <div class="lib-content" id="lib-content">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+  <!-- CURRENT PLAYLIST VIEW -->
+  <div id="view-playlist">
+    <div class="lib-topbar">
+      <div class="lib-topbar-left">
+        <div class="back-btn" id="playlist-btn-back">←</div>
+        <div class="lib-title">Lista de reproducción</div>
+      </div>
+    </div>
+    <div class="playlist-content" id="playlist-content">
       <!-- Injected by JS -->
     </div>
   </div>
@@ -469,7 +505,10 @@
     console.log("Conectado por WebSockets al servidor local");
     // Pedir estado inicial
     fetch(API_BASE + "/api/now-playing").then(r=>r.json()).then(render);
-    fetch(API_BASE + "/api/config").then(r=>r.json()).then(cfg => applyVuMeterStyle(cfg.VU_METER_STYLE)).catch(()=>{});
+    fetch(API_BASE + "/api/config").then(r=>r.json()).then(cfg => {
+      applyVuMeterStyle(cfg.VU_METER_STYLE);
+      applyPlaylistVisibility(!!cfg.SHOW_PLAYLIST);
+    }).catch(()=>{});
   });
 
   // ---------- VU-METER (nivel real de audio, estereo) ----------
@@ -687,7 +726,55 @@
       img.style.display = "none";
       ph.style.display = "flex";
     }
+
+    if(showPlaylist) refreshPlaylist();
   }
+
+  // ---------- LISTA DE REPRODUCCIÓN ACTUAL ----------
+  let showPlaylist = false;
+
+  function applyPlaylistVisibility(visible){
+    showPlaylist = visible;
+    el("view-playlist").classList.toggle("visible", visible);
+    el("playlist-toggle-btn").classList.toggle("active", visible);
+    if(visible) refreshPlaylist();
+  }
+
+  function togglePlaylistVisibility(visible){
+    applyPlaylistVisibility(visible);
+    fetch(API_BASE + "/api/config", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({SHOW_PLAYLIST: visible})
+    }).catch(()=>{});
+  }
+
+  async function refreshPlaylist(){
+    try{
+      const res = await fetch(API_BASE + "/api/now-playing/playlist");
+      const items = await res.json();
+      renderPlaylist(items);
+    }catch(e){}
+  }
+
+  function renderPlaylist(items){
+    const content = el("playlist-content");
+    if(!items || items.length === 0){
+      content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay lista de reproducción activa.</div>`;
+      return;
+    }
+    content.innerHTML = items.map(it => `
+      <div class="playlist-item ${it.current ? 'current' : ''}">
+        <div class="playlist-item-icon">${it.current ? '▶' : '♪'}</div>
+        <div class="playlist-item-info">
+          <div class="playlist-item-title ${it.current ? 'current' : ''}">${it.title}</div>
+          ${it.artist ? `<div class="playlist-item-sub">${it.artist}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  el("playlist-toggle-btn").addEventListener("click", () => togglePlaylistVisibility(!showPlaylist));
+  el("playlist-btn-back").addEventListener("click", () => togglePlaylistVisibility(false));
 
   // Playback Control
   async function control(action){

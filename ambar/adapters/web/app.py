@@ -16,6 +16,10 @@ def create_app(container) -> Flask:
     def now_playing():
         return jsonify(asdict(container.now_playing_service.get_state()))
 
+    @app.route("/api/now-playing/playlist")
+    def now_playing_playlist():
+        return jsonify(container.now_playing_service.get_playlist())
+
     @app.route("/api/art")
     def art_proxy():
         path = request.args.get("path", "")

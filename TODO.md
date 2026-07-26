@@ -31,11 +31,9 @@ de aquí.
 
 ## Pendiente
 
-- **VU-meter**: nivel real de audio, estéreo (L/R), configurable
-  (barras LED / aguja vintage). Implementado y verificado en macOS;
-  **la ruta Windows (WASAPI vía `soundcard`) sigue sin probar en
-  hardware/VM Windows real** — validar en el mini PC antes de dar por
-  cerrado.
+- **VU-meter en el mini PC real**: verificado en macOS y en una VM
+  Windows 11 ARM64 (ver `CHANGELOG.md`) — pendiente solo confirmarlo
+  también en el hardware Windows real (Intel N100).
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se
@@ -67,12 +65,6 @@ de aquí.
   - Evitar el copy/paste manual de URLs para autorizar.
   - Wizard inicial de configuración si no hay `config.json` previo.
   - Poder relanzar ese wizard en cualquier momento desde Ajustes.
-- Lista de reproducción actual visible en el home: da igual si viene
-  de un artista, álbum, carpeta, CD o de Spotify, debe mostrarse la
-  lista completa (no solo la pista actual) con la canción en curso
-  resaltada. La lista se puede ocultar/mostrar, y ese estado
-  (visible/oculta) debe persistir entre sesiones (como el resto de
-  ajustes, vía `config.json`/`/api/config`).
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -110,3 +102,9 @@ de aquí.
   álbum completo" al ver sus canciones), no solo una canción suelta.
   Kodi ya soporta `artistid`/`albumid` en `Playlist.Add` — expande
   solo la lista de canciones correspondiente.
+- Lista de reproducción actual visible desde el home (botón ☰ junto a
+  la fuente activa): muestra la playlist completa de Kodi
+  (`Playlist.GetItems`) o la cola de Spotify (`sp.queue()`) según la
+  fuente activa, con la pista en curso resaltada. Se puede
+  ocultar/mostrar, y ese estado persiste entre sesiones vía
+  `SHOW_PLAYLIST` en `config.json`/`/api/config`.

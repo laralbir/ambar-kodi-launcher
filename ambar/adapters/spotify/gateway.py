@@ -56,6 +56,32 @@ class SpotifyGateway:
         except Exception:
             pass
 
+    def get_playlist(self) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            data = sp.queue()
+        except Exception:
+            return []
+        if not data:
+            return []
+        playlist = []
+        current = data.get("currently_playing")
+        if current:
+            playlist.append({
+                "title": current.get("name", ""),
+                "artist": ", ".join(a["name"] for a in current.get("artists", [])),
+                "current": True,
+            })
+        for item in data.get("queue", []):
+            playlist.append({
+                "title": item.get("name", ""),
+                "artist": ", ".join(a["name"] for a in item.get("artists", [])),
+                "current": False,
+            })
+        return playlist
+
     def is_configured(self) -> bool:
         return self._client() is not None
 

@@ -5,14 +5,18 @@ from ambar.domain.playback import PlaybackState
 
 
 class FakeSource:
-    def __init__(self, state: PlaybackState | None = None):
+    def __init__(self, state: PlaybackState | None = None, playlist: list | None = None):
         self._state = state
+        self._playlist = playlist if playlist is not None else []
 
     def get_state(self):
         return self._state
 
     def control(self, action):
         pass
+
+    def get_playlist(self):
+        return self._playlist
 
 
 def test_kodi_wins_over_spotify_when_both_active():
@@ -84,3 +88,25 @@ def test_poll_spotify_emits_when_kodi_not_last_known_source():
 
     assert len(received) == 1
     assert received[0].state.source == "spotify"
+
+
+def test_get_playlist_from_kodi_when_kodi_is_source():
+    kodi_playlist = [{"title": "A", "artist": "X", "current": True}]
+    kodi = FakeSource(PlaybackState(source="kodi", playing=True), playlist=kodi_playlist)
+    service = NowPlayingService(kodi, FakeSource(None), EventBus())
+
+    assert service.get_playlist() == kodi_playlist
+
+
+def test_get_playlist_from_spotify_when_spotify_is_source():
+    spotify_playlist = [{"title": "B", "artist": "Y", "current": True}]
+    spotify = FakeSource(PlaybackState(source="spotify", playing=True), playlist=spotify_playlist)
+    service = NowPlayingService(FakeSource(None), spotify, EventBus())
+
+    assert service.get_playlist() == spotify_playlist
+
+
+def test_get_playlist_empty_when_nothing_playing():
+    service = NowPlayingService(FakeSource(None), FakeSource(None), EventBus())
+
+    assert service.get_playlist() == []

@@ -44,6 +44,17 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   ya se pasaba) y añadir el botón en el frontend. Verificado en vivo
   contra Kodi real: reproducir por `artistid` expande y arranca la
   playlist correctamente.
+- **Lista de reproducción actual visible desde el home**: botón ☰
+  junto a la fuente activa que abre la playlist completa (no solo la
+  pista actual), con la canción en curso resaltada. Nuevo
+  `NowPlayingService.get_playlist()` (delega en `KodiGateway.get_playlist()`,
+  vía `Playlist.GetItems` + `Player.GetProperties(position)`, o
+  `SpotifyGateway.get_playlist()`, vía `sp.queue()`, según la fuente
+  activa), expuesto en `GET /api/now-playing/playlist`. El estado
+  visible/oculta persiste entre sesiones (`SHOW_PLAYLIST` en
+  `config.json`/`/api/config`, igual que `VU_METER_STYLE`). Verificado
+  en vivo contra Kodi real (playlist con pista en curso resaltada
+  correctamente).
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

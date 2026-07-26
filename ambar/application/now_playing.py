@@ -21,6 +21,14 @@ class NowPlayingService:
         self.last_source = state.source
         return state
 
+    def get_playlist(self) -> list:
+        state = self.get_state()
+        if state.source == "kodi":
+            return self._kodi.get_playlist()
+        elif state.source == "spotify":
+            return self._spotify.get_playlist()
+        return []
+
     def publish_current_state(self) -> None:
         self._event_bus.publish(PlaybackStateChanged(self.get_state()))
 
