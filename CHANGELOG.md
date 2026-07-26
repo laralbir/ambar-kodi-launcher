@@ -200,6 +200,22 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   al arrancar con `ModuleNotFoundError: No module named 'dns'`.
   (Obsoleto: ver "Removed" — `dnspython` era una dependencia transitiva
   de eventlet).
+- **`python build.py` fallaba en Windows** con
+  `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc1...` al
+  generar el `.exe`. Causa: `write_windows_version_file()` escribía
+  `_version_info.txt` con `open(..., "w")` sin `encoding="utf-8"`
+  explícito; en macOS el encoding por defecto ya es UTF-8, pero en
+  Windows usa la codificación del sistema (`cp1252` en Windows en
+  español), que codifica la "Á" de "Ámbar" como el byte `0xC1` —
+  inválido cuando PyInstaller relee el fichero forzando UTF-8.
+  Detectado y corregido probando el build real en una VM Windows 11.
+
+### Changed
+- Documentación (`CLAUDE.md`, `.agents`, `docs/index.html`) ya no
+  menciona el addon Chorus2 para la vista de biblioteca — quedó
+  obsoleto desde que la navegación de artistas/álbumes/canciones/
+  carpetas/CD se implementó de forma nativa contra la API JSON-RPC de
+  Kodi, sin iframe ni webinterface externo.
 
 ## [0.1.0] - 2026-07-26
 

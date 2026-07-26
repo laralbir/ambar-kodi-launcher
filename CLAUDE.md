@@ -64,11 +64,12 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
   - sirve `index.html` en `/`.
   - El navegador del kiosko debe apuntar a `http://localhost:5005`
     (no abrir `index.html` como archivo suelto).
-- **Vista de biblioteca**: dentro del propio launcher, botón "Biblioteca"
-  abre en iframe el webinterface de Kodi/Chorus2 (`http://localhost:8080`)
-  para navegar FLAC/MP3/CD, con botón de volver.
-- Kodi debe tener activado `Ajustes > Servicios > Control > Permitir
-  control remoto vía HTTP` y el addon **Chorus2** instalado.
+- **Vista de biblioteca**: dentro del propio launcher, navegación nativa
+  de artistas/álbumes/canciones/carpetas/CD contra la API JSON-RPC de
+  Kodi (`ambar/adapters/kodi/gateway.py`, expuesto vía
+  `/api/library/kodi/*`) — sin iframe ni webinterface externo.
+- Kodi solo necesita tener activado `Ajustes > Servicios > Control >
+  Permitir control remoto vía HTTP`.
 
 ## Diseño visual (launcher)
 

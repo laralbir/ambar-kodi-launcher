@@ -80,7 +80,7 @@ def write_windows_version_file(version: str) -> str:
         ],
     )
     version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_version_info.txt")
-    with open(version_file, "w") as f:
+    with open(version_file, "w", encoding="utf-8") as f:
         f.write(str(info))
     return version_file
 

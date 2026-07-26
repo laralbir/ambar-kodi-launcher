@@ -32,7 +32,7 @@ El backlog vive en `TODO.md`. Al completar algo, muévelo a
 - **Frontend:** Vanilla HTML/CSS/JS contenido en `index.html` (no tocado por el refactor del backend).
 - **Empaquetado:** PyInstaller (`build.py` / `Ambar.spec`, este último autogenerado, no versionado) hacia `.exe` (Windows) / `.app` (macOS) con `pywebview` como ventana nativa. El binario se llama siempre `Ambar` (sin versión en el nombre; la versión va en el manifest).
 - **Reproductores:**
-  - **Kodi:** Principal. Reproduce FLAC, MP3 y CD de audio (`cdda://`). Emplea el addon Chorus2 para la vista de biblioteca.
+  - **Kodi:** Principal. Reproduce FLAC, MP3 y CD de audio (`cdda://`). Navegación de biblioteca nativa vía JSON-RPC (`ambar/adapters/kodi/gateway.py`), sin webinterface externo.
   - **Spotify:** Vía API web (Spotipy) y Spotify Connect. El audio se lanza desde móvil y se refleja/controla en el panel.
 
 ## Notas de macOS (entorno de desarrollo)
