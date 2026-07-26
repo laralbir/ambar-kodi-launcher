@@ -1,0 +1,31 @@
+# Antigravity / Gemini Agent Context: Ámbar
+
+## Contexto del Proyecto
+**Nombre:** Ámbar
+**Descripción:** Panel táctil para una estación multimedia HiFi (Mini PC + amplificador Pioneer SA-508).
+**Uso previsto:** El launcher se ejecuta en una pantalla panorámica baja (1920x720) y controla tanto la reproducción en Kodi como en Spotify.
+
+## Arquitectura y Stack Tecnológico
+- **Sistema Operativo:** Windows 11 (seleccionado para evitar fricción con drivers de pantalla táctil y Spotify).
+- **Backend:** Python con Flask (`kiosk_server.py`). Sirve como unificador de estado entre Kodi (vía JSON-RPC) y Spotify (vía Spotipy).
+- **Frontend:** Vanilla HTML/CSS/JS contenido en `index.html`.
+- **Reproductores:**
+  - **Kodi:** Principal. Reproduce FLAC, MP3 y CD de audio (`cdda://`). Emplea el addon Chorus2 para la vista de biblioteca.
+  - **Spotify:** Vía API web (Spotipy) y Spotify Connect. El audio se lanza desde móvil y se refleja/controla en el panel.
+
+## Reglas de Diseño y UI
+- **Estética:** "Receptor HiFi vintage".
+- **Paleta de Colores:** Fondo gunmetal (`#17181a` / `#1f2124`) con acentos en ámbar tipo display VFD/LED (`#ffb020`).
+- **Tipografía:** Oswald (títulos), JetBrains Mono (tiempos/datos), Inter (interfaz general).
+- **Resolución Objetivo:** Estrictamente diseñado para **1920x720** (pantalla completa).
+
+## Tareas Pendientes o Consideraciones Futuras
+- Configurar y validar credenciales de la API de Spotify (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`).
+- Validar layout físico en la pantalla táctil.
+- Posible creación de `requirements.txt` y documentación de instalación.
+
+## Reglas para el Agente (Antigravity / Gemini)
+1. NO crear múltiples páginas HTML; la UI vive enteramente en `index.html`.
+2. NO intentar embeber el reproductor web de Spotify; usar exclusivamente la API REST para control remoto.
+3. Preservar la estética ámbar/gunmetal y las tipografías seleccionadas en todos los estilos futuros.
+4. Cualquier nueva ruta en el backend debe ser definida explícitamente en `kiosk_server.py`.

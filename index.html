@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ámbar</title>
+<!-- Diseñado para 1920x720 a pantalla completa (kiosko). -->
+<meta name="target-viewport" content="1920x720">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17181a;
+    --panel: #1f2124;
+    --panel-raised: #26282c;
+    --line: #34363a;
+    --text: #f2ede4;
+    --text-dim: #9a9a9e;
+    --amber: #ffb020;
+    --amber-dim: #7a5a1c;
+    --kodi: #5aa9e6;
+    --spotify: #1DB954;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
+  html,body{margin:0; padding:0; width:100%; height:100%; background:var(--bg); overflow:hidden;
+    font-family:'Inter',sans-serif; color:var(--text);}
+  #app{position:relative; width:100vw; height:100vh;}
+
+  /* brushed-metal texture on the base panel */
+  .brushed{
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px),
+      linear-gradient(180deg, #1c1d20 0%, #17181a 100%);
+  }
+
+  /* ---------- HOME VIEW ----------
+     Ajustado para el formato real del panel: 1920x720 (kiosko a
+     pantalla completa). Se usa vh como unidad principal porque la
+     altura (720px) es la dimensión que manda en esta pantalla
+     panorámica baja; vw se reserva para huecos horizontales. */
+  #view-home{
+    display:flex; align-items:center; width:100%; height:100%;
+    padding: 3.2vh 2.5vw; gap: 2.5vw;
+  }
+
+  .art-frame{
+    flex: 0 0 auto;
+    height: 82vh; max-height: 620px; min-height: 260px;
+    aspect-ratio: 1/1; width: auto;
+    border-radius: 10px;
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 6px #141517, 0 6px 18px rgba(0,0,0,0.4);
+    overflow:hidden;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .art-frame img{width:100%; height:100%; object-fit:cover; display:block;}
+  .art-frame .placeholder{
+    font-family:'JetBrains Mono', monospace; color: var(--text-dim); font-size: 0.8rem;
+    letter-spacing: 0.08em; text-align:center; padding: 1rem;
+  }
+  .art-frame .placeholder svg{width:38%; opacity:0.35; margin-bottom:0.6rem;}
+
+  .now-playing{
+    flex: 1 1 auto; min-width:0;
+    display:flex; flex-direction:column; justify-content:center; gap: 1.8vh;
+  }
+
+  .source-row{display:flex; align-items:center; gap:0.6rem;}
+  .source-badge{
+    display:inline-flex; align-items:center; gap:0.5rem;
+    font-family:'JetBrains Mono', monospace; font-size:0.85rem; letter-spacing:0.12em;
+    text-transform:uppercase; padding: 0.4rem 0.85rem; border-radius: 999px;
+    border:1px solid var(--line); color: var(--text-dim);
+  }
+  .source-badge .dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim);}
+  .source-badge.active.kodi{color:var(--kodi); border-color:var(--kodi);}
+  .source-badge.active.kodi .dot{background:var(--kodi); box-shadow:0 0 8px var(--kodi);}
+  .source-badge.active.spotify{color:var(--spotify); border-color:var(--spotify);}
+  .source-badge.active.spotify .dot{background:var(--spotify); box-shadow:0 0 8px var(--spotify);}
+
+  .track-title{
+    font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
+    font-size: clamp(2rem, 4.6vh, 3.4rem); letter-spacing:0.01em; line-height:1.1;
+    color: var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .track-meta{
+    font-size: clamp(1rem, 2.2vh, 1.3rem); color: var(--text-dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  .vu-bar{
+    height: 14px; border-radius:4px; background: #101113; border:1px solid var(--line);
+    overflow:hidden; margin-top:0.6vh; position:relative;
+  }
+  .vu-fill{
+    height:100%; width:0%; transition: width 0.6s linear;
+    background-image: repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 7px, #0000 7px, #0000 10px);
+    box-shadow: 0 0 12px rgba(255,176,32,0.35);
+  }
+  .time-row{display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace;
+    font-size:0.85rem; color:var(--text-dim); margin-top:0.3vh;}
+
+  .transport{display:flex; align-items:center; gap:1.1rem; margin-top:0.6vh;}
+  .tbtn{
+    width:64px; height:64px; border-radius:50%; border:1px solid var(--line);
+    background: var(--panel-raised); color:var(--text); display:flex; align-items:center; justify-content:center;
+    font-size:1.4rem; cursor:pointer;
+  }
+  .tbtn:active{background: var(--amber-dim);}
+  .tbtn.play{width:80px; height:80px; font-size:1.7rem; background: var(--amber); color:#241a06; border-color:var(--amber);}
+  .tbtn.play:active{filter:brightness(0.85);}
+
+  .side-actions{
+    flex: 0 0 auto; width: 15.5vw; max-width:300px; min-width:210px;
+    height: 82vh; max-height: 620px; min-height: 260px;
+    display:flex; flex-direction:column; gap:1.6vh;
+  }
+  .action-card{
+    flex: 1 1 0;
+    border-radius:10px; border:1px solid var(--line); background: var(--panel);
+    display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+    padding: 0 1.3rem; cursor:pointer; gap:0.3rem;
+  }
+  .action-card:active{background:var(--panel-raised);}
+  .action-card .eyebrow{font-family:'JetBrains Mono', monospace; font-size:0.78rem; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--text-dim);}
+  .action-card .label{font-family:'Oswald', sans-serif; font-weight:600; font-size:1.5rem; text-transform:uppercase;}
+  .action-card.kodi{border-left:4px solid var(--kodi);}
+  .action-card.spotify{border-left:4px solid var(--spotify); opacity:0.85;}
+  .action-card .hint{font-size:0.85rem; color:var(--text-dim);}
+
+  /* ---------- LIBRARY (Kodi/Chorus2) VIEW ---------- */
+  #view-library{
+    display:none; position:absolute; inset:0; flex-direction:column;
+  }
+  #view-library.visible{display:flex;}
+  .lib-topbar{
+    flex:0 0 auto; height:7vh; display:flex; align-items:center; gap:0.8rem;
+    padding: 0 1.2rem; border-bottom:1px solid var(--line); background: var(--panel);
+  }
+  .back-btn{
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:1.1rem;
+  }
+  .lib-title{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.04em; font-size:0.95rem; color:var(--text-dim);}
+  #kodi-frame{flex:1 1 auto; width:100%; border:0; background:#000;}
+</style>
+</head>
+<body class="brushed">
+<div id="app">
+
+  <!-- HOME: now playing + controls -->
+  <div id="view-home">
+    <div class="art-frame" id="art-frame">
+      <div class="placeholder" id="art-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/>
+        </svg>
+        SIN REPRODUCCIÓN
+      </div>
+      <img id="art-img" style="display:none;">
+    </div>
+
+    <div class="now-playing">
+      <div class="source-row">
+        <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
+      </div>
+      <div class="track-title" id="track-title">Nada sonando</div>
+      <div class="track-meta" id="track-meta">Elige música desde la biblioteca o desde Spotify en tu móvil</div>
+
+      <div class="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
+      <div class="time-row"><span id="pct-label">0%</span><span id="state-label">—</span></div>
+
+      <div class="transport">
+        <div class="tbtn" id="btn-prev">⏮</div>
+        <div class="tbtn play" id="btn-play">⏯</div>
+        <div class="tbtn" id="btn-next">⏭</div>
+      </div>
+    </div>
+
+    <div class="side-actions">
+      <div class="action-card kodi" id="open-library">
+        <div class="eyebrow">FLAC · MP3 · CD</div>
+        <div class="label">Biblioteca</div>
+        <div class="hint">Buscar y elegir música</div>
+      </div>
+      <div class="action-card spotify">
+        <div class="eyebrow">Spotify Connect</div>
+        <div class="label">Spotify</div>
+        <div class="hint">Elige el destino "HiFi" desde tu móvil</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY: embedded Kodi web remote (Chorus2) -->
+  <div id="view-library">
+    <div class="lib-topbar">
+      <div class="back-btn" id="btn-back">←</div>
+      <div class="lib-title">Biblioteca · Kodi</div>
+    </div>
+    <iframe id="kodi-frame" src="about:blank"></iframe>
+  </div>
+
+</div>
+
+<script>
+  // Same-origin API served by kiosk_server.py — no CORS issues.
+  const API_BASE = "";
+  const KODI_WEB_URL = "http://localhost:8080"; // Chorus2 / Kodi webinterface
+
+  const el = (id) => document.getElementById(id);
+  let currentSource = null;
+
+  async function refresh(){
+    try{
+      const res = await fetch(API_BASE + "/api/now-playing");
+      const data = await res.json();
+      render(data);
+    }catch(e){
+      render({source:null, playing:false, title:"", artist:"", album:"", art:null, progress:0});
+    }
+  }
+
+  function render(data){
+    currentSource = data.source;
+    const badge = el("source-badge");
+    badge.className = "source-badge" + (data.source ? " active " + data.source : "");
+    el("source-label").textContent = data.source === "kodi" ? "Kodi"
+      : data.source === "spotify" ? "Spotify" : "Sin fuente";
+
+    if(data.source){
+      el("track-title").textContent = data.title || "—";
+      el("track-meta").textContent = [data.artist, data.album].filter(Boolean).join(" · ");
+    }else{
+      el("track-title").textContent = "Nada sonando";
+      el("track-meta").textContent = "Elige música desde la biblioteca o desde Spotify en tu móvil";
+    }
+
+    el("vu-fill").style.width = (data.progress || 0) + "%";
+    el("pct-label").textContent = Math.round(data.progress || 0) + "%";
+    el("state-label").textContent = data.playing ? "Reproduciendo" : (data.source ? "Pausa" : "—");
+
+    const img = el("art-img"), ph = el("art-placeholder");
+    if(data.art){
+      img.src = data.art;
+      img.style.display = "block";
+      ph.style.display = "none";
+    }else{
+      img.style.display = "none";
+      ph.style.display = "flex";
+    }
+  }
+
+  async function control(action){
+    if(!currentSource) return;
+    try{
+      await fetch(API_BASE + "/api/control", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({action, source: currentSource})
+      });
+    }catch(e){/* silent */}
+    setTimeout(refresh, 300);
+  }
+
+  el("btn-play").addEventListener("click", () => control("playpause"));
+  el("btn-next").addEventListener("click", () => control("next"));
+  el("btn-prev").addEventListener("click", () => control("previous"));
+
+  el("open-library").addEventListener("click", () => {
+    el("kodi-frame").src = KODI_WEB_URL;
+    el("view-library").classList.add("visible");
+  });
+  el("btn-back").addEventListener("click", () => {
+    el("view-library").classList.remove("visible");
+    el("kodi-frame").src = "about:blank";
+  });
+
+  refresh();
+  setInterval(refresh, 2500);
+</script>
+</body>
+</html>
