@@ -2,8 +2,9 @@ from ambar.application.library import LibraryService
 
 
 class FakeKodiGateway:
-    def __init__(self):
+    def __init__(self, reachable=True):
         self.calls = []
+        self._reachable = reachable
 
     def stop(self):
         self.calls.append("stop")
@@ -11,10 +12,14 @@ class FakeKodiGateway:
     def play(self, item):
         self.calls.append(("play", item))
 
+    def is_reachable(self):
+        return self._reachable
+
 
 class FakeSpotifyGateway:
-    def __init__(self):
+    def __init__(self, configured=True):
         self.calls = []
+        self._configured = configured
 
     def pause(self):
         self.calls.append("pause")
@@ -22,6 +27,9 @@ class FakeSpotifyGateway:
     def play_context(self, context_uri):
         self.calls.append(("play_context", context_uri))
         return True
+
+    def is_configured(self):
+        return self._configured
 
 
 def test_kodi_play_pauses_spotify_before_playing():
@@ -74,3 +82,15 @@ def test_spotify_play_works_when_kodi_not_running():
 
     assert ok is True
     assert spotify.calls == [("play_context", "spotify:playlist:abc")]
+
+
+def test_kodi_status_reflects_reachability():
+    service = LibraryService(FakeKodiGateway(reachable=False), FakeSpotifyGateway())
+
+    assert service.kodi_status() == {"available": False}
+
+
+def test_spotify_status_reflects_configuration():
+    service = LibraryService(FakeKodiGateway(), FakeSpotifyGateway(configured=False))
+
+    assert service.spotify_status() == {"available": False}

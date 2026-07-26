@@ -46,6 +46,14 @@ def create_app(container) -> Flask:
 
     # ---------- biblioteca ----------
 
+    @app.route("/api/library/kodi/status")
+    def kodi_status():
+        return jsonify(container.library_service.kodi_status())
+
+    @app.route("/api/library/spotify/status")
+    def spotify_status():
+        return jsonify(container.library_service.spotify_status())
+
     @app.route("/api/library/kodi/artists")
     def kodi_artists():
         return jsonify(container.library_service.kodi_artists())

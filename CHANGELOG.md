@@ -8,6 +8,15 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Kodi/Spotify se deshabilitan solos en el home si no están
+  disponibles**: nuevo `KodiGateway.is_reachable()` (`JSONRPC.Ping`) y
+  `SpotifyGateway.is_configured()` (credenciales + token cacheado
+  válido), expuestos vía `GET /api/library/kodi/status` y
+  `GET /api/library/spotify/status`. El frontend comprueba ambos al
+  cargar y cada 15s, y deshabilita la tarjeta de acceso y las pestañas
+  correspondientes (`open-library-kodi`/`open-library-spotify`,
+  pestañas "Artistas"/"Carpetas"/"CD"/"Listas") en vez de dejar entrar
+  a una biblioteca que no va a devolver nada.
 - **VU-metro estéreo con nivel real de audio** (un medidor por canal,
   L/R), configurable desde Ajustes entre dos estilos ("Barras LED" o
   "Aguja vintage"). El nivel se mide capturando de verdad la salida de

@@ -11,6 +11,12 @@ class LibraryService:
         self._kodi = kodi_gateway
         self._spotify = spotify_gateway
 
+    def kodi_status(self) -> dict:
+        return {"available": self._kodi.is_reachable()}
+
+    def spotify_status(self) -> dict:
+        return {"available": self._spotify.is_configured()}
+
     def kodi_artists(self) -> list:
         return self._kodi.get_artists()
 

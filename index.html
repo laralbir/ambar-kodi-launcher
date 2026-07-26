@@ -183,6 +183,7 @@
   .action-card.spotify{border-left:4px solid var(--spotify); opacity:0.85;}
   .action-card.settings{flex: 0 0 auto; height: 12vh; border-left:4px solid var(--line);}
   .action-card .hint{font-size:0.85rem; color:var(--text-dim);}
+  .action-card.disabled{opacity:0.35; cursor:default; pointer-events:none;}
 
   /* ---------- LIBRARY VIEW (NATIVE) ---------- */
   #view-library{
@@ -363,10 +364,10 @@
         <div class="lib-title" id="lib-title">Biblioteca</div>
       </div>
       <div class="lib-topbar-right" id="lib-tabs">
-        <div class="lib-tab active" data-tab="artists">Artistas (Kodi)</div>
-        <div class="lib-tab" data-tab="folders">Carpetas</div>
+        <div class="lib-tab active" data-tab="artists" id="lib-tab-artists">Artistas (Kodi)</div>
+        <div class="lib-tab" data-tab="folders" id="lib-tab-folders">Carpetas</div>
         <div class="lib-tab disabled" data-tab="cd" id="lib-tab-cd">CD</div>
-        <div class="lib-tab" data-tab="spotify-pl">Listas (Spotify)</div>
+        <div class="lib-tab" data-tab="spotify-pl" id="lib-tab-spotify-pl">Listas (Spotify)</div>
       </div>
     </div>
     <div class="lib-content" id="lib-content">
@@ -681,11 +682,13 @@
   });
 
   el("open-library-kodi").addEventListener("click", () => {
+    if(el("open-library-kodi").classList.contains("disabled")) return;
     openLibrary("artists");
     refreshCdTabAvailability();
   });
 
   let cdDetectionReliable = true;
+  let kodiAvailable = true;
 
   function refreshCdTabAvailability(){
     fetch("/api/library/kodi/cd-available").then(r => r.json()).then(data => {
@@ -693,11 +696,36 @@
       // Si la deteccion no es fiable en este SO (macOS, ver backend), no se
       // deshabilita nunca la pestaña -- se avisa al entrar en vez de ocultar
       // una funcion que podria funcionar igualmente.
-      const disable = data.detection_reliable && !data.available;
+      const disable = !kodiAvailable || (data.detection_reliable && !data.available);
       el("lib-tab-cd").classList.toggle("disabled", disable);
     }).catch(() => {});
   }
-  el("open-library-spotify").addEventListener("click", () => openLibrary("spotify-pl"));
+
+  // Deshabilita el acceso a Kodi/Spotify si no estan disponibles (Kodi no
+  // responde al JSON-RPC, o Spotify no tiene credenciales/autorizacion
+  // valida todavia) -- evita dejar entrar a una biblioteca que no va a
+  // devolver nada util. Se comprueba al cargar y cada 15s (puede cambiar
+  // en caliente: Kodi se apaga, se autoriza Spotify, etc.).
+  function refreshLibraryAvailability(){
+    fetch("/api/library/kodi/status").then(r => r.json()).then(data => {
+      kodiAvailable = data.available;
+      el("open-library-kodi").classList.toggle("disabled", !kodiAvailable);
+      el("lib-tab-artists")?.classList.toggle("disabled", !kodiAvailable);
+      el("lib-tab-folders")?.classList.toggle("disabled", !kodiAvailable);
+      refreshCdTabAvailability();
+    }).catch(() => {});
+    fetch("/api/library/spotify/status").then(r => r.json()).then(data => {
+      el("open-library-spotify").classList.toggle("disabled", !data.available);
+      el("lib-tab-spotify-pl")?.classList.toggle("disabled", !data.available);
+    }).catch(() => {});
+  }
+  refreshLibraryAvailability();
+  setInterval(refreshLibraryAvailability, 15000);
+
+  el("open-library-spotify").addEventListener("click", () => {
+    if(el("open-library-spotify").classList.contains("disabled")) return;
+    openLibrary("spotify-pl");
+  });
 
   async function loadView(viewNode) {
     const content = el("lib-content");

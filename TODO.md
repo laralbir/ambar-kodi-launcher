@@ -87,11 +87,6 @@ de aquí.
   `.track-title`/`.track-meta`): que se desplace lateralmente hasta
   leerse entero, con una pausa inicial antes de empezar a moverse,
   como en los displays de las autorradios.
-- Deshabilitar la opción de navegar en la pestaña de Kodi o de Spotify
-  si esa fuente no está en ejecución o no está correctamente
-  configurada (p. ej. Kodi no responde al JSON-RPC, o Spotify no
-  tiene credenciales/autorización válidas todavía) — hoy las pestañas
-  siempre están accesibles aunque la fuente no esté disponible.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 
@@ -111,3 +106,6 @@ de aquí.
 - Exclusión mutua Kodi ↔ Spotify: al reproducir algo desde la
   biblioteca de una fuente se para automáticamente la otra si estaba
   sonando.
+- Las pestañas/accesos de Kodi y Spotify se deshabilitan solos si esa
+  fuente no responde (Kodi) o no está autorizada todavía (Spotify),
+  comprobado al cargar y cada 15s.

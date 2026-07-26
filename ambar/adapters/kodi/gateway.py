@@ -118,6 +118,9 @@ class KodiGateway:
         })
         return res.get("files", []) if res else []
 
+    def is_reachable(self) -> bool:
+        return self.rpc("JSONRPC.Ping") == "pong"
+
     def has_audio_cd(self) -> bool:
         """True si Kodi detecta un CD de audio (Redbook/CDDA) reproducible
         en la unidad -- no confundir con un disco de datos con FLAC/MP3

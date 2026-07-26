@@ -43,6 +43,9 @@ class SpotifyGateway:
             return None
         return spotipy.Spotify(auth=token_info["access_token"])
 
+    def is_configured(self) -> bool:
+        return self._client() is not None
+
     def get_state(self) -> PlaybackState | None:
         sp = self._client()
         if not sp:
