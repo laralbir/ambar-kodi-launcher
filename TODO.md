@@ -31,10 +31,6 @@ de aquí.
 
 ## Pendiente
 
-- **Mejorar la imagen por defecto cuando una canción no tiene
-  carátula** — ahora mismo se muestra el icono de nota musical
-  genérico (`#art-placeholder`); valorar algo más elaborado (silueta
-  de disco/vinilo, gradiente con las iniciales del álbum, etc.).
 - **VU-meter en el mini PC real**: verificado en macOS y en una VM
   Windows 11 ARM64 (ver `CHANGELOG.md`) — pendiente solo confirmarlo
   también en el hardware Windows real (Intel N100).
@@ -181,6 +177,18 @@ de aquí.
   vuelta, no se duplican), así que toda la lógica de actualización en
   tiempo real sigue funcionando igual estén donde estén.
 - Controles de volumen integrados directamente en el home (fila
-  compacta bajo el transporte: silenciar, −5, slider, +5, %), en vez
+  compacta bajo el VU-metro: silenciar, −5, slider, +5, %), en vez
   de una vista aparte que había que abrir con un icono 🔊. Se sondea
   cada 2s siempre (antes solo mientras la vista estaba abierta).
+- Mejorada la imagen por defecto cuando una canción no tiene carátula:
+  antes era un icono genérico de nota musical, ahora un vinilo con
+  surcos, brillo y etiqueta central en ámbar, acorde a la estética
+  "receptor HiFi vintage" del proyecto.
+- Arreglados los botones de transporte, que no estaban centrados.
+- Arreglados los iconos de volumen, que se repetían (🔊 tanto para
+  "subir" como para el estado "sin silenciar" del botón de
+  silenciar) — ahora son tres iconos distintos (🔈 silenciar/🔇
+  silenciado, 🔉 bajar, 🔊 subir).
+- Aumentado el tamaño de los botones pequeños (volumen, lista de
+  reproducción, ampliar VU-metro) para que sean cómodos en una
+  pantalla táctil (mínimo ~44-48px, no 28-34px como antes).

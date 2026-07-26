@@ -8,9 +8,17 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Imagen por defecto de "sin carátula" rediseñada**: antes un icono
+  genérico de nota musical, ahora un vinilo (surcos, brillo, etiqueta
+  central en ámbar) acorde a la estética "receptor HiFi vintage".
+- **Botones pensados para pantalla táctil**: aumentado el tamaño de
+  los botones pequeños (silenciar/volumen, abrir lista de
+  reproducción, ampliar VU-metro), de 28-34px a 40-52px — por debajo
+  de ~44px son incómodos de acertar con el dedo en la pantalla táctil
+  real del proyecto.
 - **Controles de volumen integrados directamente en el home**, en vez
   de una vista aparte que había que abrir con un icono 🔊 (`#view-volume`,
-  ya retirada): fila compacta bajo el transporte con
+  ya retirada): fila compacta bajo el VU-metro con
   silenciar/−5/slider/+5/porcentaje, siempre visible. Se sondea el
   volumen real cada 2s de forma continua (antes solo mientras la vista
   aparte estaba abierta).
@@ -293,6 +301,14 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `kiosk_server.py` ya no necesita `eventlet.monkey_patch()`.
 
 ### Fixed
+- **Los botones de transporte (⏮/⏯/⏭) no estaban centrados** —
+  `.transport` no tenía `justify-content`, así que quedaban pegados a
+  la izquierda del panel en vez de centrados.
+- **Iconos de volumen repetidos y poco descriptivos**: 🔊 se usaba a
+  la vez para "subir volumen" y para el estado "sin silenciar" del
+  botón de silenciar, indistinguibles entre sí. Ahora son tres iconos
+  distintos: 🔈 (silenciar) / 🔇 (silenciado) para el botón de mute,
+  🔉 para bajar, 🔊 para subir.
 - **`config.json`/`.spotify-cache`/skins no persistían en el binario
   compilado.** Causa raíz: en un `.app`/`.exe` empaquetado con
   PyInstaller, `__file__` no apunta junto al ejecutable real, sino
