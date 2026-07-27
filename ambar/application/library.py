@@ -68,6 +68,18 @@ class LibraryService:
     def spotify_playlist_tracks(self, playlist_id: str | None) -> list:
         return self._spotify.get_playlist_tracks(playlist_id) if playlist_id else []
 
+    def spotify_artists(self) -> list:
+        return self._spotify.get_followed_artists()
+
+    def spotify_artist_albums(self, artist_id: str | None) -> list:
+        return self._spotify.get_artist_albums(artist_id) if artist_id else []
+
+    def spotify_albums(self) -> list:
+        return self._spotify.get_saved_albums()
+
+    def spotify_album_tracks(self, album_id: str | None) -> list:
+        return self._spotify.get_album_tracks(album_id) if album_id else []
+
     def spotify_play(self, context_uri: str | None) -> bool:
         self._kodi.stop()
         return self._spotify.play_context(context_uri)

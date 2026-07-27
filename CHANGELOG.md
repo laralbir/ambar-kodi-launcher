@@ -47,6 +47,22 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   sustituto, en vez de dejar el hueco vacío. Una sola llamada extra a
   `AudioLibrary.GetAlbums` (todos los álbumes de golpe), no una por
   artista.
+- **Enlace de autorización de Spotify clicable**: en Ajustes, el texto
+  `http://127.0.0.1:5005/login` ahora se puede pulsar directamente
+  para abrirlo en el navegador del sistema (`webbrowser.open`, nuevo
+  endpoint `POST /api/system/open-spotify-login`), en vez de tener que
+  copiarlo a mano. Sigue una URL fija en el backend (no acepta una URL
+  arbitraria del cliente) para no exponer un "abridor de URLs"
+  genérico a otros dispositivos de la misma red.
+- **Navegación por artista y álbum en Spotify**: además de "Listas
+  (Spotify)", ahora hay pestañas "Artistas (Spotify)" (artistas
+  seguidos → sus álbumes → sus canciones) y "Álbumes (Spotify)"
+  (álbumes guardados → sus canciones), con "reproducir todo" en cada
+  nivel. Nuevos métodos en `SpotifyGateway` (`get_followed_artists`,
+  `get_artist_albums`, `get_saved_albums`, `get_album_tracks`) y rutas
+  `/api/library/spotify/artists`, `/artist-albums`, `/albums`,
+  `/album-tracks`. La pestaña "Álbumes" de Kodi pasa a llamarse
+  "Álbumes (Kodi)" para distinguirla de la nueva de Spotify.
 
 ### Fixed
 - **Las carátulas no cargaban al navegar por carpetas**: el backend ya

@@ -277,7 +277,7 @@
     padding: 0 1.2rem; border-bottom:1px solid var(--line); background: var(--panel);
   }
   .lib-topbar-left { display:flex; align-items:center; gap:1rem; }
-  .lib-topbar-right { display:flex; gap:0.5rem; }
+  .lib-topbar-right { display:flex; gap:0.5rem; overflow-x:auto; max-width:62vw; }
   
   .back-btn{
     width:45px; height:45px; border-radius:50%; border:1px solid var(--line);
@@ -289,7 +289,7 @@
   
   .lib-tab{
     padding:0.6rem 1rem; border:1px solid var(--line); border-radius:6px; background:var(--panel-raised);
-    color:var(--text-dim); cursor:pointer; font-size:0.9rem; font-weight:500;
+    color:var(--text-dim); cursor:pointer; font-size:0.9rem; font-weight:500; white-space:nowrap; flex:0 0 auto;
   }
   .lib-tab.active{background:var(--text); color:#000; border-color:var(--text);}
   .lib-tab.disabled{opacity:0.35; cursor:default; pointer-events:none;}
@@ -495,9 +495,11 @@
       </div>
       <div class="lib-topbar-right" id="lib-tabs">
         <div class="lib-tab active" data-tab="artists" id="lib-tab-artists">Artistas (Kodi)</div>
-        <div class="lib-tab" data-tab="albums" id="lib-tab-albums">Álbumes</div>
+        <div class="lib-tab" data-tab="albums" id="lib-tab-albums">Álbumes (Kodi)</div>
         <div class="lib-tab" data-tab="folders" id="lib-tab-folders">Carpetas</div>
         <div class="lib-tab disabled" data-tab="cd" id="lib-tab-cd">CD</div>
+        <div class="lib-tab" data-tab="spotify-artists" id="lib-tab-spotify-artists">Artistas (Spotify)</div>
+        <div class="lib-tab" data-tab="spotify-albums" id="lib-tab-spotify-albums">Álbumes (Spotify)</div>
         <div class="lib-tab" data-tab="spotify-pl" id="lib-tab-spotify-pl">Listas (Spotify)</div>
       </div>
     </div>
@@ -564,8 +566,8 @@
               <span class="dot"></span> <span id="spotify-auth-status-text">Comprobando…</span>
             </div>
             <div class="spotify-auth-instructions">
-              <p>Guarda las credenciales y luego abre esta URL <strong>en un navegador normal de este mismo equipo</strong> (Chrome, Edge, Safari... no vale el móvil ni otro PC de la red) para autorizar Spotify:</p>
-              <code>http://127.0.0.1:5005/login</code>
+              <p>Guarda las credenciales y luego pulsa aquí para autorizar Spotify <strong>en el navegador de este mismo equipo</strong> (no vale el móvil ni otro PC de la red):</p>
+              <code id="spotify-login-link" role="button" tabindex="0" style="cursor:pointer; text-decoration:underline;" title="Abrir en el navegador del sistema">http://127.0.0.1:5005/login ↗</code>
               <p style="margin-top:0.6rem;">Solo hace falta una vez — el launcher detecta la autorización solo, sin reiniciar nada.</p>
             </div>
           </div>
@@ -1178,6 +1180,8 @@
     fetch("/api/library/spotify/status").then(r => r.json()).then(data => {
       el("open-library-spotify").classList.toggle("disabled", !data.available);
       el("lib-tab-spotify-pl")?.classList.toggle("disabled", !data.available);
+      el("lib-tab-spotify-artists")?.classList.toggle("disabled", !data.available);
+      el("lib-tab-spotify-albums")?.classList.toggle("disabled", !data.available);
     }).catch(() => {});
   }
   refreshLibraryAvailability();
@@ -1276,6 +1280,59 @@
         }
       }
 
+      else if(viewNode.tab === "spotify-artists") {
+        if(!viewNode.type || viewNode.type === 'root'){
+          el("lib-title").textContent = "Artistas (Spotify)";
+          const res = await fetch("/api/library/spotify/artists");
+          const items = await res.json();
+          if(items.length === 0){
+            content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay artistas seguidos o falta autorizar Spotify en Ajustes.</div>`;
+            return;
+          }
+          renderGridSpotify(items, (item) => {
+            libHistory.push({type: 'albums', tab: 'spotify-artists', id: item.id, title: item.name, context_uri: item.uri});
+            loadView(libHistory[libHistory.length-1]);
+          });
+        }
+        else if(viewNode.type === 'albums'){
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/spotify/artist-albums?artist_id=" + encodeURIComponent(viewNode.id));
+          const items = await res.json();
+          renderGridSpotify(items, (item) => {
+            libHistory.push({type: 'tracks', tab: 'spotify-artists', id: item.id, title: item.name, context_uri: item.uri});
+            loadView(libHistory[libHistory.length-1]);
+          }, "year", `Reproducir todo de ${viewNode.title}`, () => playSpotify("spotify:artist:" + viewNode.id));
+        }
+        else if(viewNode.type === 'tracks'){
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id));
+          const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir álbum completo", () => playSpotify(viewNode.context_uri));
+        }
+      }
+
+      else if(viewNode.tab === "spotify-albums") {
+        if(!viewNode.type || viewNode.type === 'root'){
+          el("lib-title").textContent = "Álbumes (Spotify)";
+          const res = await fetch("/api/library/spotify/albums");
+          const items = await res.json();
+          if(items.length === 0){
+            content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay álbumes guardados o falta autorizar Spotify en Ajustes.</div>`;
+            return;
+          }
+          renderGridSpotify(items, (item) => {
+            libHistory.push({type: 'tracks', tab: 'spotify-albums', id: item.id, title: item.name, context_uri: item.uri});
+            loadView(libHistory[libHistory.length-1]);
+          }, "year");
+        }
+        else if(viewNode.type === 'tracks'){
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id));
+          const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir álbum completo", () => playSpotify(viewNode.context_uri));
+        }
+      }
+
     } catch(err) {
       content.innerHTML = `<div class="loader" style="color:var(--danger)">Error al cargar</div>`;
     }
@@ -1309,20 +1366,32 @@
     });
   }
 
-  function renderGridSpotify(items, onClick) {
-    const html = `<div class="grid-view">` + items.map((it, idx) => {
-      let thumb = (it.images && it.images.length > 0) ? it.images[0].url : '';
+  function renderGridSpotify(items, onClick, subKey=null, playAllLabel=null, playAllAction=null) {
+    let html = '';
+    if(playAllLabel){
+      html += `<div class="list-item" style="border-color:var(--spotify); margin-bottom:1rem;" id="play-all-item-spotify">
+        <div class="list-item-icon" style="color:var(--spotify)">▶</div>
+        <div class="list-item-info"><div class="list-item-title">${playAllLabel}</div></div>
+      </div>`;
+    }
+    // Las imagenes de Spotify ya son URLs https directas (no necesitan pasar
+    // por /api/art como las de Kodi, que requieren resolver un image:// via
+    // el webserver de Kodi).
+    html += `<div class="grid-view">` + items.map((it, idx) => {
+      let thumb = it.thumbnail || '';
       let imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
       return `
       <div class="grid-card" id="sitem-${idx}">
         <div class="grid-card-img">${imgHtml}</div>
         <div class="grid-card-info">
           <div class="grid-card-title">${it.name}</div>
+          ${subKey && it[subKey] ? `<div class="grid-card-sub">${it[subKey]}</div>` : ''}
         </div>
       </div>
       `;
     }).join('') + `</div>`;
     el("lib-content").innerHTML = html;
+    if(playAllLabel) document.getElementById("play-all-item-spotify").addEventListener("click", playAllAction);
     items.forEach((it, idx) => {
       document.getElementById(`sitem-${idx}`).addEventListener("click", () => onClick(it));
     });
@@ -1466,6 +1535,14 @@
       el("spotify-auth-status-text").textContent = data.available ? "Conectado" : "Sin autorizar todavía";
     }catch(e){}
   }
+
+  // El propio webview del kiosko no puede completar el flujo OAuth de
+  // Spotify de forma fiable, asi que este enlace pide al backend que abra
+  // /login en el navegador real del sistema (webbrowser.open), no que
+  // navegue el webview.
+  el("spotify-login-link").addEventListener("click", () => {
+    fetch("/api/system/open-spotify-login", { method: "POST" }).catch(() => {});
+  });
 
   el("open-settings").addEventListener("click", () => openSettings(false));
   el("btn-show-wizard").addEventListener("click", () => openSettings(true));

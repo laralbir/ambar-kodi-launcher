@@ -147,9 +147,99 @@ class SpotifyGateway:
             return []
         try:
             res = sp.current_user_playlists()
-            return res.get("items", [])
         except Exception:
             return []
+        items = res.get("items", []) if res else []
+        for item in items:
+            images = item.get("images") or []
+            item["thumbnail"] = images[0]["url"] if images else None
+        return items
+
+    def get_followed_artists(self) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            res = sp.current_user_followed_artists(limit=50)
+        except Exception:
+            return []
+        items = (res.get("artists") or {}).get("items", []) if res else []
+        return [
+            {
+                "id": a.get("id"),
+                "name": a.get("name", ""),
+                "thumbnail": a["images"][0]["url"] if a.get("images") else None,
+            }
+            for a in items
+        ]
+
+    def get_artist_albums(self, artist_id: str) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            res = sp.artist_albums(artist_id, album_type="album,single", limit=50)
+        except Exception:
+            return []
+        items = res.get("items", []) if res else []
+        # Spotify repite el mismo album varias veces si esta disponible en
+        # distintos mercados -- se queda con la primera aparicion de cada
+        # nombre.
+        seen: set[str] = set()
+        albums = []
+        for a in items:
+            name = a.get("name", "")
+            if name in seen:
+                continue
+            seen.add(name)
+            albums.append({
+                "id": a.get("id"),
+                "name": name,
+                "thumbnail": a["images"][0]["url"] if a.get("images") else None,
+                "uri": a.get("uri", ""),
+                "year": (a.get("release_date") or "")[:4],
+            })
+        return albums
+
+    def get_saved_albums(self) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            res = sp.current_user_saved_albums(limit=50)
+        except Exception:
+            return []
+        items = res.get("items", []) if res else []
+        albums = []
+        for entry in items:
+            album = entry.get("album") or {}
+            albums.append({
+                "id": album.get("id"),
+                "name": album.get("name", ""),
+                "thumbnail": album["images"][0]["url"] if album.get("images") else None,
+                "uri": album.get("uri", ""),
+                "year": (album.get("release_date") or "")[:4],
+            })
+        return albums
+
+    def get_album_tracks(self, album_id: str) -> list[dict]:
+        sp = self._client()
+        if not sp:
+            return []
+        try:
+            res = sp.album_tracks(album_id, limit=50)
+        except Exception:
+            return []
+        items = res.get("items", []) if res else []
+        return [
+            {
+                "title": t.get("name", ""),
+                "artist": ", ".join(a["name"] for a in t.get("artists", [])),
+                "uri": t.get("uri", ""),
+                "duration": (t.get("duration_ms") or 0) // 1000,
+            }
+            for t in items
+        ]
 
     def get_playlist_tracks(self, playlist_id: str) -> list[dict]:
         sp = self._client()

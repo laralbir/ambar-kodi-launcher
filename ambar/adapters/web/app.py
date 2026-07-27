@@ -88,6 +88,11 @@ def create_app(container) -> Flask:
     def system_screens():
         return jsonify(container.available_screens)
 
+    @app.route("/api/system/open-spotify-login", methods=["POST"])
+    def open_spotify_login():
+        container.system_service.open_spotify_login()
+        return jsonify({"ok": True})
+
     @app.route("/api/system/volume", methods=["GET", "POST"])
     def system_volume():
         if request.method == "POST":
@@ -160,6 +165,24 @@ def create_app(container) -> Flask:
     def spotify_playlist_tracks():
         playlist_id = request.args.get("playlist_id")
         return jsonify(container.library_service.spotify_playlist_tracks(playlist_id))
+
+    @app.route("/api/library/spotify/artists")
+    def spotify_artists():
+        return jsonify(container.library_service.spotify_artists())
+
+    @app.route("/api/library/spotify/artist-albums")
+    def spotify_artist_albums():
+        artist_id = request.args.get("artist_id")
+        return jsonify(container.library_service.spotify_artist_albums(artist_id))
+
+    @app.route("/api/library/spotify/albums")
+    def spotify_albums():
+        return jsonify(container.library_service.spotify_albums())
+
+    @app.route("/api/library/spotify/album-tracks")
+    def spotify_album_tracks():
+        album_id = request.args.get("album_id")
+        return jsonify(container.library_service.spotify_album_tracks(album_id))
 
     @app.route("/api/library/spotify/play", methods=["POST"])
     def spotify_play():

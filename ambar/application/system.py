@@ -1,5 +1,6 @@
 import os
 import sys
+import webbrowser
 
 from ambar.application.audio_level import AudioLevelService
 from ambar.ports.window_controller import WindowController
@@ -38,6 +39,17 @@ class SystemService:
 
     def set_volume_muted(self, muted: bool) -> None:
         self._volume_controller.set_muted(muted)
+
+    def open_spotify_login(self) -> None:
+        """Abre /login en el navegador del sistema (no en el propio webview
+        del kiosko, que no puede completar el flujo OAuth de forma fiable --
+        ver CHANGELOG.md/TODO.md). URL fija, no aceptamos una URL arbitraria
+        del cliente para no exponer un "abridor de URLs" generico a quien
+        sea que esté en la misma red."""
+        try:
+            webbrowser.open("http://127.0.0.1:5005/login")
+        except Exception:
+            pass
 
     def execute(self, action: str | None) -> None:
         if action == "fullscreen":
