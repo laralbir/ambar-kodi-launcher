@@ -9,18 +9,31 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Added
 - **Conexión con Spotify más amigable**: en Ajustes, junto a los
-  campos de credenciales, ahora hay un código QR generado en el
-  momento (`SystemService.generate_qr_png()` vía el paquete `qrcode`,
-  nueva dependencia) que apunta a la URL de autorización con la IP
-  real del equipo — escanéalo con la cámara del móvil en vez de
-  teclear la URL a mano. Nuevo `GET /api/system/login-qr`. Debajo, un
-  indicador de estado en vivo ("Conectado" / "Sin autorizar todavía",
-  sondeado cada 3s mientras Ajustes está abierto) para saber si
-  funcionó sin tener que cerrar Ajustes y probar a reproducir algo.
-  De paso, las páginas `/login` (sin credenciales configuradas) y
-  `/callback` (éxito o error), que se ven desde el navegador del móvil
-  al autorizar, pasan de texto plano a una página con la misma
-  estética ámbar/gunmetal del resto de la app.
+  campos de credenciales, un indicador de estado en vivo ("Conectado"
+  / "Sin autorizar todavía", sondeado cada 3s mientras Ajustes está
+  abierto) para saber si la autorización funcionó sin tener que cerrar
+  Ajustes y probar a reproducir algo. Las páginas `/login` (sin
+  credenciales configuradas) y `/callback` (éxito o error) pasan de
+  texto plano a una página con la misma estética ámbar/gunmetal del
+  resto de la app.
+
+  **Nota sobre el redirect URI (importante):** se probó primero con un
+  código QR para autorizar desde el móvil, pero **no funciona por una
+  restricción real de Spotify/OAuth, no un bug**: Spotify exige HTTPS
+  en el `redirect_uri` salvo para la IP de loopback literal
+  `127.0.0.1` (ni `localhost` ni la IP de la LAN valen — confirmado en
+  vivo: la Dashboard de Spotify rechaza `http://localhost:5005/callback`
+  con "This redirect URI is not secure"). Y por cómo funciona OAuth,
+  esa URI de loopback solo puede resolverse en el mismo equipo donde
+  corre Ámbar: si se autoriza desde el móvil, la redirección final de
+  Spotify a `127.0.0.1:5005/callback` apuntaría al propio móvil, no al
+  servidor real, y la autorización nunca llegaría. `DEFAULT_SPOTIFY_REDIRECT_URI`
+  pasa de `http://localhost:5005/callback` a `http://127.0.0.1:5005/callback`,
+  y la autorización debe completarse en un navegador normal del mismo
+  equipo (no el launcher, no otro dispositivo) — documentado así en
+  Ajustes, `docs/index.html` y el registro de la app en el Dashboard
+  de Spotify. El QR se retiró por completo (no tenía forma de
+  funcionar dado lo anterior).
 - **Navegación por álbumes**: nueva pestaña "Álbumes" en la biblioteca
   de Kodi, junto a "Artistas (Kodi)", que lista todos los álbumes
   directamente sin tener que entrar primero por un artista. Reutiliza

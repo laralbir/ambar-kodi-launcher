@@ -195,8 +195,14 @@ de aquí.
 - Aumentado el tamaño de los botones pequeños (volumen, lista de
   reproducción, ampliar VU-metro) para que sean cómodos en una
   pantalla táctil (mínimo ~44-48px, no 28-34px como antes).
-- Conexión con Spotify más amigable: código QR (generado con el
-  paquete `qrcode`) junto a las credenciales en Ajustes para autorizar
-  escaneando con el móvil en vez de teclear la URL; indicador de
-  estado en vivo ("Conectado"/"Sin autorizar todavía"); páginas
-  `/login`/`/callback` con la estética de la app en vez de texto plano.
+- Conexión con Spotify más amigable: indicador de estado en vivo
+  ("Conectado"/"Sin autorizar todavía") en Ajustes; páginas
+  `/login`/`/callback` con la estética de la app en vez de texto
+  plano. Se probó un código QR para autorizar desde el móvil, pero se
+  retiró: Spotify exige que el `redirect_uri` sea HTTPS salvo para
+  `127.0.0.1` exacto (ni `localhost` ni la IP de la LAN valen), y esa
+  URI de loopback solo puede resolverse en el mismo equipo donde
+  corre Ámbar — autorizar desde el móvil nunca podría completarse.
+  `DEFAULT_SPOTIFY_REDIRECT_URI` pasa a `http://127.0.0.1:5005/callback`;
+  la autorización se hace desde un navegador normal en el mismo
+  equipo, no desde el launcher ni otro dispositivo.

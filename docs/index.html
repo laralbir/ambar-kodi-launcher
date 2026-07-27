@@ -130,6 +130,10 @@
     <div class="subtitle">Guía de Configuración y Manual de Usuario</div>
   </header>
 
+  <div class="note">
+    <strong>⚠ Proyecto experimental:</strong> Ámbar es un proyecto personal en desarrollo activo, sin garantías de estabilidad. Pueden aparecer errores, cambios de comportamiento entre versiones o funciones incompletas (especialmente en Windows, donde el VU-metro real aún no se ha verificado en hardware).
+  </div>
+
   <section>
     <p>Bienvenido al manual de <strong>Ámbar</strong>, tu panel táctil de control para sistemas HiFi multimedia. Esta guía te explicará cómo preparar tus reproductores y arrancar la interfaz.</p>
   </section>
@@ -159,7 +163,7 @@
       <ol>
         <li>Ve al <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--spotify)">Spotify Developer Dashboard</a> e inicia sesión con tu cuenta.</li>
         <li>Haz clic en <strong>Create App</strong>. Rellena el nombre (ej. Ámbar) y una descripción.</li>
-        <li>En el apartado de <strong>Redirect URIs</strong>, añade exactamente esto: <code>http://localhost:5005/callback</code></li>
+        <li>En el apartado de <strong>Redirect URIs</strong>, añade exactamente esto: <code>http://127.0.0.1:5005/callback</code> (Spotify exige HTTPS salvo para esta IP de loopback exacta — <code>localhost</code> u otra IP de tu red dará un error de "redirect URI no seguro").</li>
         <li>Guarda la aplicación. Entra en <strong>Settings</strong> de tu nueva App.</li>
         <li>Copia el <code>Client ID</code> y haz clic en "View client secret" para copiar tu <code>Client Secret</code>. Los necesitarás en el siguiente paso.</li>
       </ol>
@@ -176,8 +180,8 @@
       <ol>
         <li>Comprueba el <strong>Host de Kodi</strong> (déjalo en <code>localhost</code> si Kodi corre en el mismo equipo que Ámbar).</li>
         <li>Pega tu <code>Client ID</code> y <code>Client Secret</code> de Spotify y pulsa <strong>Guardar Cambios</strong>.</li>
-        <li>Justo debajo aparece un código QR y, por si prefieres teclearla, la URL exacta a abrir para autorizar Spotify (con la IP real de este equipo ya rellenada, sin tener que buscarla a mano). <strong>Escanea el QR con la cámara de tu móvil</strong> (o abre la URL desde cualquier navegador en la misma red), inicia sesión en Spotify y acepta los permisos. Solo hace falta hacerlo <strong>una vez</strong>; Ámbar guarda la sesión en el archivo oculto <code>.spotify-cache</code>.</li>
-        <li>No hace falta volver a Ámbar para comprobar si funcionó: justo encima de las credenciales hay un indicador ("Conectado" / "Sin autorizar todavía") que se actualiza solo en cuanto autorizas desde el móvil.</li>
+        <li>Justo debajo aparece la URL a abrir para autorizar Spotify: <code>http://127.0.0.1:5005/login</code>. <strong>Ábrela en un navegador normal de este mismo equipo</strong> (Chrome, Edge, Safari...) — no vale el móvil ni otro PC de la red, Spotify exige que la autorización termine en la misma máquina donde corre Ámbar. Inicia sesión en Spotify y acepta los permisos. Solo hace falta hacerlo <strong>una vez</strong>; Ámbar guarda la sesión en el archivo oculto <code>.spotify-cache</code>.</li>
+        <li>No hace falta volver a Ajustes para comprobar si funcionó: el indicador ("Conectado" / "Sin autorizar todavía") junto a las credenciales se actualiza solo en cuanto autorizas.</li>
       </ol>
       <p>Puedes volver a ver esta guía en cualquier momento desde Ajustes → "Mostrar guía inicial", aunque ya no sea tu primer arranque.</p>
     </div>

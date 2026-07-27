@@ -1,5 +1,4 @@
 import os
-import socket
 import sys
 
 from ambar.application.audio_level import AudioLevelService
@@ -39,33 +38,6 @@ class SystemService:
 
     def set_volume_muted(self, muted: bool) -> None:
         self._volume_controller.set_muted(muted)
-
-    def get_lan_ip(self) -> str | None:
-        """IP del equipo en la red local, para mostrar en el asistente de
-        Spotify la URL exacta que hay que abrir desde otro dispositivo
-        (no hace falta que el usuario la busque a mano)."""
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                s.connect(("8.8.8.8", 80))
-                return s.getsockname()[0]
-            finally:
-                s.close()
-        except Exception:
-            return None
-
-    def generate_qr_png(self, data: str) -> bytes:
-        """PNG de un codigo QR para `data` -- usado para que el asistente de
-        Spotify se pueda escanear con el movil en vez de teclear la URL a
-        mano en otro dispositivo."""
-        import io
-
-        import qrcode
-
-        img = qrcode.make(data)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        return buf.getvalue()
 
     def execute(self, action: str | None) -> None:
         if action == "fullscreen":

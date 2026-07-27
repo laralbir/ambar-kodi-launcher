@@ -375,12 +375,10 @@
   .spotify-auth-status .dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex:0 0 auto;}
   .spotify-auth-status.connected{color:#3ddc73;}
   .spotify-auth-status.connected .dot{background:#3ddc73; box-shadow:0 0 6px rgba(61,220,115,0.55);}
-  .spotify-auth-body{display:flex; gap:1rem; align-items:center;}
-  #spotify-login-qr{width:110px; height:110px; border-radius:6px; background:#fff; padding:6px; flex:0 0 auto;}
-  .spotify-auth-instructions{flex:1; font-size:0.85rem; color:var(--text-dim); line-height:1.4;}
+  .spotify-auth-instructions{font-size:0.85rem; color:var(--text-dim); line-height:1.4;}
   .spotify-auth-instructions code{
-    display:block; margin-top:0.5rem; color:var(--text); word-break:break-all;
-    font-family:'JetBrains Mono', monospace; font-size:0.8rem;
+    display:block; margin-top:0.5rem; color:var(--text);
+    font-family:'JetBrains Mono', monospace; font-size:0.85rem;
   }
 
   .form-group{display:flex; flex-direction:column; gap:0.4rem;}
@@ -541,7 +539,7 @@
             <strong>¡Bienvenido a Ámbar!</strong> Antes de reproducir nada, dos pasos:
             <ol>
               <li>Comprueba el <strong>Host de Kodi</strong> (déjalo en <code>localhost</code> si Kodi corre en este mismo equipo).</li>
-              <li>Si quieres usar Spotify, introduce tus credenciales más abajo, guarda, y luego autoriza desde un móvil u otro PC en la misma red abriendo la URL que se indica al final de esta columna. Si solo vas a usar Kodi, puedes saltarte este paso.</li>
+              <li>Si quieres usar Spotify, introduce tus credenciales más abajo, guarda, y luego autoriza <strong>desde un navegador normal en este mismo equipo</strong> (no desde el móvil ni otro PC — Spotify exige que la autorización termine en la misma máquina) abriendo la URL que se indica más abajo. Si solo vas a usar Kodi, puedes saltarte este paso.</li>
             </ol>
           </div>
           <h3 style="margin-top:0; color:var(--text); font-weight:500;">Configuración</h3>
@@ -565,12 +563,10 @@
             <div class="spotify-auth-status" id="spotify-auth-status">
               <span class="dot"></span> <span id="spotify-auth-status-text">Comprobando…</span>
             </div>
-            <div class="spotify-auth-body">
-              <img id="spotify-login-qr" src="/api/system/login-qr" alt="Código QR para autorizar Spotify" onerror="this.style.display='none';">
-              <div class="spotify-auth-instructions">
-                <p>Guarda las credenciales y luego escanea este código con la cámara de tu móvil (o entra desde cualquier dispositivo en la misma red a la URL de abajo) para autorizar Spotify.</p>
-                <code id="spotify-login-url">http://…:5005/login</code>
-              </div>
+            <div class="spotify-auth-instructions">
+              <p>Guarda las credenciales y luego abre esta URL <strong>en un navegador normal de este mismo equipo</strong> (Chrome, Edge, Safari... no vale el móvil ni otro PC de la red) para autorizar Spotify:</p>
+              <code>http://127.0.0.1:5005/login</code>
+              <p style="margin-top:0.6rem;">Solo hace falta una vez — el launcher detecta la autorización solo, sin reiniciar nada.</p>
             </div>
           </div>
           <div class="form-group">
@@ -1452,15 +1448,11 @@
       }
       screenSelect.value = cfg.DEFAULT_SCREEN ?? 0;
     } catch(e){}
-    try {
-      const net = await (await fetch("/api/system/network-info")).json();
-      if(net.lan_ip) el("spotify-login-url").textContent = `http://${net.lan_ip}:5005/login`;
-    } catch(e){}
     refreshSpotifyAuthStatus();
     if(spotifyAuthPollInterval) clearInterval(spotifyAuthPollInterval);
     // Sondeo mientras Ajustes esta abierto: para que el estado "Conectado"
     // aparezca solo, sin que el usuario tenga que cerrar y reabrir Ajustes
-    // despues de autorizar desde el movil.
+    // despues de autorizar en el navegador de este equipo.
     spotifyAuthPollInterval = setInterval(refreshSpotifyAuthStatus, 3000);
   }
 

@@ -32,7 +32,16 @@ from ambar.application.system import SystemService
 from ambar.domain.audio import VU_SMOOTHING_PRESETS
 from ambar.domain.events import AudioLevelChanged, PlaybackStateChanged
 
-DEFAULT_SPOTIFY_REDIRECT_URI = "http://localhost:5005/callback"
+# Spotify exige HTTPS en el redirect_uri salvo para la IP de loopback
+# literal 127.0.0.1 (no vale el hostname "localhost", pese a resolver al
+# mismo sitio -- su validador de la Dashboard lo rechaza igual, confirmado
+# en vivo por el usuario). Ademas, por como funciona OAuth, esta URI solo
+# puede resolverse correctamente en el mismo equipo donde corre Ambar: si
+# se autoriza desde el movil, la redireccion final de Spotify a
+# 127.0.0.1:5005/callback apuntaria al propio movil, no al servidor real,
+# y la autorizacion nunca llegaria -- ver README.md/docs para el flujo
+# correcto (un navegador normal en este mismo equipo, no el movil).
+DEFAULT_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:5005/callback"
 
 
 @dataclass

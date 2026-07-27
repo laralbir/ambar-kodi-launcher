@@ -1,5 +1,7 @@
 # Ámbar Kodi Launcher
 
+> ⚠️ **Proyecto experimental.** Ámbar es un proyecto personal en desarrollo activo, sin garantías de estabilidad. Pueden aparecer errores, cambios de comportamiento entre versiones o funciones incompletas (por ejemplo, la captura de audio del VU-metro en Windows aún no se ha verificado en hardware real). Úsalo bajo tu propio criterio.
+
 Ámbar es un launcher de pantalla táctil diseñado para una estación multimedia HiFi. Permite controlar de forma centralizada la reproducción local (FLAC, MP3, CD de audio) a través de **Kodi** y la reproducción en streaming mediante **Spotify Connect**.
 
 La interfaz gráfica está diseñada explícitamente para una pantalla secundaria táctil con una resolución panorámica baja (formato "stretched bar" de **1920x720**), utilizando una estética de receptor HiFi vintage (paneles gunmetal y acentos de color ámbar tipo VFD/LED).

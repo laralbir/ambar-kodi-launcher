@@ -84,19 +84,6 @@ def create_app(container) -> Flask:
         container.playback_control_service.seek(body.get("source"), body.get("percentage"))
         return jsonify({"ok": True})
 
-    @app.route("/api/system/network-info")
-    def network_info():
-        return jsonify({"lan_ip": container.system_service.get_lan_ip()})
-
-    @app.route("/api/system/login-qr")
-    def login_qr():
-        lan_ip = container.system_service.get_lan_ip()
-        if not lan_ip:
-            return "", 404
-        url = f"http://{lan_ip}:5005/login"
-        png = container.system_service.generate_qr_png(url)
-        return png, 200, {"Content-Type": "image/png"}
-
     @app.route("/api/system/screens")
     def system_screens():
         return jsonify(container.available_screens)
