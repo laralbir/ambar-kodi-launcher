@@ -478,6 +478,7 @@
       </div>
       <div class="lib-topbar-right" id="lib-tabs">
         <div class="lib-tab active" data-tab="artists" id="lib-tab-artists">Artistas (Kodi)</div>
+        <div class="lib-tab" data-tab="albums" id="lib-tab-albums">Álbumes</div>
         <div class="lib-tab" data-tab="folders" id="lib-tab-folders">Carpetas</div>
         <div class="lib-tab disabled" data-tab="cd" id="lib-tab-cd">CD</div>
         <div class="lib-tab" data-tab="spotify-pl" id="lib-tab-spotify-pl">Listas (Spotify)</div>
@@ -854,7 +855,7 @@
   // VU-metro: no confiar solo en que el backend siga publicando eventos.
   setInterval(() => {
     fetch(API_BASE + "/api/now-playing").then(r => r.json()).then(render).catch(() => {});
-  }, 5000);
+  }, 2000);
 
   // Marquee: si el texto no cabe, se desplaza lateralmente hasta leerse
   // entero (con una pausa inicial), como en los displays de las autorradios.
@@ -1144,6 +1145,7 @@
       kodiAvailable = data.available;
       el("open-library-kodi").classList.toggle("disabled", !kodiAvailable);
       el("lib-tab-artists")?.classList.toggle("disabled", !kodiAvailable);
+      el("lib-tab-albums")?.classList.toggle("disabled", !kodiAvailable);
       el("lib-tab-folders")?.classList.toggle("disabled", !kodiAvailable);
       refreshCdTabAvailability();
     }).catch(() => {});
@@ -1192,6 +1194,24 @@
         }
       }
       
+      else if(viewNode.tab === "albums") {
+        if(!viewNode.type || viewNode.type === 'root') {
+          el("lib-title").textContent = "Álbumes";
+          const res = await fetch("/api/library/kodi/albums");
+          const items = await res.json();
+          renderGrid(items, "label", "albumid", (item) => {
+            libHistory.push({type: 'songs', tab: 'albums', id: item.albumid, title: item.label});
+            loadView(libHistory[libHistory.length-1]);
+          }, "year");
+        }
+        else if(viewNode.type === 'songs') {
+          el("lib-title").textContent = viewNode.title;
+          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id);
+          const items = await res.json();
+          renderList(items, "label", (item) => playKodi({songid: item.songid}), "Reproducir álbum completo", () => playKodi({albumid: viewNode.id}));
+        }
+      }
+
       else if(viewNode.tab === "folders") {
         const path = viewNode.path || "sources://music/";
         el("lib-title").textContent = path === "sources://music/" ? "Carpetas" : path;
@@ -1291,14 +1311,20 @@
         <div class="list-item-info"><div class="list-item-title">${playWholeLabel}</div></div>
       </div>`;
     }
-    html += items.map((it, idx) => `
+    html += items.map((it, idx) => {
+      const thumb = it.thumbnail ? `/api/art?path=${encodeURIComponent(it.thumbnail)}` : '';
+      const iconHtml = thumb
+        ? `<img src="${thumb}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">`
+        : (it.filetype === 'directory' ? '📁' : '🎵');
+      return `
       <div class="list-item" id="fitem-${idx}">
-        <div class="list-item-icon">${it.filetype === 'directory' ? '📁' : '🎵'}</div>
+        <div class="list-item-icon">${iconHtml}</div>
         <div class="list-item-info">
           <div class="list-item-title">${it.label}</div>
         </div>
       </div>
-    `).join('') + '</div>';
+    `;
+    }).join('') + '</div>';
     el("lib-content").innerHTML = html;
     if(playWholePath){
       // directory, no file: una carpeta/CD no es un fichero individual --

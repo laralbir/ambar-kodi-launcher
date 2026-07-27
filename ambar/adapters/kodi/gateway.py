@@ -90,7 +90,29 @@ class KodiGateway:
 
     def get_artists(self) -> list:
         res = self.rpc("AudioLibrary.GetArtists", {"properties": ["thumbnail"]})
-        return res.get("artists", []) if res else []
+        artists = res.get("artists", []) if res else []
+        # Muchas bibliotecas de Kodi no tienen imagen de artista scrapeada
+        # (thumbnail: "" para todos, confirmado en vivo) aunque sí tengan
+        # caratula de album. En vez de dejar el hueco vacio, se usa la
+        # caratula del primer album de cada artista como sustituto -- una
+        # sola llamada extra a AudioLibrary.GetAlbums (todos los albumes de
+        # golpe), no una por artista.
+        missing = [a for a in artists if not a.get("thumbnail")]
+        if missing:
+            albums_res = self.rpc("AudioLibrary.GetAlbums", {"properties": ["thumbnail", "artist"]})
+            albums = albums_res.get("albums", []) if albums_res else []
+            thumb_by_artist: dict[str, str] = {}
+            for album in albums:
+                thumb = album.get("thumbnail")
+                if not thumb:
+                    continue
+                for artist_name in album.get("artist", []):
+                    thumb_by_artist.setdefault(artist_name, thumb)
+            for artist in missing:
+                fallback = thumb_by_artist.get(artist.get("artist"))
+                if fallback:
+                    artist["thumbnail"] = fallback
+        return artists
 
     def get_albums(self, artist_id: int | None = None) -> list:
         params = {"properties": ["thumbnail", "year", "artist"]}

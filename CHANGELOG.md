@@ -7,6 +7,39 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- **Navegación por álbumes**: nueva pestaña "Álbumes" en la biblioteca
+  de Kodi, junto a "Artistas (Kodi)", que lista todos los álbumes
+  directamente sin tener que entrar primero por un artista. Reutiliza
+  `LibraryService.kodi_albums(None)` (ya soportaba listar sin filtrar
+  por artista) y los mismos `renderGrid`/`renderList` del frontend.
+- **Carátula de artista con sustituto**: cuando Kodi no tiene imagen
+  de artista scrapeada (`thumbnail: ""`, el caso más común —
+  confirmado en vivo: 692 de 2008 artistas de esta biblioteca no
+  tienen imagen propia pero sí carátula de álbum), `KodiGateway.get_artists()`
+  ahora usa la carátula del primer álbum de ese artista como
+  sustituto, en vez de dejar el hueco vacío. Una sola llamada extra a
+  `AudioLibrary.GetAlbums` (todos los álbumes de golpe), no una por
+  artista.
+
+### Fixed
+- **Las carátulas no cargaban al navegar por carpetas**: el backend ya
+  pedía `thumbnail` a Kodi, pero el frontend nunca lo pintaba
+  (`renderDirectoryList` solo mostraba un icono fijo). Ver también
+  `TODO.md` para el matiz: Kodi normalmente no devuelve thumbnail real
+  ahí porque es una ruta de filesystem fuera de la biblioteca — el fix
+  pinta la imagen en cuanto Kodi la dé, pero no puede inventar datos
+  que Kodi no manda.
+- **A veces tardaba mucho en actualizarse el título/carátula al
+  cambiar de canción.** La primera consulta a Kodi justo tras el
+  evento `Player.OnPlay`/`Player.OnAVStart` a veces llegaba con
+  metadatos incompletos (la carátula en particular puede tardar en
+  resolverse la primera vez), y como no hay un evento nuevo para el
+  mismo item, el dato desactualizado se quedaba así hasta el próximo
+  cambio de estado o el sondeo de respaldo. Ahora esos dos eventos
+  publican el estado dos veces (al instante y 1s después), y el
+  sondeo de respaldo del frontend baja de 5s a 2s.
+
 ## [0.2.0-beta.1] - 2026-07-27
 
 ### Added

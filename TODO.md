@@ -6,14 +6,17 @@ de aquí.
 
 ## Bugs conocidos (biblioteca)
 
-- Las carátulas no aparecen en el listado de artistas. **Investigado:
-  no es un bug de la app** — Kodi devuelve `thumbnail: ""` para todos
-  los artistas de esta biblioteca (no tiene imágenes de artista
-  scrapeadas/asignadas; los álbumes sí tienen carátula). El código ya
-  gestiona bien el caso sin imagen (muestra el icono de nota musical
-  en vez de una imagen rota). Posible mejora futura: usar la carátula
-  del primer álbum como sustituto cuando no hay imagen de artista —
-  no implementado, decir si se quiere.
+- **Las carátulas no cargaban al navegar por carpetas.** Causa: el
+  backend ya pedía `thumbnail` a Kodi (`Files.GetDirectory`), pero el
+  frontend nunca lo pintaba (`renderDirectoryList` solo mostraba un
+  icono fijo 📁/🎵). Arreglado — ahora se pinta la imagen si Kodi la
+  da. **Con un matiz importante**: la navegación de carpetas usa
+  `Files.GetDirectory` sobre una ruta de filesystem "en crudo" (fuera
+  de la biblioteca de Kodi), y confirmado en vivo que Kodi casi
+  siempre devuelve `thumbnail: ""` ahí — el VFS no cruza esos ficheros
+  con la biblioteca aunque estén indexados. No es arreglable desde
+  esta app (limitación de Kodi); navegar por Artistas/Álbumes sí trae
+  carátula real siempre, al venir de `AudioLibrary.*`.
 - **Detección de CD de audio poco fiable en macOS.** Confirmado con
   `diskutil` que un CD insertado real (Redbook, `CD_partition_scheme`
   con particiones `CD_DA`) sigue dando `system.hasmediadvdaudio: false`
