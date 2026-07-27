@@ -3,6 +3,34 @@ from dataclasses import asdict
 from flask import Flask, jsonify, redirect, request, send_from_directory
 
 
+def _auth_page(heading: str, message: str, ok: bool) -> str:
+    """Pagina standalone (se ve desde el navegador del movil/PC que autoriza
+    Spotify, no dentro del launcher) con la misma estetica ambar/gunmetal del
+    resto de la app, en vez de una respuesta de texto plano."""
+    accent = "#ffb020" if ok else "#e65a5a"
+    icon = "✓" if ok else "✕"
+    return f"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ámbar — Spotify</title>
+<style>
+  body{{margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:#17181a; color:#f2ede4; font-family:-apple-system,'Inter',sans-serif; padding:2rem;
+    box-sizing:border-box; text-align:center;}}
+  .card{{max-width:420px;}}
+  .icon{{width:64px; height:64px; border-radius:50%; border:2px solid {accent}; color:{accent};
+    display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 1.2rem;}}
+  h1{{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.04em;
+    font-size:1.3rem; margin:0 0 0.8rem; color:{accent};}}
+  p{{color:#9a9a9e; line-height:1.5; margin:0;}}
+</style></head>
+<body><div class="card">
+  <div class="icon">{icon}</div>
+  <h1>{heading}</h1>
+  <p>{message}</p>
+</div></body></html>"""
+
+
 def create_app(container) -> Flask:
     """Adapter HTTP: define las rutas Flask y delega toda la logica en los
     servicios de aplicacion del container. No conoce Kodi ni Spotify."""
@@ -59,6 +87,15 @@ def create_app(container) -> Flask:
     @app.route("/api/system/network-info")
     def network_info():
         return jsonify({"lan_ip": container.system_service.get_lan_ip()})
+
+    @app.route("/api/system/login-qr")
+    def login_qr():
+        lan_ip = container.system_service.get_lan_ip()
+        if not lan_ip:
+            return "", 404
+        url = f"http://{lan_ip}:5005/login"
+        png = container.system_service.generate_qr_png(url)
+        return png, 200, {"Content-Type": "image/png"}
 
     @app.route("/api/system/screens")
     def system_screens():
@@ -155,14 +192,26 @@ def create_app(container) -> Flask:
     def login():
         url = container.spotify_gateway.get_authorize_url()
         if not url:
-            return "Configura SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en Ajustes antes de usar esto."
+            return _auth_page(
+                "Falta configurar Spotify",
+                "Introduce el Client ID y el Client Secret en Ajustes del launcher (columna Configuración) y guarda antes de volver a intentarlo.",
+                ok=False,
+            )
         return redirect(url)
 
     @app.route("/callback")
     def callback():
         code = request.args.get("code")
         if container.spotify_gateway.exchange_code(code):
-            return "Spotify autorizado correctamente. Ya puedes cerrar esta pestana o recargar el kiosko."
-        return "Falta configurar Spotify o no se recibio el codigo de autorizacion."
+            return _auth_page(
+                "Spotify autorizado",
+                "Ya puedes cerrar esta pestaña. El launcher lo detectará solo en unos segundos.",
+                ok=True,
+            )
+        return _auth_page(
+            "No se pudo autorizar",
+            "Falta configurar Spotify en Ajustes, o no se recibió el código de autorización de Spotify. Vuelve a intentarlo desde el launcher.",
+            ok=False,
+        )
 
     return app

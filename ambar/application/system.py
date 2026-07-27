@@ -54,6 +54,19 @@ class SystemService:
         except Exception:
             return None
 
+    def generate_qr_png(self, data: str) -> bytes:
+        """PNG de un codigo QR para `data` -- usado para que el asistente de
+        Spotify se pueda escanear con el movil en vez de teclear la URL a
+        mano en otro dispositivo."""
+        import io
+
+        import qrcode
+
+        img = qrcode.make(data)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+
     def execute(self, action: str | None) -> None:
         if action == "fullscreen":
             self._window.toggle_fullscreen()

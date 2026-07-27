@@ -8,6 +8,19 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Conexión con Spotify más amigable**: en Ajustes, junto a los
+  campos de credenciales, ahora hay un código QR generado en el
+  momento (`SystemService.generate_qr_png()` vía el paquete `qrcode`,
+  nueva dependencia) que apunta a la URL de autorización con la IP
+  real del equipo — escanéalo con la cámara del móvil en vez de
+  teclear la URL a mano. Nuevo `GET /api/system/login-qr`. Debajo, un
+  indicador de estado en vivo ("Conectado" / "Sin autorizar todavía",
+  sondeado cada 3s mientras Ajustes está abierto) para saber si
+  funcionó sin tener que cerrar Ajustes y probar a reproducir algo.
+  De paso, las páginas `/login` (sin credenciales configuradas) y
+  `/callback` (éxito o error), que se ven desde el navegador del móvil
+  al autorizar, pasan de texto plano a una página con la misma
+  estética ámbar/gunmetal del resto de la app.
 - **Navegación por álbumes**: nueva pestaña "Álbumes" en la biblioteca
   de Kodi, junto a "Artistas (Kodi)", que lista todos los álbumes
   directamente sin tener que entrar primero por un artista. Reutiliza

@@ -364,6 +364,25 @@
   .wizard-banner ol{margin:0.5rem 0 0; padding-left:1.2rem;}
   .wizard-banner li{margin-bottom:0.4rem;}
 
+  .spotify-auth-box{
+    margin-top:0.2rem; padding:1rem; border:1px solid var(--line); border-radius:8px;
+    background:var(--panel);
+  }
+  .spotify-auth-status{
+    display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text-dim);
+    margin-bottom:0.9rem;
+  }
+  .spotify-auth-status .dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex:0 0 auto;}
+  .spotify-auth-status.connected{color:#3ddc73;}
+  .spotify-auth-status.connected .dot{background:#3ddc73; box-shadow:0 0 6px rgba(61,220,115,0.55);}
+  .spotify-auth-body{display:flex; gap:1rem; align-items:center;}
+  #spotify-login-qr{width:110px; height:110px; border-radius:6px; background:#fff; padding:6px; flex:0 0 auto;}
+  .spotify-auth-instructions{flex:1; font-size:0.85rem; color:var(--text-dim); line-height:1.4;}
+  .spotify-auth-instructions code{
+    display:block; margin-top:0.5rem; color:var(--text); word-break:break-all;
+    font-family:'JetBrains Mono', monospace; font-size:0.8rem;
+  }
+
   .form-group{display:flex; flex-direction:column; gap:0.4rem;}
   .form-group label{font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:var(--text-dim);}
   .form-group input, .form-group select{
@@ -542,6 +561,18 @@
             <label>Spotify Client Secret</label>
             <input type="password" id="inp-spotify-secret" placeholder="Client Secret de tu App">
           </div>
+          <div class="spotify-auth-box">
+            <div class="spotify-auth-status" id="spotify-auth-status">
+              <span class="dot"></span> <span id="spotify-auth-status-text">Comprobando…</span>
+            </div>
+            <div class="spotify-auth-body">
+              <img id="spotify-login-qr" src="/api/system/login-qr" alt="Código QR para autorizar Spotify" onerror="this.style.display='none';">
+              <div class="spotify-auth-instructions">
+                <p>Guarda las credenciales y luego escanea este código con la cámara de tu móvil (o entra desde cualquier dispositivo en la misma red a la URL de abajo) para autorizar Spotify.</p>
+                <code id="spotify-login-url">http://…:5005/login</code>
+              </div>
+            </div>
+          </div>
           <div class="form-group">
             <label>Estilo del VU-metro</label>
             <div style="display:flex; gap:0.6rem;">
@@ -561,9 +592,8 @@
             <label>Skin personalizada</label>
             <select id="inp-skin"><option value="">Por defecto</option></select>
           </div>
-          <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-dim);">
-            Para autorizar Spotify, usa un dispositivo conectado a la misma red y entra a <code id="spotify-login-url">http://…:5005/login</code>.
-            <div class="btn" id="btn-show-wizard" style="margin-top:0.8rem; display:inline-block; font-size:0.85rem; padding:0.5rem 0.9rem;">Mostrar guía inicial</div>
+          <div style="margin-top:1rem;">
+            <div class="btn" id="btn-show-wizard" style="display:inline-block; font-size:0.85rem; padding:0.5rem 0.9rem;">Mostrar guía inicial</div>
           </div>
         </div>
 
@@ -1426,12 +1456,32 @@
       const net = await (await fetch("/api/system/network-info")).json();
       if(net.lan_ip) el("spotify-login-url").textContent = `http://${net.lan_ip}:5005/login`;
     } catch(e){}
+    refreshSpotifyAuthStatus();
+    if(spotifyAuthPollInterval) clearInterval(spotifyAuthPollInterval);
+    // Sondeo mientras Ajustes esta abierto: para que el estado "Conectado"
+    // aparezca solo, sin que el usuario tenga que cerrar y reabrir Ajustes
+    // despues de autorizar desde el movil.
+    spotifyAuthPollInterval = setInterval(refreshSpotifyAuthStatus, 3000);
+  }
+
+  let spotifyAuthPollInterval = null;
+
+  async function refreshSpotifyAuthStatus(){
+    try{
+      const data = await (await fetch("/api/library/spotify/status")).json();
+      const el_ = el("spotify-auth-status");
+      el_.classList.toggle("connected", !!data.available);
+      el("spotify-auth-status-text").textContent = data.available ? "Conectado" : "Sin autorizar todavía";
+    }catch(e){}
   }
 
   el("open-settings").addEventListener("click", () => openSettings(false));
   el("btn-show-wizard").addEventListener("click", () => openSettings(true));
 
-  function closeSettings(){ el("view-settings").classList.remove("visible"); }
+  function closeSettings(){
+    el("view-settings").classList.remove("visible");
+    if(spotifyAuthPollInterval){ clearInterval(spotifyAuthPollInterval); spotifyAuthPollInterval = null; }
+  }
   el("btn-close-settings").addEventListener("click", closeSettings);
   el("btn-cancel-settings").addEventListener("click", closeSettings);
 

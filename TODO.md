@@ -195,3 +195,8 @@ de aquí.
 - Aumentado el tamaño de los botones pequeños (volumen, lista de
   reproducción, ampliar VU-metro) para que sean cómodos en una
   pantalla táctil (mínimo ~44-48px, no 28-34px como antes).
+- Conexión con Spotify más amigable: código QR (generado con el
+  paquete `qrcode`) junto a las credenciales en Ajustes para autorizar
+  escaneando con el móvil en vez de teclear la URL; indicador de
+  estado en vivo ("Conectado"/"Sin autorizar todavía"); páginas
+  `/login`/`/callback` con la estética de la app en vez de texto plano.
