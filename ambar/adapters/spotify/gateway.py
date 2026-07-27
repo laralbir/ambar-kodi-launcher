@@ -10,7 +10,8 @@ except ImportError:
 
 SPOTIFY_SCOPE = (
     "user-read-playback-state user-modify-playback-state "
-    "playlist-read-private playlist-read-collaborative user-library-read"
+    "playlist-read-private playlist-read-collaborative user-library-read "
+    "user-follow-read"
 )
 
 
@@ -38,7 +39,18 @@ class SpotifyGateway:
     def _client(self):
         if not self._oauth:
             return None
-        token_info = self._oauth.get_cached_token()
+        try:
+            # get_cached_token() no solo lee el cache: si el access token ha
+            # caducado, intenta refrescarlo contra la API de Spotify ahi
+            # mismo, y eso puede lanzar (red caida, refresh_token revocado,
+            # scope del cache desactualizado tras cambiar SPOTIFY_SCOPE...).
+            # Sin este try/except, cualquier fallo de refresco se propagaba
+            # sin capturar hasta la ruta Flask -- un 500 silencioso que en el
+            # frontend simplemente parecia "no ha pasado nada" (fetch no
+            # lanza en respuestas 4xx/5xx), incluido al intentar reproducir.
+            token_info = self._oauth.get_cached_token()
+        except Exception:
+            return None
         if not token_info:
             return None
         return spotipy.Spotify(auth=token_info["access_token"])
@@ -266,22 +278,29 @@ class SpotifyGateway:
         if not self._oauth or not context_uri:
             return False
         sp = self._client()
-        if sp:
-            try:
-                sp.start_playback(context_uri=context_uri)
-            except Exception:
-                pass
+        if not sp:
+            return False
+        try:
+            sp.start_playback(context_uri=context_uri)
+        except Exception:
+            # Antes esto se tragaba y devolvia True igualmente -- el
+            # frontend cerraba la biblioteca dando la falsa impresion de que
+            # habia empezado a sonar cuando en realidad Spotify rechazo la
+            # llamada (caso mas comun: no hay ningun dispositivo Connect
+            # activo en ese momento, error "No active device").
+            return False
         return True
 
     def play_track(self, uri: str | None) -> bool:
         if not self._oauth or not uri:
             return False
         sp = self._client()
-        if sp:
-            try:
-                sp.start_playback(uris=[uri])
-            except Exception:
-                pass
+        if not sp:
+            return False
+        try:
+            sp.start_playback(uris=[uri])
+        except Exception:
+            return False
         return True
 
     def get_authorize_url(self) -> str | None:

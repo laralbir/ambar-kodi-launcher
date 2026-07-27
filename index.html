@@ -494,13 +494,13 @@
         <div class="lib-title" id="lib-title">Biblioteca</div>
       </div>
       <div class="lib-topbar-right" id="lib-tabs">
-        <div class="lib-tab active" data-tab="artists" id="lib-tab-artists">Artistas (Kodi)</div>
-        <div class="lib-tab" data-tab="albums" id="lib-tab-albums">Álbumes (Kodi)</div>
-        <div class="lib-tab" data-tab="folders" id="lib-tab-folders">Carpetas</div>
-        <div class="lib-tab disabled" data-tab="cd" id="lib-tab-cd">CD</div>
-        <div class="lib-tab" data-tab="spotify-artists" id="lib-tab-spotify-artists">Artistas (Spotify)</div>
-        <div class="lib-tab" data-tab="spotify-albums" id="lib-tab-spotify-albums">Álbumes (Spotify)</div>
-        <div class="lib-tab" data-tab="spotify-pl" id="lib-tab-spotify-pl">Listas (Spotify)</div>
+        <div class="lib-tab active" data-tab="artists" data-source="kodi" id="lib-tab-artists">Artistas (Kodi)</div>
+        <div class="lib-tab" data-tab="albums" data-source="kodi" id="lib-tab-albums">Álbumes (Kodi)</div>
+        <div class="lib-tab" data-tab="folders" data-source="kodi" id="lib-tab-folders">Carpetas</div>
+        <div class="lib-tab disabled" data-tab="cd" data-source="kodi" id="lib-tab-cd">CD</div>
+        <div class="lib-tab" data-tab="spotify-artists" data-source="spotify" id="lib-tab-spotify-artists">Artistas (Spotify)</div>
+        <div class="lib-tab" data-tab="spotify-albums" data-source="spotify" id="lib-tab-spotify-albums">Álbumes (Spotify)</div>
+        <div class="lib-tab" data-tab="spotify-pl" data-source="spotify" id="lib-tab-spotify-pl">Listas (Spotify)</div>
       </div>
     </div>
     <div class="lib-content" id="lib-content">
@@ -1115,8 +1115,15 @@
   // ---------- NATIVE LIBRARY ----------
   let libHistory = []; // Stack for navigation
   
-  function openLibrary(tab){
+  function openLibrary(source, tab){
     el("view-library").classList.add("visible");
+    // Al entrar desde el acceso de Kodi solo tiene sentido ver pestañas de
+    // Kodi, y desde el de Spotify solo las de Spotify -- antes se mostraban
+    // las 7 pestañas mezcladas siempre, confuso al no dejar claro por dónde
+    // se está navegando.
+    document.querySelectorAll(".lib-tab").forEach(t => {
+      t.style.display = t.dataset.source === source ? "" : "none";
+    });
     libHistory = [];
     switchTab(tab);
   }
@@ -1145,7 +1152,7 @@
 
   el("open-library-kodi").addEventListener("click", () => {
     if(el("open-library-kodi").classList.contains("disabled")) return;
-    openLibrary("artists");
+    openLibrary("kodi", "artists");
     refreshCdTabAvailability();
   });
 
@@ -1189,7 +1196,7 @@
 
   el("open-library-spotify").addEventListener("click", () => {
     if(el("open-library-spotify").classList.contains("disabled")) return;
-    openLibrary("spotify-pl");
+    openLibrary("spotify", "spotify-pl");
   });
 
   async function loadView(viewNode) {
@@ -1471,17 +1478,27 @@
     el("view-library").classList.remove("visible");
   }
   async function playSpotify(context_uri) {
-    await fetch("/api/library/spotify/play", {
+    const res = await fetch("/api/library/spotify/play", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({context_uri})
     });
+    const data = await res.json().catch(() => ({ok: false}));
+    if(!data.ok){
+      alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.");
+      return;
+    }
     el("view-library").classList.remove("visible");
   }
   async function playSpotifyTrack(uri) {
-    await fetch("/api/library/spotify/play-track", {
+    const res = await fetch("/api/library/spotify/play-track", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({uri})
     });
+    const data = await res.json().catch(() => ({ok: false}));
+    if(!data.ok){
+      alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.");
+      return;
+    }
     el("view-library").classList.remove("visible");
   }
 

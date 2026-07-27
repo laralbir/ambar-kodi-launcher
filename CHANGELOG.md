@@ -63,8 +63,34 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   `/api/library/spotify/artists`, `/artist-albums`, `/albums`,
   `/album-tracks`. La pestaña "Álbumes" de Kodi pasa a llamarse
   "Álbumes (Kodi)" para distinguirla de la nueva de Spotify.
+- **Pestañas de biblioteca filtradas por origen**: al entrar desde el
+  acceso de Kodi solo se ven sus pestañas (Artistas, Álbumes, Carpetas,
+  CD); al entrar desde el de Spotify, solo las suyas (Artistas,
+  Álbumes, Listas). Antes se mostraban las 7 mezcladas siempre, lo que
+  no dejaba claro por dónde se estaba navegando.
 
 ### Fixed
+- **Navegación por artista de Spotify daba "no hay artistas o falta
+  autorizar" con artistas seguidos de verdad.** Causa real: al scope
+  de OAuth (`SPOTIFY_SCOPE`) le faltaba `user-follow-read`, necesario
+  para `current_user_followed_artists`; la llamada fallaba con "scope
+  insuficiente", `SpotifyGateway` lo capturaba en silencio y devolvía
+  lista vacía, indistinguible en el frontend de "no autorizado".
+  **Requiere volver a autorizar Spotify una vez** desde Ajustes: al
+  cambiar el scope solicitado, Spotipy invalida el token cacheado
+  existente automáticamente (no cubre el scope nuevo) y hace falta
+  reconfirmar el permiso.
+- **Seleccionar un álbum o lista de Spotify a veces no reproducía
+  nada, sin avisar.** `play_context`/`play_track` capturaban
+  cualquier fallo de la llamada a Spotify (el más común: ningún
+  dispositivo Spotify Connect activo en ese momento) y devolvían éxito
+  igualmente — el frontend cerraba la biblioteca como si hubiera
+  funcionado. Ahora se propaga el fallo real y se avisa con un mensaje
+  explicando qué comprobar (dispositivo Connect activo, autorización
+  vigente). De paso, `SpotifyGateway._client()` ya no puede lanzar una
+  excepción sin capturar si falla el refresco del token de acceso
+  (causaba un 500 silencioso en cualquier ruta de Spotify, incluida la
+  de reproducir).
 - **Las carátulas no cargaban al navegar por carpetas**: el backend ya
   pedía `thumbnail` a Kodi, pero el frontend nunca lo pintaba
   (`renderDirectoryList` solo mostraba un icono fijo). Ver también
