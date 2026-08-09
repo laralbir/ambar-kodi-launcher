@@ -39,6 +39,9 @@ class FakeSpotifyGateway:
     def is_configured(self):
         return self._configured
 
+    def rate_limited_until(self):
+        return None
+
 
 def test_kodi_play_pauses_spotify_before_playing():
     kodi = FakeKodiGateway()
@@ -101,7 +104,7 @@ def test_kodi_status_reflects_reachability():
 def test_spotify_status_reflects_configuration():
     service = LibraryService(FakeKodiGateway(), FakeSpotifyGateway(configured=False))
 
-    assert service.spotify_status() == {"available": False}
+    assert service.spotify_status() == {"available": False, "rate_limited_until": None}
 
 
 def test_kodi_play_with_artistid_plays_whole_artist():

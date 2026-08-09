@@ -74,15 +74,22 @@ class KodiGateway:
         una pista de CD por los datos reales de MusicBrainz, si ya se
         identifico el disco (ver get_audio_cd_metadata). Solo usa lo que
         ya este en cache -- get_last() no hace ninguna llamada de red ni a
-        Kodi, para no bloquear el sondeo de "ahora suena" (cada 2s). Si el
-        disco aun no se ha identificado (p. ej. el CD se puso a reproducir
-        desde el propio Kodi sin pasar antes por la pestaña CD de Ambar,
-        que es lo que dispara la identificacion), se queda con lo generico
-        de Kodi hasta que se identifique."""
+        Kodi, para no bloquear el sondeo de "ahora suena" (cada 2s).
+
+        Si el disco aun no se ha identificado (p. ej. el CD se puso a
+        reproducir desde el propio Kodi sin pasar antes por la pestaña CD
+        de Ambar, o la identificacion anterior fallo por una conexion
+        lenta), se queda con lo generico de Kodi para ESTE sondeo, pero
+        lanza una identificacion de fondo (identify_async, no bloqueante)
+        para que se autorrecupere sola en un sondeo siguiente -- sin
+        necesidad de que alguien pulse el boton de actualizar a mano."""
         if not file_path.startswith("cdda://") or not self._cd_identifier:
             return title, artist, album, art
         cd_meta = self._cd_identifier.get_last()
         if not cd_meta:
+            toc = self.get_audio_cd_toc()
+            if toc:
+                self._cd_identifier.identify_async(toc)
             return title, artist, album, art
         title = self._track_title_at(file_path, cd_meta.get("tracks") or []) or title
         return title, cd_meta.get("artist") or artist, cd_meta.get("title") or album, cd_meta.get("art") or art
@@ -140,11 +147,22 @@ class KodiGateway:
         return artists
 
     def get_albums(self, artist_id: int | None = None) -> list:
+        # Ya no busca caratula externa aqui -- consultar MusicBrainz por
+        # cada album sin caratula propia antes de devolver la respuesta
+        # hacia tardar mucho en aparecer el listado (mismo problema que
+        # tenia kodi_artists(), ver find_album_art). El frontend pinta el
+        # listado al instante con lo que ya tiene Kodi y pide la caratula
+        # de cada album sin ella aparte, en paralelo con spinner.
         params = {"properties": ["thumbnail", "year", "artist"]}
         if artist_id is not None:
             params["filter"] = {"artistid": artist_id}
         res = self.rpc("AudioLibrary.GetAlbums", params)
         return res.get("albums", []) if res else []
+
+    def find_album_art(self, artist: str, title: str) -> str | None:
+        if not self._cd_identifier or not artist or not title:
+            return None
+        return self._cd_identifier.find_album_art(artist, title)
 
     def get_songs(self, album_id: int | None = None) -> list:
         params = {"properties": ["duration", "track", "thumbnail"]}
@@ -152,6 +170,24 @@ class KodiGateway:
             params["filter"] = {"albumid": album_id}
         res = self.rpc("AudioLibrary.GetSongs", params)
         return res.get("songs", []) if res else []
+
+    def find_artist_by_name(self, name: str) -> dict | None:
+        """Busca un artista de la biblioteca de Kodi por nombre exacto --
+        para la vista de artista (ver LibraryService.artist_catalog), que
+        parte del nombre tal cual aparece en "ahora suena", no de un id."""
+        res = self.rpc("AudioLibrary.GetArtists", {
+            "properties": ["thumbnail"],
+            "filter": {"field": "artist", "operator": "is", "value": name},
+        })
+        artists = (res or {}).get("artists") or []
+        return artists[0] if artists else None
+
+    def get_artist_songs(self, artist_id: int) -> list:
+        res = self.rpc("AudioLibrary.GetSongs", {
+            "properties": ["duration", "thumbnail", "album"],
+            "filter": {"artistid": artist_id},
+        })
+        return (res or {}).get("songs") or []
 
     def get_directory(self, path: str = "sources://music/") -> list:
         if path == "sources://music/":

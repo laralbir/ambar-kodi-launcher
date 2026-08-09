@@ -1,6 +1,6 @@
 from dataclasses import asdict
 
-from flask import Flask, jsonify, redirect, request, send_from_directory
+from flask import Flask, Response, jsonify, redirect, request, send_from_directory
 
 
 def _auth_page(heading: str, message: str, ok: bool) -> str:
@@ -133,14 +133,51 @@ def create_app(container) -> Flask:
         track_id = request.args.get("track_id", "")
         return jsonify(container.library_service.spotify_track_status(track_id))
 
+    @app.route("/api/library/spotify/smtc-art")
+    def spotify_smtc_art():
+        # Caratula leida via SMTC (ver WindowsSMTCGateway.get_art) -- el
+        # parametro ?v= de cache-busting lo pone el frontend (art_version,
+        # cambia con cada cancion nueva), aqui no se usa para nada mas que
+        # para que el navegador no reutilice una imagen vieja en cache.
+        result = container.library_service.spotify_smtc_art()
+        if not result:
+            return ("", 404)
+        data, mimetype = result
+        return Response(data, mimetype=mimetype)
+
     @app.route("/api/library/kodi/artists")
     def kodi_artists():
         return jsonify(container.library_service.kodi_artists())
+
+    @app.route("/api/library/kodi/artist-image")
+    def kodi_artist_image():
+        # Aparte de kodi_artists() a proposito: la busqueda de foto por
+        # artista (Spotify/Deezer) es lo lento, no el listado en si. El
+        # frontend pide esto por artista despues de pintar la lista, una
+        # peticion por artista -- el servidor threading (Flask-SocketIO
+        # async_mode="threading") ya las atiende en paralelo sin bloquearse
+        # entre si.
+        name = request.args.get("name", "")
+        return jsonify({"thumbnail": container.library_service.artist_image(name)})
+
+    @app.route("/api/library/artist-catalog")
+    def artist_catalog():
+        name = request.args.get("name", "")
+        return jsonify(container.library_service.artist_catalog(name))
 
     @app.route("/api/library/kodi/albums")
     def kodi_albums():
         artist_id = request.args.get("artist_id", type=int)
         return jsonify(container.library_service.kodi_albums(artist_id))
+
+    @app.route("/api/library/kodi/album-art")
+    def kodi_album_art():
+        # Aparte de kodi_albums() a proposito, mismo motivo que
+        # /api/library/kodi/artist-image: la busqueda externa (MusicBrainz)
+        # es lo lento, no el listado en si.
+        artist = request.args.get("artist", "")
+        title = request.args.get("title", "")
+        return jsonify({"thumbnail": container.library_service.album_art(artist, title)})
 
     @app.route("/api/library/kodi/songs")
     def kodi_songs():

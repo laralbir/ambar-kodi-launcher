@@ -49,7 +49,10 @@
     overflow:hidden;
     position:relative;
     display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
   }
+  .art-frame:active{filter:brightness(0.85);}
+  .art-frame.refreshing{opacity:0.6; transition:opacity 0.15s;}
   .art-frame img{width:100%; height:100%; object-fit:cover; display:block;}
   .art-frame .placeholder{
     font-family:'JetBrains Mono', monospace; color: var(--text-dim); font-size: 0.8rem;
@@ -107,6 +110,8 @@
   }
   .track-title.marquee, .track-meta.marquee{ text-overflow:clip; }
   .marquee-inner{ display:inline-block; }
+  .artist-link{cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:0.2em;}
+  .artist-link:active{color:var(--amber);}
 
   .spotify-badges{display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.4rem;}
   .spotify-badges[hidden]{display:none !important;}
@@ -116,6 +121,16 @@
     border:1px solid var(--line); color:var(--text-dim); background:var(--panel-raised);
   }
   .spotify-badge.on{color:var(--spotify); border-color:var(--spotify);}
+  .rate-limit-banner{
+    position:fixed; left:50%; bottom:1.2rem; transform:translateX(-50%);
+    z-index:500; cursor:pointer; max-width:min(90vw, 640px);
+    background:rgba(23,24,26,0.92); border:1px solid var(--line);
+    color:var(--text-dim); font-size:0.82rem; line-height:1.4;
+    padding:0.55rem 1rem; border-radius:999px; text-align:center;
+    box-shadow:0 4px 16px rgba(0,0,0,0.4);
+  }
+  .rate-limit-banner[hidden]{display:none !important;}
+  #rate-limit-time{color:var(--amber); font-family:'JetBrains Mono', monospace;}
   .marquee .marquee-inner{
     animation-name: marquee-scroll; animation-timing-function:linear; animation-iteration-count:infinite;
     animation-duration: var(--marquee-duration, 10s);
@@ -141,7 +156,7 @@
   .vu-meter{margin-top:1.6vh; position:relative;}
   /* Los selectores con id vencen a las reglas de clase display:flex de abajo;
      necesario para que [hidden] realmente oculte (si no, "flex" gana). */
-  .vu-meter-leds[hidden], .vu-meter-needle[hidden]{display:none !important;}
+  .vu-meter-leds[hidden], .vu-meter-needle[hidden], .vu-meter-needle-realistic[hidden]{display:none !important;}
   .vu-meter-expand-btn{
     position:absolute; top:-2.6rem; right:0; width:40px; height:40px; border-radius:8px;
     border:1px solid var(--line); background:var(--panel-raised); color:var(--text-dim);
@@ -200,6 +215,41 @@
      en dos lineas por el width:46px fijo de .vu-db-label. */
   .vu-channel-needle .vu-db-label{width:auto; white-space:nowrap;}
 
+  .vu-meter-needle-realistic{display:flex; gap:0.8rem; width:100%;}
+  .vu-channel-needle-realistic{flex:1 1 0; min-width:0; text-align:center;}
+  .vu-channel-needle-realistic svg{
+    width:100%; aspect-ratio: 200 / 110; max-height:112px; display:block; margin:0 auto;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.55));
+  }
+  .vu-channel-needle-realistic .vu-arc-real{fill:none; stroke:#2a2a2a; stroke-width:2;}
+  .vu-channel-needle-realistic .vu-arc-real-red{fill:none; stroke:#a4291f; stroke-width:2.5;}
+  .vu-channel-needle-realistic .vu-tick-real{stroke:#3a3a3a; stroke-width:1.3;}
+  .vu-channel-needle-realistic .vu-tick-real-minor{stroke:#5a5648; stroke-width:0.8; opacity:0.75;}
+  .vu-channel-needle-realistic .vu-label-real{
+    fill:#3a3a3a; font-family:'JetBrains Mono', monospace; font-size:8px; text-anchor:middle; font-weight:600;
+  }
+  .vu-channel-needle-realistic .vu-brand-real{
+    fill:#9c8c62; font-family:'Oswald', sans-serif; font-size:6.5px; text-anchor:middle; letter-spacing:0.15em;
+  }
+  .vu-channel-needle-realistic .vu-screw-real{stroke:#1c1c1c; stroke-width:0.4;}
+  .vu-channel-needle-realistic .vu-screw-slot-real{stroke:#1c1c1c; stroke-width:0.6; opacity:0.7;}
+  .vu-channel-needle-realistic .vu-needle-real{
+    fill:#9c1912; stroke:#3a0806; stroke-width:0.4;
+    transform-origin: 100px 100px; transform: rotate(-55deg); transition: transform 0.1s ease-out;
+    filter: drop-shadow(0 1.5px 2px rgba(0,0,0,0.65));
+  }
+  .vu-channel-needle-realistic .vu-needle-sheen{
+    fill:none; stroke:rgba(255,255,255,0.5); stroke-width:0.5; stroke-linecap:round;
+    transform-origin: 100px 100px; transform: rotate(-55deg); transition: transform 0.1s ease-out;
+  }
+  .vu-channel-needle-realistic .vu-pivot-real{stroke:#1c1c1c; stroke-width:0.6;}
+  .vu-channel-needle-realistic .vu-needle-footer{
+    display:flex; justify-content:space-between; align-items:baseline;
+    gap:0.4rem; margin-top:0.35rem; padding:0 0.3rem;
+  }
+  .vu-channel-needle-realistic .vu-ch-label{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim);}
+  .vu-channel-needle-realistic .vu-db-label{width:auto; white-space:nowrap;}
+
   .transport{display:flex; align-items:center; justify-content:center; gap:1.1rem; margin-top:0.6vh;}
   .tbtn{
     width:64px; height:64px; border-radius:50%; border:1px solid var(--line);
@@ -240,6 +290,28 @@
     display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
   }
   #view-playlist.visible{display:flex;}
+  #view-artist{
+    display:none; position:absolute; inset:0; flex-direction:column; background:var(--bg); z-index:10;
+  }
+  #view-artist.visible{display:flex;}
+  .artist-section-title{
+    font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.04em;
+    font-size:1rem; color:var(--text-dim); margin:1.5rem 0 1rem;
+  }
+  .artist-section-title:first-child{margin-top:0;}
+  .source-tag{
+    display:inline-block; font-size:0.7rem; font-weight:600; letter-spacing:0.04em;
+    padding:0.15rem 0.5rem; border-radius:999px; margin-right:0.3rem; vertical-align:middle;
+  }
+  .source-tag.kodi{background:rgba(90,169,230,0.15); color:var(--kodi);}
+  .source-tag.spotify{background:rgba(29,185,84,0.15); color:var(--spotify);}
+  .source-choice{display:flex; gap:0.6rem; margin-top:0.6rem;}
+  .source-choice-btn{
+    flex:1; padding:0.6rem; border-radius:6px; border:1px solid var(--line); background:var(--panel-raised);
+    color:var(--text); text-align:center; font-size:0.85rem; cursor:pointer;
+  }
+  .source-choice-btn.kodi{border-color:var(--kodi); color:var(--kodi);}
+  .source-choice-btn.spotify{border-color:var(--spotify); color:var(--spotify);}
   .volume-inline-row{display:flex; align-items:center; gap:0.6rem; margin-top:0.8vh;}
   .volume-inline-btn{
     width:52px; height:52px; border-radius:12px; border:1px solid var(--line);
@@ -256,19 +328,22 @@
 
   #view-vumeter-fullscreen{
     display:none; position:absolute; inset:0; background:var(--bg); z-index:10;
-    align-items:center; justify-content:center;
+    flex-direction:column; align-items:center; justify-content:center;
   }
   #view-vumeter-fullscreen.visible{display:flex;}
   #vumeter-fullscreen-back{position:absolute; top:1.2rem; left:1.2rem;}
   .vumeter-fullscreen-container{width:min(90vw, 1400px); padding:2rem;}
   .vumeter-fullscreen-container .vu-meter-leds[hidden],
-  .vumeter-fullscreen-container .vu-meter-needle[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-meter-needle[hidden],
+  .vumeter-fullscreen-container .vu-meter-needle-realistic[hidden]{display:none !important;}
   .vumeter-fullscreen-container .vu-channel-leds{gap:1.2rem;}
   .vumeter-fullscreen-container .vu-led-row{height:48px; gap:6px;}
   .vumeter-fullscreen-container .vu-led-row .led{border-radius:4px;}
   .vumeter-fullscreen-container .vu-ch-label{font-size:1.1rem; width:auto;}
   .vumeter-fullscreen-container .vu-db-label{font-size:1.1rem; width:auto;}
   .vumeter-fullscreen-container .vu-channel-needle svg{max-height:min(60vh, 500px);}
+  .vumeter-fullscreen-container .vu-channel-needle-realistic svg{max-height:min(60vh, 500px);}
+  #vumeter-nowplaying{text-align:center;}
 
   .clock-widget{
     cursor:pointer; text-align:right; padding:0 0.2rem 0.6vh;
@@ -289,9 +364,18 @@
   }
   #view-clock-fullscreen.visible{display:flex;}
   #clock-fullscreen-back{position:absolute; top:1.2rem; left:1.2rem;}
-  .clock-fullscreen-container{text-align:center; cursor:pointer;}
-  .clock-fullscreen-container .clock-time{font-size:min(22vw, 16rem); letter-spacing:0.01em;}
-  .clock-fullscreen-container .clock-date{font-size:min(4vw, 2.4rem); margin-top:1vh;}
+  .clock-fullscreen-container{
+    text-align:center; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .clock-fullscreen-container .clock-time{font-size:min(15vw, 11rem); letter-spacing:0.01em; order:1;}
+  .clock-fullscreen-container .clock-date{font-size:min(4vw, 2.4rem); margin-top:1vh; order:2;}
+  .clock-nowplaying{order:3; margin-top:4vh; cursor:default;}
+  .clock-nowplaying-title{
+    font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
+    font-size:min(2.6vw, 1.8rem); color:var(--amber); letter-spacing:0.02em;
+  }
+  .clock-nowplaying-artist{font-size:min(1.8vw, 1.2rem); color:var(--text-dim); margin-top:0.3vh;}
 
   .playlist-content{flex:1; overflow-y:auto; padding:1.2rem;}
   .playlist-item{
@@ -343,6 +427,11 @@
     width:100%; aspect-ratio:1/1; background:#111; display:flex; align-items:center; justify-content:center;
   }
   .grid-card-img img{width:100%; height:100%; object-fit:cover;}
+  .grid-card-spinner{
+    width:1.8rem; height:1.8rem; border-radius:50%;
+    border:3px solid var(--line); border-top-color:var(--amber);
+    animation:art-spin 0.8s linear infinite;
+  }
   .grid-card-info{padding:0.8rem;}
   .grid-card-title{font-weight:600; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .grid-card-sub{font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -389,16 +478,14 @@
     background:var(--bg); z-index:5; font-family:'JetBrains Mono', monospace; color:var(--amber);
   }
 
-  /* ---------- SETTINGS MODAL ---------- */
+  /* ---------- SETTINGS VIEW ---------- */
   #view-settings{
-    display:none; position:absolute; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
-    z-index:20; align-items:center; justify-content:center;
+    display:none; position:absolute; inset:0; background:var(--bg);
+    z-index:20; flex-direction:column;
   }
   #view-settings.visible{display:flex;}
   .settings-box{
-    background:var(--bg); border:1px solid var(--line); border-radius:12px;
-    width: 80%; max-width:900px; height:80vh; display:flex; flex-direction:column;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.7); overflow:hidden;
+    background:var(--bg); width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden;
   }
   .settings-header{
     padding:1.5rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;
@@ -465,6 +552,14 @@
 <body class="brushed">
 <div id="app">
 
+  <!-- Aviso discreto de limite de peticiones de Spotify alcanzado (ver
+       SpotifyGateway.rate_limited_until) -- informa de que no es un fallo
+       permanente y cuando se espera que se recupere solo. Se oculta solo
+       a los 10s, o antes con un click (ver updateSpotifyRateLimitBanner). -->
+  <div class="rate-limit-banner" id="spotify-rate-limit-banner" hidden>
+    ⏳ Spotify: límite de peticiones alcanzado. Se espera que se recupere sobre las <span id="rate-limit-time"></span>.
+  </div>
+
   <!-- HOME VIEW -->
   <div id="view-home">
     <div class="art-frame" id="art-frame">
@@ -517,6 +612,7 @@
         <div class="vu-meter-expand-btn" id="vu-meter-expand-btn" title="VU-metro en pantalla completa">⛶</div>
         <div class="vu-meter-leds" id="vu-meter-leds" hidden></div>
         <div class="vu-meter-needle" id="vu-meter-needle" hidden></div>
+        <div class="vu-meter-needle-realistic" id="vu-meter-needle-realistic" hidden></div>
       </div>
 
       <div class="volume-inline-row">
@@ -584,15 +680,37 @@
     </div>
   </div>
 
+  <!-- ARTIST VIEW (catalogo mezclado Kodi+Spotify) -->
+  <div id="view-artist">
+    <div class="lib-topbar">
+      <div class="lib-topbar-left">
+        <div class="back-btn" id="artist-btn-back">←</div>
+        <div class="lib-title" id="artist-title">Artista</div>
+      </div>
+    </div>
+    <div class="lib-content" id="artist-content">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
   <!-- VU-METER FULLSCREEN -->
   <div id="view-vumeter-fullscreen">
     <div class="vumeter-fullscreen-container" id="vumeter-fullscreen-container"></div>
     <div class="back-btn" id="vumeter-fullscreen-back">←</div>
+    <div class="clock-nowplaying" id="vumeter-nowplaying" hidden>
+      <div class="clock-nowplaying-title" id="vumeter-nowplaying-title"></div>
+      <div class="clock-nowplaying-artist" id="vumeter-nowplaying-artist"></div>
+    </div>
   </div>
 
   <!-- CLOCK FULLSCREEN VIEW -->
   <div id="view-clock-fullscreen">
-    <div class="clock-fullscreen-container" id="clock-fullscreen-container"></div>
+    <div class="clock-fullscreen-container" id="clock-fullscreen-container">
+      <div class="clock-nowplaying" id="clock-nowplaying" hidden>
+        <div class="clock-nowplaying-title" id="clock-nowplaying-title"></div>
+        <div class="clock-nowplaying-artist" id="clock-nowplaying-artist"></div>
+      </div>
+    </div>
     <div class="back-btn" id="clock-fullscreen-back">←</div>
   </div>
 
@@ -644,7 +762,8 @@
             <label>Estilo del VU-metro</label>
             <div style="display:flex; gap:0.6rem;">
               <div class="btn" id="vu-style-leds" style="flex:1;" onclick="setVuMeterStyle('leds')">Barras LED</div>
-              <div class="btn" id="vu-style-needle" style="flex:1;" onclick="setVuMeterStyle('needle')">Aguja vintage</div>
+              <div class="btn" id="vu-style-needle" style="flex:1;" onclick="setVuMeterStyle('needle')">Aguja simple</div>
+              <div class="btn" id="vu-style-needle-realistic" style="flex:1;" onclick="setVuMeterStyle('needle-realistic')">Aguja realista</div>
             </div>
           </div>
           <div class="form-group">
@@ -701,6 +820,17 @@
   let lastKnownTotalSeconds = 0;
   let lastCheckedTrackId = null;
   let currentTrackLiked = false;
+
+  // Las caratulas pueden venir de dos sitios: una ruta interna de Kodi
+  // (image://..., hay que pasarla por /api/art para que el backend la pida
+  // al webserver de Kodi) o una URL externa ya lista para usar (Cover Art
+  // Archive/Spotify, cuando Kodi no tenia caratula propia -- ver
+  // KodiGateway._enrich_missing_album_art / LibraryService.kodi_artists).
+  function resolveThumb(thumbnail){
+    if(!thumbnail) return '';
+    if(thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail;
+    return `/api/art?path=${encodeURIComponent(thumbnail)}`;
+  }
 
   function formatTime(totalSeconds){
     totalSeconds = Math.max(0, Math.round(totalSeconds));
@@ -783,6 +913,87 @@
     </div>
   `;
 
+  // Mismo pivote (100,100) y misma orientacion de reposo (apuntando hacia
+  // (100,~17)) que VU_NEEDLE_SVG -- reutiliza la rotacion CSS/JS existente
+  // sin cambios (updateVuMeter no sabe ni le importa que estilo esta
+  // activo). Esta version anade el aspecto de un VU-metro fisico real:
+  // esfera color crema con marco metalico, aguja afilada con sombra en
+  // vez de una simple linea, y un reflejo de cristal por encima.
+  const VU_NEEDLE_REALISTIC_SVG = `
+    <svg viewBox="0 0 200 110">
+      <defs>
+        <linearGradient id="vuFace{ch}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f7f2e3"/>
+          <stop offset="55%" stop-color="#ede4cd"/>
+          <stop offset="100%" stop-color="#d9cdad"/>
+        </linearGradient>
+        <linearGradient id="vuBezel{ch}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4a4a4a"/>
+          <stop offset="30%" stop-color="#cfcfcf"/>
+          <stop offset="55%" stop-color="#8a8a8a"/>
+          <stop offset="100%" stop-color="#2e2e2e"/>
+        </linearGradient>
+        <linearGradient id="vuGlass{ch}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+          <stop offset="35%" stop-color="#ffffff" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="vuPivot{ch}" cx="0.35" cy="0.35" r="0.7">
+          <stop offset="0%" stop-color="#eeeeee"/>
+          <stop offset="60%" stop-color="#999999"/>
+          <stop offset="100%" stop-color="#444444"/>
+        </radialGradient>
+        <radialGradient id="vuScrew{ch}" cx="0.35" cy="0.35" r="0.75">
+          <stop offset="0%" stop-color="#d8d8d8"/>
+          <stop offset="55%" stop-color="#8f8f8f"/>
+          <stop offset="100%" stop-color="#3a3a3a"/>
+        </radialGradient>
+      </defs>
+
+      <rect x="3" y="3" width="194" height="104" rx="10" fill="url(#vuFace{ch})" stroke="url(#vuBezel{ch})" stroke-width="4"/>
+
+      <path class="vu-arc-real" d="M26.3,48.4 A90,90 0 0,1 173.7,48.4"/>
+      <path class="vu-arc-real-red" d="M156.0,29.6 A90,90 0 0,1 173.7,48.4"/>
+
+      <line class="vu-tick-real-minor" x1="44.6" y1="36.9" x2="40.6" y2="32.4"/>
+      <line class="vu-tick-real-minor" x1="80.0" y1="18.4" x2="78.6" y2="12.6"/>
+      <line class="vu-tick-real-minor" x1="120.0" y1="18.4" x2="121.4" y2="12.6"/>
+      <line class="vu-tick-real-minor" x1="155.4" y1="36.9" x2="159.4" y2="32.4"/>
+
+      <line class="vu-tick-real" x1="36.1" y1="55.3" x2="26.3" y2="48.4"/>
+      <line class="vu-tick-real" x1="64.0" y1="30.8" x2="58.4" y2="20.2"/>
+      <line class="vu-tick-real" x1="100" y1="22" x2="100" y2="10"/>
+      <line class="vu-tick-real" x1="136.0" y1="30.8" x2="141.6" y2="20.2"/>
+      <line class="vu-tick-real" x1="163.9" y1="55.3" x2="173.7" y2="48.4"/>
+
+      <text class="vu-label-real" x="18" y="46">-60</text>
+      <text class="vu-label-real" x="54" y="15">-30</text>
+      <text class="vu-label-real" x="100" y="8">-15</text>
+      <text class="vu-label-real" x="146" y="15">-5</text>
+      <text class="vu-label-real" x="182" y="46">0</text>
+      <text class="vu-brand-real" x="100" y="80">ÁMBAR VU</text>
+
+      <circle class="vu-screw-real" cx="10" cy="10" r="3.6" fill="url(#vuScrew{ch})"/>
+      <line class="vu-screw-slot-real" x1="7.8" y1="8.8" x2="12.2" y2="11.2"/>
+      <circle class="vu-screw-real" cx="190" cy="10" r="3.6" fill="url(#vuScrew{ch})"/>
+      <line class="vu-screw-slot-real" x1="187.8" y1="11.2" x2="192.2" y2="8.8"/>
+      <circle class="vu-screw-real" cx="10" cy="100" r="3.6" fill="url(#vuScrew{ch})"/>
+      <line class="vu-screw-slot-real" x1="7.8" y1="101.2" x2="12.2" y2="98.8"/>
+      <circle class="vu-screw-real" cx="190" cy="100" r="3.6" fill="url(#vuScrew{ch})"/>
+      <line class="vu-screw-slot-real" x1="187.8" y1="98.8" x2="192.2" y2="101.2"/>
+
+      <polygon class="vu-needle-real" id="vu-needle-real-{ch}" points="98.3,100 100,17 101.7,100"/>
+      <line class="vu-needle-sheen" id="vu-needle-sheen-{ch}" x1="100" y1="97" x2="100" y2="22"/>
+      <circle class="vu-pivot-real" cx="100" cy="100" r="6" fill="url(#vuPivot{ch})"/>
+
+      <rect x="3" y="3" width="194" height="50" rx="10" fill="url(#vuGlass{ch})"/>
+    </svg>
+    <div class="vu-needle-footer">
+      <span class="vu-ch-label">{chLabel}</span>
+      <span class="vu-db-label" id="vu-db-needle-real-{ch}">-- dB</span>
+    </div>
+  `;
+
   let vuChannelCount = 0;
 
   function vuChannelLabel(ch, total){
@@ -827,14 +1038,27 @@
       wrap.innerHTML = VU_NEEDLE_SVG.replaceAll("{ch}", ch).replace("{chLabel}", vuChannelLabel(ch, n));
       needleRoot.appendChild(wrap);
     }
+
+    const needleRealRoot = el("vu-meter-needle-realistic");
+    needleRealRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const wrap = document.createElement("div");
+      wrap.className = "vu-channel-needle-realistic";
+      wrap.innerHTML = VU_NEEDLE_REALISTIC_SVG.replaceAll("{ch}", ch).replace("{chLabel}", vuChannelLabel(ch, n));
+      needleRealRoot.appendChild(wrap);
+    }
   }
 
+  const VU_METER_STYLES = ["leds", "needle", "needle-realistic"];
+
   function applyVuMeterStyle(style){
-    vuMeterStyle = style === "needle" ? "needle" : "leds";
+    vuMeterStyle = VU_METER_STYLES.includes(style) ? style : "leds";
     el("vu-meter-leds").hidden = vuMeterStyle !== "leds";
     el("vu-meter-needle").hidden = vuMeterStyle !== "needle";
+    el("vu-meter-needle-realistic").hidden = vuMeterStyle !== "needle-realistic";
     el("vu-style-leds").classList.toggle("btn-primary", vuMeterStyle === "leds");
     el("vu-style-needle").classList.toggle("btn-primary", vuMeterStyle === "needle");
+    el("vu-style-needle-realistic").classList.toggle("btn-primary", vuMeterStyle === "needle-realistic");
   }
 
   function setVuMeterStyle(style){
@@ -873,10 +1097,11 @@
   // la logica de actualizacion (updateVuMeter, por id) sigue funcionando
   // igual este donde este el DOM fisicamente.
   function toggleVuMeterFullscreen(active){
-    const leds = el("vu-meter-leds"), needle = el("vu-meter-needle");
+    const leds = el("vu-meter-leds"), needle = el("vu-meter-needle"), needleReal = el("vu-meter-needle-realistic");
     const target = active ? el("vumeter-fullscreen-container") : el("vu-meter-home");
     target.appendChild(leds);
     target.appendChild(needle);
+    target.appendChild(needleReal);
     el("view-vumeter-fullscreen").classList.toggle("visible", active);
   }
   el("vu-meter-expand-btn").addEventListener("click", () => toggleVuMeterFullscreen(true));
@@ -892,11 +1117,27 @@
   function updateClock(){
     const now = new Date();
     const timeEl = el("clock-time"), dateEl = el("clock-date");
-    if(timeEl) timeEl.textContent = now.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    if(timeEl) timeEl.textContent = now.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
     if(dateEl) dateEl.textContent = now.toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"});
   }
   updateClock();
   setInterval(updateClock, 1000);
+
+  // Cancion en reproduccion (si la hay) en las pantallas completas de
+  // reloj y VU-metro -- actualizado desde render() con el mismo estado
+  // que ya usa el resto de la pantalla, sin sondeo propio. Sin fuente
+  // activa, no se muestra nada (ni siquiera un "Nada sonando"), tal cual
+  // se pidio en ambos casos.
+  function updateNowPlayingInfo(wrapId, titleId, artistId, data){
+    const wrap = el(wrapId);
+    if(data.source){
+      el(titleId).textContent = data.title || "";
+      el(artistId).textContent = data.artist || "";
+      wrap.hidden = false;
+    } else {
+      wrap.hidden = true;
+    }
+  }
 
   // Mismo patron que el VU-metro: mueve los mismos elementos (no los
   // duplica) entre el home y el overlay a pantalla completa.
@@ -926,6 +1167,14 @@
       if(needle) needle.style.transform = `rotate(${-55 + pct * 110}deg)`;
       const needleLabel = el("vu-db-needle-" + ch);
       if(needleLabel) needleLabel.textContent = dbText;
+
+      const needleAngle = `rotate(${-55 + pct * 110}deg)`;
+      const needleReal = el("vu-needle-real-" + ch);
+      if(needleReal) needleReal.style.transform = needleAngle;
+      const needleSheen = el("vu-needle-sheen-" + ch);
+      if(needleSheen) needleSheen.style.transform = needleAngle;
+      const needleRealLabel = el("vu-db-needle-real-" + ch);
+      if(needleRealLabel) needleRealLabel.textContent = dbText;
 
       const ledRow = el("vu-led-row-" + ch);
       if(ledRow){
@@ -1005,6 +1254,29 @@
     applyMarquee(containerEl);
   }
 
+  function escapeHtml(text){
+    const div = document.createElement("div");
+    div.textContent = text || "";
+    return div.innerHTML;
+  }
+
+  // Igual que setMarqueeText, pero el nombre del artista va envuelto en un
+  // span clicable que abre su catalogo mezclado Kodi+Spotify (ver
+  // openArtistView) -- no aplica al texto por defecto de "sin fuente".
+  function setMetaWithArtistLink(artist, album){
+    const containerEl = el("track-meta");
+    const inner = containerEl.querySelector(".marquee-inner");
+    const plain = [artist, album].filter(Boolean).join(" · ");
+    if(inner.dataset.rendered === plain) return;
+    inner.dataset.rendered = plain;
+    inner.innerHTML = artist
+      ? `<span class="artist-link" id="meta-artist-link">${escapeHtml(artist)}</span>${album ? " · " + escapeHtml(album) : ""}`
+      : escapeHtml(plain);
+    applyMarquee(containerEl);
+    const link = el("meta-artist-link");
+    if(link) link.addEventListener("click", (e) => { e.stopPropagation(); openArtistView(artist); });
+  }
+
   window.addEventListener("resize", () => {
     applyMarquee(el("track-title"));
     applyMarquee(el("track-meta"));
@@ -1059,13 +1331,15 @@
 
     if(data.source){
       setMarqueeText(el("track-title"), data.title || "—");
-      setMarqueeText(el("track-meta"), [data.artist, data.album].filter(Boolean).join(" · "));
+      setMetaWithArtistLink(data.artist, data.album);
     }else{
       setMarqueeText(el("track-title"), "Nada sonando");
       setMarqueeText(el("track-meta"), "Elige música desde la biblioteca o desde Spotify en tu móvil");
     }
 
     updateSpotifyBadges(data.source === "spotify" ? data.track_id : null);
+    updateNowPlayingInfo("clock-nowplaying", "clock-nowplaying-title", "clock-nowplaying-artist", data);
+    updateNowPlayingInfo("vumeter-nowplaying", "vumeter-nowplaying-title", "vumeter-nowplaying-artist", data);
 
     el("vu-fill").style.width = (data.progress || 0) + "%";
     const elapsed = data.elapsed_seconds || 0, total = data.total_seconds || 0;
@@ -1094,6 +1368,30 @@
 
     if(showPlaylist) refreshPlaylist();
   }
+
+  // Tocar la carátula refresca el estado de "ahora suena" al instante (sin
+  // esperar al sondeo de 2s) y, si la fuente es Kodi, fuerza tambien una
+  // nueva identificacion del CD (ver /api/library/kodi/cd-metadata?force,
+  // el mismo botón 🔄 de la pestaña CD) -- no hace nada si no hay CD
+  // puesto, solo tarda un poco mas. La lista de reproducción abierta (si
+  // la hay) se refresca despues, para que tambien recoja los títulos
+  // reales si era un CD.
+  el("art-frame").addEventListener("click", async () => {
+    const frame = el("art-frame");
+    frame.classList.add("refreshing");
+    try{
+      if(currentSource === "kodi"){
+        await fetch(API_BASE + "/api/library/kodi/cd-metadata?force=true").catch(() => {});
+      }
+      const res = await fetch(API_BASE + "/api/now-playing");
+      render(await res.json());
+    }catch(e){
+      // sin conexion o respuesta invalida -- se deja el estado actual tal
+      // cual, el sondeo de respaldo de 2s ya lo reintentara solo.
+    }finally{
+      frame.classList.remove("refreshing");
+    }
+  });
 
   // ---------- LISTA DE REPRODUCCIÓN ACTUAL ----------
   let showPlaylist = false;
@@ -1327,10 +1625,47 @@
       el("lib-tab-spotify-pl")?.classList.toggle("disabled", !data.available);
       el("lib-tab-spotify-artists")?.classList.toggle("disabled", !data.available);
       el("lib-tab-spotify-albums")?.classList.toggle("disabled", !data.available);
+      updateSpotifyRateLimitBanner(data.rate_limited_until);
     }).catch(() => {});
   }
   refreshLibraryAvailability();
   setInterval(refreshLibraryAvailability, 15000);
+
+  // Aviso discreto mientras Spotify este bajo el limite de peticiones (ver
+  // SpotifyGateway.rate_limited_until) -- se re-evalua cada 15s junto con
+  // refreshLibraryAvailability, asi que desaparece solo en cuanto el
+  // backend deje de reportar un limite activo (haya expirado o no).
+  // Solo se enseña una vez por cada limite nuevo (no en cada sondeo de
+  // 15s mientras dure el mismo) y desaparece sola a los 10s -- o antes,
+  // si se hace click. rateLimitShownFor guarda el "rate_limited_until"
+  // ya mostrado, para distinguir "sigue el mismo limite de antes" de
+  // "esto es un limite nuevo" (p.ej. tras usar Spotify otra vez y
+  // volver a toparse con un 429).
+  let rateLimitShownFor = null;
+  let rateLimitHideTimer = null;
+
+  function updateSpotifyRateLimitBanner(untilEpochSeconds){
+    const banner = el("spotify-rate-limit-banner");
+    if(!banner) return;
+    if(!untilEpochSeconds){
+      rateLimitShownFor = null;
+      hideRateLimitBanner();
+      return;
+    }
+    if(untilEpochSeconds === rateLimitShownFor) return; // mismo limite, ya mostrado (o ya cerrado)
+    rateLimitShownFor = untilEpochSeconds;
+    const untilDate = new Date(untilEpochSeconds * 1000);
+    el("rate-limit-time").textContent = untilDate.toLocaleString([], {dateStyle: "short", timeStyle: "short"});
+    banner.hidden = false;
+    clearTimeout(rateLimitHideTimer);
+    rateLimitHideTimer = setTimeout(hideRateLimitBanner, 10000);
+  }
+
+  function hideRateLimitBanner(){
+    clearTimeout(rateLimitHideTimer);
+    el("spotify-rate-limit-banner").hidden = true;
+  }
+  el("spotify-rate-limit-banner").addEventListener("click", hideRateLimitBanner);
 
   el("open-library-spotify").addEventListener("click", () => {
     if(el("open-library-spotify").classList.contains("disabled")) return;
@@ -1350,7 +1685,7 @@
           renderGrid(items, "artist", "artistid", (item) => {
             libHistory.push({type: 'albums', tab: 'artists', id: item.artistid, title: item.artist});
             loadView(libHistory[libHistory.length-1]);
-          });
+          }, null, null, null, (item) => fetchArtistImage(item.artist));
         }
         else if (viewNode.type === 'albums') {
           el("lib-title").textContent = viewNode.title;
@@ -1359,7 +1694,7 @@
           renderGrid(items, "label", "albumid", (item) => {
             libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
-          }, "year", `Reproducir todo de ${viewNode.title}`, () => playKodi({artistid: viewNode.id}));
+          }, "year", `Reproducir todo de ${viewNode.title}`, () => playKodi({artistid: viewNode.id}), fetchAlbumArt);
         }
         else if (viewNode.type === 'songs') {
           el("lib-title").textContent = viewNode.title;
@@ -1377,7 +1712,7 @@
           renderGrid(items, "label", "albumid", (item) => {
             libHistory.push({type: 'songs', tab: 'albums', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
-          }, "year");
+          }, "year", null, null, fetchAlbumArt);
         }
         else if(viewNode.type === 'songs') {
           el("lib-title").textContent = viewNode.title;
@@ -1493,7 +1828,41 @@
     }
   }
 
-  function renderGrid(items, titleKey, idKey, onClick, subKey=null, playAllLabel=null, playAllAction=null) {
+  // Foto de artista bajo demanda (ver LibraryService.artist_image): una
+  // peticion por artista, disparadas todas a la vez desde renderGrid --
+  // el servidor Flask-SocketIO ya corre con threaded=True (async_mode
+  // "threading"), asi que las atiende en paralelo de verdad en vez de
+  // hacer esperar el listado completo a que cada busqueda en Spotify/
+  // Deezer termine antes de pintar nada (lo que hacia tardar mucho en
+  // aparecer la lista de artistas, confirmado en vivo).
+  async function fetchArtistImage(name) {
+    try {
+      const res = await fetch("/api/library/kodi/artist-image?name=" + encodeURIComponent(name));
+      const data = await res.json();
+      return data.thumbnail || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Igual que fetchArtistImage pero para caratulas de album (ver
+  // LibraryService.album_art) -- misma idea: no bloquear el listado de
+  // "Álbumes" esperando a MusicBrainz, pedir la caratula que falte aparte
+  // y en paralelo, con spinner mientras tanto.
+  async function fetchAlbumArt(item) {
+    const artist = (item.artist || []).join(", ");
+    const title = item.label || item.title || "";
+    if(!artist || !title) return null;
+    try {
+      const res = await fetch("/api/library/kodi/album-art?artist=" + encodeURIComponent(artist) + "&title=" + encodeURIComponent(title));
+      const data = await res.json();
+      return data.thumbnail || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function renderGrid(items, titleKey, idKey, onClick, subKey=null, playAllLabel=null, playAllAction=null, lazyImageLoader=null) {
     let html = '';
     if(playAllLabel){
       html += `<div class="list-item" style="border-color:var(--kodi); margin-bottom:1rem;" id="play-all-item">
@@ -1502,11 +1871,14 @@
       </div>`;
     }
     html += `<div class="grid-view">` + items.map((it, idx) => {
-      let thumb = it.thumbnail ? `/api/art?path=${encodeURIComponent(it.thumbnail)}` : '';
-      let imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
+      let thumb = resolveThumb(it.thumbnail);
+      let imgHtml;
+      if(thumb) imgHtml = `<img src="${thumb}">`;
+      else if(lazyImageLoader) imgHtml = `<div class="grid-card-spinner"></div>`;
+      else imgHtml = `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
       return `
       <div class="grid-card" id="gitem-${idx}">
-        <div class="grid-card-img">${imgHtml}</div>
+        <div class="grid-card-img" id="gitem-img-${idx}">${imgHtml}</div>
         <div class="grid-card-info">
           <div class="grid-card-title">${it[titleKey]}</div>
           ${subKey && it[subKey] ? `<div class="grid-card-sub">${it[subKey]}</div>` : ''}
@@ -1519,6 +1891,16 @@
     items.forEach((it, idx) => {
       document.getElementById(`gitem-${idx}`).addEventListener("click", () => onClick(it));
     });
+    if(lazyImageLoader){
+      items.forEach((it, idx) => {
+        if(resolveThumb(it.thumbnail)) return;
+        lazyImageLoader(it).then(url => {
+          const imgBox = document.getElementById(`gitem-img-${idx}`);
+          if(!imgBox) return; // la vista ya cambio antes de que llegara la respuesta
+          imgBox.innerHTML = url ? `<img src="${url}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
+        });
+      });
+    }
   }
 
   function renderGridSpotify(items, onClick, subKey=null, playAllLabel=null, playAllAction=null) {
@@ -1590,7 +1972,7 @@
       </div>`;
     }
     html += items.map((it, idx) => {
-      const thumb = it.thumbnail ? `/api/art?path=${encodeURIComponent(it.thumbnail)}` : '';
+      const thumb = resolveThumb(it.thumbnail);
       const iconHtml = thumb
         ? `<img src="${thumb}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">`
         : (it.filetype === 'directory' ? '📁' : '🎵');
@@ -1678,6 +2060,110 @@
     el("view-library").classList.remove("visible");
   }
 
+  // ---------- VISTA DE ARTISTA (catalogo mezclado Kodi+Spotify) ----------
+  // Se abre al tocar el nombre del artista en "ahora suena" (ver
+  // setMetaWithArtistLink) -- funciona sea cual sea la fuente que este
+  // sonando, porque busca el nombre en las dos bibliotecas por separado.
+  async function openArtistView(name){
+    if(!name) return;
+    el("view-artist").classList.add("visible");
+    el("artist-title").textContent = name;
+    const content = el("artist-content");
+    content.innerHTML = `<div class="loader">Cargando...</div>`;
+    try{
+      const res = await fetch(API_BASE + "/api/library/artist-catalog?name=" + encodeURIComponent(name));
+      renderArtistCatalog(await res.json());
+    }catch(e){
+      content.innerHTML = `<p style="color:var(--text-dim)">No se pudo cargar el catálogo de este artista.</p>`;
+    }
+  }
+  el("artist-btn-back").addEventListener("click", () => el("view-artist").classList.remove("visible"));
+
+  function sourceTagsHtml(sources){
+    return sources.map(s => `<span class="source-tag ${s.source}">${s.source === "kodi" ? "Kodi" : "Spotify"}</span>`).join("");
+  }
+
+  function renderArtistCatalog(data){
+    const content = el("artist-content");
+    let html = '<div class="artist-section-title">Álbumes</div>';
+    html += data.albums.length ? '<div class="grid-view">' + data.albums.map((a, idx) => {
+      const thumb = resolveThumb(a.thumbnail);
+      const imgHtml = thumb ? `<img src="${thumb}">` : `<div style="font-size:2rem; opacity:0.3">🎵</div>`;
+      return `<div class="grid-card" id="artist-album-${idx}">
+        <div class="grid-card-img">${imgHtml}</div>
+        <div class="grid-card-info">
+          <div class="grid-card-title">${escapeHtml(a.title)}</div>
+          <div class="grid-card-sub">${sourceTagsHtml(a.sources)}</div>
+        </div>
+      </div>`;
+    }).join('') + '</div>' : '<p style="color:var(--text-dim)">Sin álbumes encontrados.</p>';
+
+    html += '<div class="artist-section-title">Canciones</div>';
+    html += data.songs.length ? '<div class="list-view">' + data.songs.map((s, idx) => `
+      <div class="list-item" id="artist-song-${idx}">
+        <div class="list-item-icon">🎵</div>
+        <div class="list-item-info">
+          <div class="list-item-title">${escapeHtml(s.title)}</div>
+          <div class="list-item-sub">${sourceTagsHtml(s.sources)}${s.album ? " · " + escapeHtml(s.album) : ""}</div>
+        </div>
+      </div>
+    `).join('') + '</div>' : '<p style="color:var(--text-dim)">Sin canciones encontradas.</p>';
+
+    content.innerHTML = html;
+    data.albums.forEach((a, idx) => {
+      el(`artist-album-${idx}`).addEventListener("click", (e) => handleCatalogItemClick(a, "album", el(`artist-album-${idx}`)));
+    });
+    data.songs.forEach((s, idx) => {
+      el(`artist-song-${idx}`).addEventListener("click", (e) => handleCatalogItemClick(s, "song", el(`artist-song-${idx}`)));
+    });
+  }
+
+  // Si el mismo album/cancion esta en las dos fuentes, un primer toque
+  // despliega un selector inline (no navega a ningun sitio nuevo); un
+  // segundo toque en el mismo item lo cierra sin reproducir nada. Con una
+  // sola fuente, reproduce directamente -- sin selector de por medio.
+  function handleCatalogItemClick(item, kind, cardEl){
+    if(item.sources.length > 1){
+      const existing = cardEl.querySelector(".source-choice");
+      if(existing){ existing.remove(); return; }
+      const info = cardEl.querySelector(".grid-card-info, .list-item-info");
+      const choice = document.createElement("div");
+      choice.className = "source-choice";
+      choice.innerHTML = item.sources.map((s, i) =>
+        `<div class="source-choice-btn ${s.source}" data-i="${i}">▶ ${s.source === "kodi" ? "Kodi" : "Spotify"}</div>`
+      ).join("");
+      info.appendChild(choice);
+      choice.querySelectorAll(".source-choice-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          playCatalogSource(item.sources[Number(btn.dataset.i)], kind);
+        });
+      });
+      return;
+    }
+    playCatalogSource(item.sources[0], kind);
+  }
+
+  async function playCatalogSource(source, kind){
+    if(source.source === "kodi"){
+      await fetch(API_BASE + "/api/library/kodi/play", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(kind === "album" ? {albumid: source.albumid} : {songid: source.songid}),
+      });
+    } else {
+      const endpoint = kind === "album" ? "/api/library/spotify/play" : "/api/library/spotify/play-track";
+      const body = kind === "album" ? {context_uri: source.uri} : {uri: source.uri};
+      const res = await fetch(API_BASE + endpoint, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({ok: false}));
+      if(!data.ok){
+        alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo y que la autorización siga vigente en Ajustes.");
+        return;
+      }
+    }
+    el("view-artist").classList.remove("visible");
+  }
 
   // ---------- SETTINGS MODAL / GUÍA INICIAL ----------
   // La guía inicial reutiliza el propio modal de Ajustes (banner superior +

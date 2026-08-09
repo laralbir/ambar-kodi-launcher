@@ -13,6 +13,7 @@ from flask_socketio import SocketIO
 from ambar.adapters.audio.null_source import NullAudioLevelSource
 from ambar.adapters.audio.null_volume import NullVolumeController
 from ambar.adapters.desktop.null_wake_lock import NullWakeLock
+from ambar.adapters.deezer.gateway import DeezerGateway
 from ambar.adapters.desktop.webview_window import WebviewWindowController
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.kodi.ws_listener import listen as kodi_listen
@@ -97,6 +98,24 @@ def _build_wake_lock():
     except Exception as e:
         print(f"Bloqueo de suspension de pantalla no disponible ({e}); quedara inactivo.")
     return NullWakeLock()
+
+
+def _build_smtc_gateway():
+    """SMTC (Windows.Media.Control) para ahora-suena/control de Spotify sin
+    pasar por su Web API (sin limite de peticiones, ver CHANGELOG.md
+    "rate_limited_until") -- solo tiene sentido en Windows, y solo si el
+    Spotify de escritorio esta instalado en esta misma maquina. None
+    (sin SMTC) en cualquier otro caso: SpotifyGateway ya sabe caer a la
+    Web API de siempre cuando no se le inyecta nada aqui."""
+    if sys.platform != "win32":
+        return None
+    try:
+        from ambar.adapters.media_session.windows_smtc import WindowsSMTCGateway
+
+        return WindowsSMTCGateway()
+    except Exception as e:
+        print(f"SMTC no disponible ({e}); Spotify seguira usando solo la Web API.")
+        return None
 
 
 def _build_audio_level_source():
@@ -192,13 +211,15 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     musicbrainz_gateway = MusicBrainzGateway(cache_path=os.path.join(data_dir, "cd_cache.json"))
     kodi_gateway = KodiGateway(kodi_host, kodi_port, cd_identifier=musicbrainz_gateway)
 
-    spotify_gateway = SpotifyGateway(os.path.join(data_dir, ".spotify-cache"))
+    spotify_gateway = SpotifyGateway(
+        os.path.join(data_dir, ".spotify-cache"), smtc_gateway=_build_smtc_gateway()
+    )
     _configure_spotify(spotify_gateway, app_config)
 
     event_bus = EventBus()
     now_playing_service = NowPlayingService(kodi_gateway, spotify_gateway, event_bus)
     playback_control_service = PlaybackControlService(kodi_gateway, spotify_gateway)
-    library_service = LibraryService(kodi_gateway, spotify_gateway)
+    library_service = LibraryService(kodi_gateway, spotify_gateway, DeezerGateway())
     smoothing_preset = VU_SMOOTHING_PRESETS.get(
         app_config.get("VU_METER_SMOOTHING", "normal"), VU_SMOOTHING_PRESETS["normal"]
     )

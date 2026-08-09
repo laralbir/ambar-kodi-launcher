@@ -18,3 +18,13 @@ pyobjc-framework-CoreMedia; sys_platform == "darwin"
 # En macOS se usa `osascript` (ya viene con el sistema, sin dependencia extra).
 pycaw==20251023; sys_platform == "win32"
 comtypes; sys_platform == "win32"
+
+# Ahora-suena/control de Spotify via SMTC en vez de su Web API, cuando el
+# Spotify de escritorio esta sonando en esta misma maquina (ver
+# ambar/adapters/media_session/windows_smtc.py) -- paquetes modulares
+# pywinrt, NO el paquete "winsdk" (su sucesor oficial): a fecha de escribir
+# esto no publica rueda para Python 3.13, y "winsdk" si intenta compilar
+# desde fuente (requiere Visual Studio, no instalado aqui).
+winrt-Windows.Media.Control==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"

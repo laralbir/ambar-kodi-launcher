@@ -50,11 +50,26 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
   Cubre FLAC/MP3 (biblioteca nativa) y CD (fuente `cdda://` nativa,
   detecta el lector externo).
 - **Spotify**: no hay integración oficial ni fiable dentro de Kodi (los
-  plugins no oficiales llevan años rotos). Se usa el modelo Spotify
-  Connect: el usuario elige la reproducción desde el móvil, y el
-  launcher la refleja/controla vía la Web API de Spotify (Spotipy),
-  sin intentar embeber el reproductor web de Spotify (Spotify bloquea
-  el embebido con X-Frame-Options).
+  plugins no oficiales llevan años rotos). El launcher se ejecuta en la
+  misma máquina que reproduce (Spotify de escritorio en el propio mini
+  PC, no el modelo "Connect desde el móvil" que se planteó al principio),
+  así que "ahora suena" y el transporte (play/pause/siguiente/anterior/
+  seek) usan **SMTC** (`Windows.Media.Control`, vía los paquetes
+  modulares `winrt-Windows.*` — ver
+  `ambar/adapters/media_session/windows_smtc.py`) en vez de la Web API de
+  Spotify: es una API nativa de Windows sin autenticación ni límite de
+  peticiones (la misma que usa el propio Windows para el mini-reproductor
+  de la barra de tareas), con lo que se evita por completo el problema de
+  rate-limit de la Web API (ver `CHANGELOG.md`, `rate_limited_until`).
+  `SpotifyGateway` (Spotipy, Web API) sigue siendo necesaria para lo que
+  SMTC no cubre — listar playlists/artistas seguidos/álbumes guardados,
+  y **arrancar** una reproducción nueva elegida desde la biblioteca del
+  launcher (`play_context`/`play_track`, sin equivalente en SMTC, que solo
+  controla una sesión ya en marcha) — y como red de respaldo automática
+  si no hay sesión SMTC local (Spotify de escritorio cerrado, o en
+  macOS/desarrollo, donde SMTC no existe). No se intenta embeber el
+  reproductor web de Spotify (Spotify bloquea el embebido con
+  X-Frame-Options).
 - **Launcher táctil**: página propia (`index.html`) servida por un
   único servidor local Flask (`kiosk_server.py`) que:
   - unifica el estado de "ahora suena" de Kodi (JSON-RPC) y de Spotify
@@ -109,7 +124,10 @@ dimensionados para esa resolución exacta.
     `PlaybackSource`, `ConfigRepository`, `WindowController`.
   - `adapters/` — infraestructura real: `kodi/` (gateway JSON-RPC +
     listener de WebSocket), `spotify/` (gateway Spotipy + poller),
-    `persistence/` (config en JSON), `web/` (rutas Flask +
+    `media_session/` (SMTC de Windows para ahora-suena/control de Spotify
+    local, ver sección "Spotify" arriba — solo Windows, `SpotifyGateway`
+    cae a la Web API si no está disponible), `persistence/` (config en
+    JSON), `web/` (rutas Flask +
     `SocketIOBridge`, el único sitio que sabe que existe SocketIO),
     `desktop/` (ventana pywebview), `audio/` (captura de audio para
     el VU-metro: `windows_wasapi.py`, `macos_screencapturekit.py`,

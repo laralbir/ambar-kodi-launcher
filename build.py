@@ -192,6 +192,13 @@ def build():
         cmd.append("--hidden-import=soundcard")
         cmd.append("--hidden-import=pycaw")
         cmd.append("--hidden-import=comtypes")
+        # SMTC (ver ambar/adapters/media_session/windows_smtc.py): los
+        # paquetes pywinrt son extensiones nativas bajo el namespace
+        # "winrt.*" con imports dinamicos que el analisis estatico de
+        # PyInstaller no detecta solo -- collect-all en vez de
+        # hidden-import por submodulo concreto, para no tener que listar
+        # cada winrt.windows.* que se use.
+        cmd.append("--collect-all=winrt")
         cmd.append(f"--version-file={write_windows_version_file(version)}")
     elif sys.platform == "darwin":
         cmd += [

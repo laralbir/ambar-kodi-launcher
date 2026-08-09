@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 
 import requests
 
@@ -37,6 +38,11 @@ class MusicBrainzGateway:
         self._cache_path = cache_path
         self._cache: dict[str, dict | None] = self._load_cache()
         self._last: dict | None = None
+        # TOCs con una identificacion de fondo ya en marcha (ver
+        # identify_async) -- evita lanzar un hilo nuevo en cada sondeo de
+        # "ahora suena" (cada 2s) mientras la consulta anterior sigue en
+        # vuelo.
+        self._refreshing: set[str] = set()
 
     def _load_cache(self) -> dict:
         if not self._cache_path or not os.path.exists(self._cache_path):
@@ -70,17 +76,45 @@ class MusicBrainzGateway:
         """force=True ignora la cache (en disco y en memoria) y repite la
         consulta -- para el boton "actualizar" del CD tab del frontend,
         util si el disco se identifico mal o se puso otro CD sin que el
-        TOC cambiara lo suficiente para notarlo por si solo."""
+        TOC cambiara lo suficiente para notarlo por si solo.
+
+        Un resultado negativo (no encontrado) NO se guarda en la cache:
+        confirmado en vivo que la primera consulta de un CD puede fallar
+        por una conexion lenta al arrancar, y antes eso se quedaba
+        "atascado" mostrando los nombres genericos de Kodi para siempre
+        hasta que alguien pulsaba el boton de actualizar a mano. Sin
+        cachear el fallo, el siguiente intento (ver identify_async) lo
+        vuelve a intentar solo."""
         key = self._key(toc)
         if not force and key in self._cache:
             result = self._cache[key]
         else:
             result = self._lookup(toc)
-            self._cache[key] = result
-            self._save_cache()
+            if result:
+                self._cache[key] = result
+                self._save_cache()
         if result:
             self._last = result
         return result
+
+    def identify_async(self, toc: list[int]) -> None:
+        """Lanza identify() en un hilo de fondo si no hay ya uno en marcha
+        para este TOC -- para el sondeo de "ahora suena" (cada 2s), que no
+        puede esperar a una consulta HTTP pero si quiere auto-recuperarse
+        sola cuando get_last() esta vacio (disco aun no identificado, o la
+        identificacion anterior fallo)."""
+        key = self._key(toc)
+        if key in self._refreshing:
+            return
+        self._refreshing.add(key)
+
+        def _run():
+            try:
+                self.identify(toc)
+            finally:
+                self._refreshing.discard(key)
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def _lookup(self, toc: list[int]) -> dict | None:
         try:
@@ -121,6 +155,63 @@ class MusicBrainzGateway:
             "tracks": tracks,
             "art": art,
         }
+
+    def find_album_art(self, artist: str, album: str) -> str | None:
+        """Busca la caratula de un album por texto (artista+titulo) cuando
+        Kodi no tiene una propia -- misma idea que identify() para CDs, pero
+        por busqueda de texto en vez de TOC (no hay tabla de contenidos que
+        calcular aqui, solo el nombre). Cacheado en disco igual que
+        identify(), clave = "album:<artista>|<album>" en minusculas."""
+        if not artist or not album:
+            return None
+        key = f"album:{artist.strip().lower()}|{album.strip().lower()}"
+        if key in self._cache:
+            return self._cache[key]
+        art = self._lookup_album_art(artist, album)
+        self._cache[key] = art
+        self._save_cache()
+        return art
+
+    def _lookup_album_art(self, artist: str, album: str) -> str | None:
+        try:
+            r = requests.get(
+                "https://musicbrainz.org/ws/2/release/",
+                params={
+                    "query": f'artist:"{artist}" AND release:"{album}"',
+                    "fmt": "json",
+                    "limit": 5,
+                },
+                headers={"User-Agent": USER_AGENT},
+                timeout=10,
+            )
+            data = r.json()
+        except Exception:
+            return None
+        # La busqueda de texto (a diferencia de la busqueda por TOC de
+        # identify()) no incluye si Cover Art Archive tiene imagen -- hay
+        # que comprobarlo aparte. Solo se prueban resultados con score alto
+        # (coincidencia de texto casi exacta, 0-100 lo da la propia API) y
+        # se para en el primero que de verdad tenga caratula.
+        for release in data.get("releases") or []:
+            if (release.get("score") or 0) < 90:
+                continue
+            mbid = release.get("id")
+            if mbid and self._has_cover_art(mbid):
+                return COVER_ART_URL.format(mbid=mbid)
+        return None
+
+    @staticmethod
+    def _has_cover_art(mbid: str) -> bool:
+        try:
+            r = requests.head(
+                COVER_ART_URL.format(mbid=mbid),
+                headers={"User-Agent": USER_AGENT},
+                timeout=5,
+                allow_redirects=True,
+            )
+            return r.status_code == 200
+        except Exception:
+            return False
 
     @staticmethod
     def _best_match(releases: list, our_offsets: list[int]):

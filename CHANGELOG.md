@@ -5,7 +5,159 @@ Todos los cambios notables de este proyecto se documentan en este fichero.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
-## [Unreleased]
+## [0.4.0] - 2026-08-09
+
+### Added
+- **"Ahora suena" y el transporte de Spotify (play/pause/siguiente/
+  anterior/seek) ya no dependen de su Web API — usan SMTC** (`Windows.
+  Media.Control`, la misma API nativa que usa el propio Windows para el
+  mini-reproductor de la barra de tareas), cuando el Spotify de escritorio
+  está sonando en esta misma máquina. Sin autenticación, sin red, sin
+  límite de peticiones — resuelve de raíz el problema de rate-limit
+  descrito más abajo, en vez de solo mitigarlo. Nuevo adapter
+  `ambar/adapters/media_session/windows_smtc.py` (paquetes modulares
+  `winrt-Windows.*`, ver requirements.txt — NO el paquete "winsdk", que
+  no publica rueda para Python 3.13 a fecha de este commit).
+  `SpotifyGateway` lo usa con preferencia sobre la Web API y cae a esta
+  automáticamente si no hay sesión SMTC local (reproduciendo desde el
+  móvil por Connect, Spotify de escritorio cerrado, o en macOS/desarrollo,
+  donde SMTC no existe). La Web API sigue siendo necesaria para lo que
+  SMTC no cubre: listas/artistas seguidos/álbumes guardados, y arrancar
+  una reproducción nueva desde la biblioteca del launcher. Verificado en
+  vivo de punta a punta contra el Spotify de escritorio real: título,
+  artista, álbum, carátula, progreso y control play/pause funcionando sin
+  ninguna llamada a la Web API.
+- **Aviso discreto cuando Spotify está bajo el límite de peticiones**: un
+  429 de Spotify trae una cabecera `Retry-After` (segundos hasta que se
+  puede reintentar) — ahora se guarda esa fecha (`SpotifyGateway.
+  rate_limited_until`) y se expone en `/api/library/spotify/status`. El
+  frontend muestra una franja pequeña en la parte inferior ("Spotify:
+  límite de peticiones alcanzado. Se espera que se recupere sobre las
+  HH:MM") solo una vez por cada límite nuevo, se cierra sola a los 10s (o
+  antes con un click), y vuelve a aparecer si se produce un límite nuevo
+  más adelante (fecha de recuperación distinta a la ya mostrada).
+- **`scripts/setup_kiosk_windows.ps1`**: nuevo paso "Desactivar reproducción
+  automática de CD de audio" (`PlayCDAudioOnArrival=MSTakeNoAction`) — sin
+  esto, Windows puede abrir su propio reproductor multimedia a la vez que
+  Kodi al insertar un CD, compitiendo por el lector y el audio. No afecta
+  a como Kodi/Ámbar detectan el CD (no dependen del autoplay de Windows).
+- **Reloj y VU-metro a pantalla completa muestran la canción actual**
+  (título/artista) debajo, si hay algo sonando -- sin fuente activa, no se
+  muestra nada. El reloj ahora también incluye segundos (`HH:MM:SS`),
+  actualizándose cada segundo tanto en el home como a pantalla completa.
+- **Carátulas de álbum y fotos de artista por búsqueda externa cuando Kodi
+  no tiene una propia** (`kodi_albums`/`kodi_artists`), igual que ya se
+  hacía para el CD: álbumes se buscan por texto (artista+título) en
+  MusicBrainz + Cover Art Archive; artistas se buscan por nombre en
+  Spotify (ya autorizado) y, si no está configurado o no lo encuentra,
+  en Deezer (API pública, sin autenticación) como segundo respaldo.
+  Álbumes limitado a 15 búsquedas externas por carga de pantalla para no
+  bloquear la UI ni saturar esas APIs con bibliotecas grandes — el resto
+  se va rellenando solo en visitas siguientes según se cachea. Artistas
+  ya no tiene ese límite ni bloquea el listado (ver "Fixed" más abajo).
+  **Bug real encontrado y arreglado en el camino**: la búsqueda de
+  artista de Spotify con `limit=1` puede devolver un resultado top
+  distinto (y equivocado) que con `limit=5` para la misma consulta —
+  confirmado en vivo buscando "Erasure" y recibiendo "Depeche Mode" como
+  único resultado. Ahora se piden 5 candidatos y se prefiere la
+  coincidencia de nombre exacta entre ellos.
+- **Vista de artista al tocar su nombre en "ahora suena"**: álbumes y
+  canciones de ese artista, mezclando Kodi y Spotify. Si el mismo álbum
+  está en las dos fuentes se muestra una sola vez (etiquetas "Kodi"/
+  "Spotify"), con un selector para elegir desde dónde reproducirlo en vez
+  de duplicarlo. Las canciones son solo de Kodi: `GET /artists/{id}/
+  top-tracks` de Spotify también da 403 Forbidden para esta app (misma
+  restricción de "Extended Quota Mode" que "Me gusta", ver más abajo).
+  **Bug real encontrado y arreglado en el camino**: `get_artist_albums`
+  (usado también por la pestaña "Artistas (Spotify)" ya existente)
+  llevaba tiempo silenciosamente roto — el parámetro `limit` que envía
+  `sp.artist_albums()` de spotipy hace que Spotify responda 400 "Invalid
+  limit" **para cualquier valor**, incluso 5 o 20. Se llama ahora al
+  helper HTTP interno de spotipy sin ese parámetro (Spotify pagina a 5
+  por defecto) y se sigue la paginación a mano con `sp.next()`.
+
+### Fixed
+- **La navegación/reproducción de Kodi se notaba más lenta mientras
+  Spotify estaba bajo el límite de peticiones**: `kodi_play()` llama a
+  `spotify.pause()` antes de cada reproducción desde Kodi (para no dejar
+  sonando algo de Spotify a la vez) — esa llamada seguía golpeando la API
+  de Spotify (~0.5s de round-trip) aunque ya se supiera que iba a fallar.
+  Ahora `SpotifyGateway._client()` (punto único por el que pasan todas
+  las llamadas del gateway) corta en seco sin tocar la red si
+  `rate_limited_until` sigue vigente. Ese corte no servía de nada si el
+  límite nunca llegaba a registrarse: solo `get_state()` llamaba a
+  `_record_rate_limit`, y mientras Kodi es la fuente activa
+  `NowPlayingService` ni siquiera llega a invocar `spotify.get_state()`
+  (Kodi tiene prioridad) — así que un 429 real de `pause()`/`control()`
+  (las dos llamadas que sí se disparan desde Kodi: antes de cada
+  reproducción, y desde los botones de transporte) quedaba sin detectar
+  y se repetía en cada click. Ahora las tres registran el límite.
+- **Spotify podía dejar "ahora suena" colgado indefinidamente ("nada
+  sonando" para siempre) y hacer que "Salir" dejara de responder**.
+  Causa real, confirmada en vivo haciendo la petición HTTP a mano:
+  `GET /me/player` devolvía **429 "QUOTA_EXCEEDED"** (límite de
+  peticiones de *esta app concreta* — no una caída general de Spotify)
+  con cabecera `Retry-After: 53356` (~14.8 horas). Spotipy, con sus
+  reintentos automáticos por defecto, usa urllib3 por debajo, que ante
+  un 429 con `Retry-After` **duerme literalmente ese tiempo antes de
+  reintentar** — así que la petición se quedaba dormida casi 15 horas
+  por dentro, sin lanzar ninguna excepción y sin que ningún timeout de
+  `requests` pudiera evitarlo (el timeout solo limita cada intento
+  individual, no la espera entre reintentos). Con el sondeo de "ahora
+  suena" cada 2s, cada petición colgada se quedaba abierta indefinidamente
+  y se iban acumulando, hasta dejar al servidor sin hilos libres para
+  atender nada más (incluida la ruta de "Salir", sin relación directa
+  con Spotify). Arreglado desactivando los reintentos automáticos de
+  spotipy (`retries=0`, `status_retries=0`) y añadiendo un timeout
+  explícito de 10s tanto al cliente normal como a `SpotifyOAuth` (que no
+  traía ninguno por defecto) — ahora un 429/error de red falla al
+  momento en vez de colgarse, y el próximo sondeo (2s después) reintenta
+  solo. El límite de peticiones en sí no lo soluciona esto (hay que
+  esperar a que Spotify lo levante), pero dejar de martillear el
+  endpoint de reproducción durante la ventana bloqueada ayuda a que se
+  levante antes.
+- **`/callback` de Spotify daba "Internal Server Error" en vez del mensaje
+  de error normal** al recibir un código ya usado/caducado (los códigos de
+  autorización de Spotify son de un solo uso y expiran a los pocos
+  minutos) o si las credenciales cambiaban entre `/login` y `/callback`.
+  `exchange_code` no capturaba la excepción de `get_access_token` — a
+  diferencia de `_client()`, que ya tenía el mismo problema resuelto desde
+  antes. Confirmado en vivo repitiendo la petición con un código inválido.
+- **VU-metro de aguja realista: la etiqueta de dB se solapaba con la aguja**.
+  `.vu-needle-footer` (etiqueta de canal + dB debajo del SVG) tenía un
+  `margin-top` negativo pensado para acercarla al dial, pero la subía
+  justo encima del pivote de la aguja, quedando visualmente encima/mezclada
+  con ella. Cambiado a un margen positivo normal — ya no se tocan.
+  Aprovechando el arreglo, la esfera analógica se hizo más realista:
+  marcas de escala intermedias (no solo las 5 etiquetadas), cuatro
+  tornillos de montaje en las esquinas del bisel, un brillo metálico a lo
+  largo de la aguja, y un tamaño algo mayor.
+- **Listado de "Álbumes" (Kodi) tardaba mucho en aparecer, mismo motivo que
+  el de artistas** (ver siguiente entrada): `get_albums()` consultaba
+  MusicBrainz por cada álbum sin carátula propia de forma síncrona antes
+  de devolver la respuesta. Ahora el listado se devuelve al instante y el
+  frontend pide la carátula de cada álbum sin ella aparte
+  (`/api/library/kodi/album-art`, una petición por álbum en paralelo, con
+  spinner), igual que ya se hizo para artistas.
+- **Listado de "Artistas (Kodi)" tardaba mucho en aparecer**: `kodi_artists()`
+  buscaba la foto de cada artista sin carátula propia (Spotify/Deezer, una
+  consulta HTTP por artista) de forma síncrona antes de devolver la
+  respuesta — con varios artistas sin foto, el listado entero esperaba a
+  que todas esas búsquedas terminasen. Ahora el listado se devuelve al
+  instante con lo que ya tiene Kodi, y el frontend pide la foto de cada
+  artista sin ella aparte (`/api/library/kodi/artist-image`, una petición
+  por artista, todas en paralelo — el servidor Flask-SocketIO ya corre
+  con `threaded=True`), mostrando un spinner en la tarjeta hasta que
+  llega.
+- **A veces Spotify fallaba con "no hay dispositivo Connect activo" aunque
+  hubiera un dispositivo disponible**: confirmado en vivo (`sp.devices()`)
+  que un dispositivo Connect registrado (el PC, el móvil...) puede dejar
+  de figurar como "activo" tras un rato sin usarse, y `start_playback()`
+  sin indicar `device_id` falla en ese caso aunque el dispositivo siga
+  ahí y funcione. Ahora, si el primer intento falla, se reintenta
+  apuntando explícitamente al dispositivo cuando hay exactamente uno
+  registrado (con varios, no hay forma fiable de adivinar cuál quiere el
+  usuario, así que se mantiene el error de siempre).
 
 ## [0.3.0] - 2026-08-09
 

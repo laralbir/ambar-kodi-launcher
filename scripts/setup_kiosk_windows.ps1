@@ -107,7 +107,22 @@ function Disable-ScreenLock {
     Write-Result "Salvapantallas/bloqueo por inactividad desactivado" $true
 }
 
-# ---------- Paso 3: arranque automatico de Kodi y Ambar ----------
+# ---------- Paso 3: desactivar la reproduccion automatica de CD de audio ----------
+# Sin esto, al insertar un CD Windows puede lanzar su propio reproductor
+# multimedia (Windows Media Player/Groove Music) a la vez que Kodi -- dos
+# programas compitiendo por el lector y por la salida de audio. Solo afecta
+# al manejador de "CD de audio" (PlayCDAudioOnArrival); el resto de
+# autoplay (USB, fotos...) se deja tal cual, no es lo que se pidio.
+function Disable-CdAutoplay {
+    $path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\UserChosenExecuteHandlers"
+    if (-not (Test-Path $path)) {
+        New-Item -Path $path -Force | Out-Null
+    }
+    Set-ItemProperty -Path $path -Name "PlayCDAudioOnArrival" -Value "MSTakeNoAction"
+    Write-Result "Reproducción automática de CD de audio desactivada (Kodi/Ámbar siguen detectándolo igual)" $true
+}
+
+# ---------- Paso 4: arranque automatico de Kodi y Ambar ----------
 function Find-KodiExe {
     $candidates = @(
         "$env:ProgramFiles\Kodi\kodi.exe",
@@ -169,6 +184,10 @@ if (Confirm-Step "Inicio de sesión automático" "Evita que Windows pida iniciar
 
 if (Confirm-Step "Desactivar salvapantallas / bloqueo por inactividad" "Un kiosko no debe bloquearse por inactividad -- nadie toca el teclado/ratón mientras suena música. (El wake lock de Ámbar ya evita que la pantalla se apague, pero no puede evitar el bloqueo de sesión seguro de Windows.)") {
     Disable-ScreenLock
+}
+
+if (Confirm-Step "Desactivar reproducción automática de CD de audio" "Evita que Windows abra su propio reproductor multimedia al insertar un CD, compitiendo con Kodi/Ámbar por el lector y el audio.") {
+    Disable-CdAutoplay
 }
 
 if (Confirm-Step "Arranque automático de Kodi y Ámbar" "Añade accesos directos a la carpeta de Inicio de Windows: Kodi minimizado, Ámbar en ventana normal.") {
