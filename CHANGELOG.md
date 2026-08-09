@@ -7,7 +7,56 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-09
+
 ### Added
+- **Reloj con fecha en el home**, junto a los accesos de Biblioteca/
+  Spotify/Ajustes: hora y fecha con el formato regional configurado en el
+  sistema (sin idioma/formato hardcodeado — `toLocaleTimeString`/
+  `toLocaleDateString` sin locale explícito, heredan el idioma/región de
+  Windows). Toca la hora o la fecha para verla a pantalla completa (mismo
+  patrón que el VU-metro: mueve los mismos elementos al overlay, no los
+  duplica).
+- **Script de configuración de kiosko para Windows**
+  (`scripts/setup_kiosk_windows.ps1`): automatiza los pasos de
+  `docs/index.html` ("Preparar el equipo como kiosko") — inicio de sesión
+  automático (si la cuenta no tiene contraseña), desactivar el
+  salvapantallas/bloqueo por inactividad, y arranque automático de Kodi
+  (minimizado) y Ámbar con el sistema. Se relanza solo con permisos de
+  administrador (UAC) si hace falta. Modo asistente por defecto (pide
+  confirmación paso a paso) o `-All` para aplicarlo todo sin preguntar.
+  **Verificado en vivo end-to-end** en el equipo de desarrollo: los tres
+  pasos se aplicaron correctamente y los accesos directos de Inicio
+  apuntan a los ejecutables reales con el modo de ventana esperado.
+- **Indicador de "Me gusta" y "Descubrimiento semanal" para pistas de
+  Spotify**: junto al título de la canción, un icono ❤️/🤍 muestra si está
+  en tu biblioteca de "Me gusta" y otro 📻 si está en tu playlist
+  "Descubrimiento semanal"/"Discover Weekly" (buscada por nombre entre tus
+  playlists, en español o inglés). Ambos son solo indicador, no botón de
+  añadir: **confirmado en vivo con una sesión real y autorizada** que
+  `GET /me/tracks/contains` y `PUT /me/tracks` (comprobar/añadir una pista
+  suelta a "Me gusta") devuelven 403 Forbidden para esta app — restricción
+  de la propia API de Spotify desde sus cambios de noviembre de 2024, que
+  limita esas operaciones puntuales a apps aprobadas para "Extended Quota
+  Mode"; desde mayo de 2025 Spotify solo aprueba esa extensión a
+  organizaciones con 250k+ usuarios activos mensuales, no viable para un
+  proyecto personal. `GET /me/tracks` (listar toda la biblioteca) sí
+  funciona sin restricción, así que el indicador de "Me gusta" se resuelve
+  descargando la lista completa una vez (paginada, cacheada 10 minutos en
+  `SpotifyGateway`) y comparando en local, en vez de preguntar pista a
+  pista. Solo se comprueba contra la API cuando cambia la canción (no en
+  cada sondeo de 2s de "ahora suena"). **Dos bugs encontrados y arreglados
+  al verificar en vivo con capturas reales a 1920x720**: (1) el texto
+  largo de la insignia "Descubrimiento semanal" desbordaba el ancho fijo
+  del layout y empujaba fuera de pantalla la columna de accesos
+  (Biblioteca/Spotify/Ajustes/reloj) — acortado el texto y añadido
+  `flex-wrap` de seguridad; (2) `.spotify-badges{display:flex}` ganaba
+  sobre el atributo HTML `hidden` (misma prioridad de especificidad CSS,
+  pero una regla de autor siempre gana a la hoja de estilos por defecto
+  del navegador), así que las insignias nunca llegaban a ocultarse de
+  verdad sin reproducción de Spotify — añadida la regla
+  `.spotify-badges[hidden]{display:none !important;}`, mismo patrón ya
+  usado para el VU-metro.
 - **Identificación de CD de audio (título de álbum, artista, canciones y
   carátula)**: un CD de audio Redbook no lleva metadatos propios, así que
   Kodi solo veía "Track 01", "Track 02"... Ahora `KodiGateway` calcula la
@@ -95,6 +144,29 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   no dejaba claro por dónde se estaba navegando.
 
 ### Fixed
+- **El equipo se bloqueaba por inactividad con Ámbar abierto**, pese al
+  wake lock de Windows. Causa: `WindowsWakeLock` llamaba a
+  `SetThreadExecutionState` una sola vez al arrancar — confirmado en vivo
+  que no bastaba (la sesión se bloqueó igual, con el salvapantallas de
+  Windows a 60s y bloqueo al reanudar activado). Ahora se reafirma cada
+  30s desde un hilo de fondo, mismo patrón que usan apps tipo "Caffeine".
+  **Importante**: esto no sustituye desactivar el salvapantallas/bloqueo
+  por inactividad a nivel de Windows en el equipo del kiosko — ninguna
+  app puede evitar de forma soportada ese bloqueo "seguro" desde fuera,
+  es una protección de seguridad intencional del sistema. Nueva sección
+  "Preparar el equipo como kiosko (Windows)" en `docs/index.html` con los
+  pasos de configuración de Windows (inicio de sesión automático,
+  desactivar salvapantallas, arranque automático de Kodi/Ámbar).
+- **El VU-metro en modo "Rápido" no se notaba más vivo que "Normal".**
+  Causa: `AudioLevelService` limitaba la publicación de eventos por
+  WebSocket a 20/s de forma fija, igual en los tres presets de fluidez —
+  aunque la ballística interna de "Rápido" ya era más ágil, el frontend
+  solo veía una muestra nueva cada 50ms igual que en "Normal", así que el
+  movimiento no se notaba de verdad. Ahora la frecuencia de publicación
+  también escala por preset (`throttle_hz` en `VU_SMOOTHING_PRESETS`):
+  30Hz en "Rápido" (antes 20Hz fijo), 20Hz en "Normal", 15Hz en "Suave".
+  De paso, tiempos de ataque/liberación de "Rápido" algo más ajustados
+  (0.02s/0.1s, antes 0.04s/0.15s).
 - **`python build.py` borraba en silencio `config.json`/`.spotify-cache` del
   `.exe` compilado en Windows.** Causa: PyInstaller (`--clean`) borra y
   recrea `dist/Ambar/` entero en cada build, y ahí es donde vive la

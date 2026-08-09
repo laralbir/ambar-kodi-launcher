@@ -204,6 +204,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     )
     audio_level_service = AudioLevelService(
         _build_audio_level_source(), event_bus,
+        throttle_hz=smoothing_preset["throttle_hz"],
         attack_seconds=smoothing_preset["attack"], release_seconds=smoothing_preset["release"],
     )
     system_service = SystemService(
@@ -219,7 +220,7 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
         _configure_spotify(spotify_gateway, config)
         if "VU_METER_SMOOTHING" in config:
             preset = VU_SMOOTHING_PRESETS.get(config["VU_METER_SMOOTHING"], VU_SMOOTHING_PRESETS["normal"])
-            audio_level_service.set_smoothing(preset["attack"], preset["release"])
+            audio_level_service.set_smoothing(preset["attack"], preset["release"], preset["throttle_hz"])
 
     config_service = ConfigService(
         config_repository,

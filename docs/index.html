@@ -136,6 +136,10 @@
 
   <section>
     <p>Bienvenido al manual de <strong>Ámbar</strong>, tu panel táctil de control para sistemas HiFi multimedia. Esta guía te explicará cómo preparar tus reproductores y arrancar la interfaz.</p>
+    <figure style="margin:1.5rem 0 0;">
+      <img src="screenshots/home.png" alt="Pantalla principal de Ámbar: carátula, título/artista, VU-metro y accesos a Biblioteca/Spotify/Ajustes" style="width:100%; height:auto; border-radius:8px; border:1px solid var(--line); display:block;">
+      <figcaption style="font-size:0.85rem; color:var(--text-dim); margin-top:0.5rem;">Pantalla principal, sin nada reproduciéndose. Captura tomada en un navegador de escritorio, no en la pantalla táctil real — el aspecto en el panel físico (1920×720 sin barra de navegador) puede variar ligeramente.</figcaption>
+    </figure>
   </section>
 
   <section>
@@ -188,6 +192,30 @@
 
     <div class="note">
       <p><strong>Alternativa por variables de entorno:</strong> si prefieres no guardar las claves en <code>config.json</code>, puedes definir <code>SPOTIFY_CLIENT_ID</code> y <code>SPOTIFY_CLIENT_SECRET</code> como variables de entorno antes de arrancar el ejecutable (en Windows, por ejemplo desde un <code>.bat</code> con <code>set SPOTIFY_CLIENT_ID=...</code>). Los campos de Ajustes tienen prioridad si están rellenos.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span style="color:var(--amber)">3b.</span> Preparar el equipo como kiosko (Windows)</h2>
+    <p>Pasos únicos de configuración de Windows para que el mini PC arranque directo al launcher, sin bloquearse ni pedir intervención manual — no son parte de Ámbar en sí, son ajustes del propio sistema operativo.</p>
+
+    <div class="note">
+      <p><strong>Script automático:</strong> <code>scripts/setup_kiosk_windows.ps1</code> aplica los tres pasos de abajo por ti (pide permisos de administrador, uno solo se relanza elevado). Por defecto actúa como asistente, explicando y pidiendo confirmación paso a paso; con <code>-All</code> los aplica todos sin preguntar. Ejecútalo con clic derecho → "Ejecutar con PowerShell", o desde una terminal: <code>powershell -ExecutionPolicy Bypass -File scripts\setup_kiosk_windows.ps1</code>.</p>
+    </div>
+
+    <div class="block">
+      <h3>Inicio de sesión automático</h3>
+      <p>Para que Windows no pida iniciar sesión al arrancar: si tu cuenta <strong>no tiene contraseña</strong>, puedes activar el inicio automático editando el registro (<code>HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon</code>, valores <code>AutoAdminLogon=1</code>, <code>DefaultUserName</code> con tu usuario, <code>DefaultPassword</code> vacío) — requiere permisos de administrador. Si tu cuenta <strong>sí tiene contraseña</strong>, usa la herramienta oficial de Microsoft <a href="https://learn.microsoft.com/es-es/sysinternals/downloads/autologon" target="_blank" rel="noopener">Sysinternals Autologon</a>, que pide la contraseña en su propio diálogo seguro y la guarda cifrada (más seguro que dejarla en texto plano en el registro).</p>
+    </div>
+
+    <div class="block">
+      <h3>Desactivar el salvapantallas / bloqueo por inactividad</h3>
+      <p>Un kiosko no debe bloquearse por inactividad — nadie va a tocar el teclado/ratón mientras suena música. El <em>wake lock</em> de Ámbar (<code>SetThreadExecutionState</code>, ver <code>ambar/adapters/desktop/windows_wake_lock.py</code>) evita que la pantalla se apague o el equipo entre en reposo mientras el launcher está abierto, pero <strong>no puede evitar el bloqueo de sesión "seguro" del salvapantallas de Windows</strong> — es una protección de seguridad intencional del sistema, ninguna app corriente puede saltársela desde fuera. Desactívalo en <strong>Configuración → Personalización → Pantalla de bloqueo → Protector de pantalla → ninguno</strong> (o <code>ScreenSaveActive=0</code> en <code>HKEY_CURRENT_USER\Control Panel\Desktop</code>).</p>
+    </div>
+
+    <div class="block">
+      <h3>Arrancar Kodi y Ámbar solos</h3>
+      <p>Añade accesos directos a la carpeta de <strong>Inicio</strong> de Windows (<code>shell:startup</code> en el Explorador, o <code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup</code>) para <code>kodi.exe</code> y para el <code>.exe</code> de Ámbar. Para que Kodi no tape la pantalla al arrancar, edita las propiedades del acceso directo → pestaña "Acceso directo" → campo "Ejecutar" → <strong>Minimizado</strong>.</p>
     </div>
   </section>
 

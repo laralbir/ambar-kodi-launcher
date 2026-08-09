@@ -1,3 +1,5 @@
+import time
+
 from ambar.domain.playback import PlaybackState
 
 try:
@@ -11,8 +13,15 @@ except ImportError:
 SPOTIFY_SCOPE = (
     "user-read-playback-state user-modify-playback-state "
     "playlist-read-private playlist-read-collaborative user-library-read "
-    "user-follow-read"
+    "user-follow-read user-library-modify"
 )
+
+# Nombre de la playlist algoritmica "semanal" de Spotify -- no tiene un ID
+# fijo/universal (es propia de cada usuario), asi que se busca por nombre
+# entre las playlists que sigue el usuario. En ingles y español (Spotify
+# localiza el nombre segun el idioma de la cuenta); si en el futuro hace
+# falta otro idioma, añadir aqui su traduccion.
+WEEKLY_PLAYLIST_NAMES = {"discover weekly", "descubrimiento semanal"}
 
 
 class SpotifyGateway:
@@ -22,6 +31,15 @@ class SpotifyGateway:
     def __init__(self, cache_path: str):
         self._cache_path = cache_path
         self._oauth: "SpotifyOAuth | None" = None
+        # ID de la playlist "Descubrimiento semanal"/"Discover Weekly" del
+        # usuario -- estable entre semanas (solo cambia el contenido, no el
+        # ID), asi que una vez encontrada se cachea en memoria y no hace
+        # falta volver a buscarla por nombre en cada comprobacion.
+        self._weekly_playlist_id: str | None = None
+        # Cache de IDs de canciones en "Me gusta" (ver _get_liked_track_ids
+        # mas abajo, seccion "Me gusta"/Descubrimiento semanal).
+        self._liked_track_ids: set | None = None
+        self._liked_track_ids_fetched_at: float = 0.0
 
     def configure(self, client_id: str | None, client_secret: str | None, redirect_uri: str) -> None:
         if SPOTIPY_AVAILABLE and client_id and client_secret:
@@ -119,6 +137,7 @@ class SpotifyGateway:
             artist=", ".join(a["name"] for a in item.get("artists", [])),
             album=item.get("album", {}).get("name", ""),
             art=images[0]["url"] if images else None,
+            track_id=item.get("id"),
             progress=int(100 * current.get("progress_ms", 0) / duration),
             elapsed_seconds=current.get("progress_ms", 0) // 1000,
             total_seconds=duration // 1000,
@@ -302,6 +321,86 @@ class SpotifyGateway:
         except Exception:
             return False
         return True
+
+    # ---------- "Me gusta" / Descubrimiento semanal ----------
+    #
+    # NO se usa GET /me/tracks/contains ni PUT /me/tracks (anadir): ambos
+    # devuelven 403 Forbidden, confirmado en vivo con una sesion real y
+    # autorizada (mismo token, con el scope user-library-modify concedido).
+    # Es una restriccion de la propia API de Spotify (no un bug nuestro):
+    # desde sus cambios de noviembre de 2024, esas dos operaciones puntuales
+    # de "Your Library" quedan limitadas a apps aprobadas para Extended
+    # Quota Mode -- y desde mayo de 2025 Spotify solo aprueba esa extension
+    # a organizaciones con 250k+ usuarios activos, no viable para un
+    # proyecto personal (ver TODO.md). Por eso no hay boton de "anadir":
+    # no hay forma de que funcione via API tal y como esta la cosa.
+    #
+    # GET /me/tracks (listar toda la biblioteca, sin filtrar por pista) SI
+    # funciona sin restriccion, asi que el indicador se resuelve trayendo
+    # la lista completa una vez y comparando en local, en vez de preguntar
+    # pista a pista.
+    LIKED_TRACKS_CACHE_SECONDS = 600
+
+    def _get_liked_track_ids(self, sp) -> set:
+        now = time.monotonic()
+        if self._liked_track_ids is not None and (now - self._liked_track_ids_fetched_at) < self.LIKED_TRACKS_CACHE_SECONDS:
+            return self._liked_track_ids
+        ids: set = set()
+        try:
+            results = sp.current_user_saved_tracks(limit=50)
+            while results:
+                for item in results.get("items", []):
+                    track = item.get("track") or {}
+                    if track.get("id"):
+                        ids.add(track["id"])
+                results = sp.next(results) if results.get("next") else None
+        except Exception:
+            # Si falla a mitad de la paginacion, mejor quedarse con la
+            # cache anterior (si la hay) que con una lista a medias que
+            # marcaria canciones reales como "no en Me gusta" por error.
+            if self._liked_track_ids is not None:
+                return self._liked_track_ids
+        self._liked_track_ids = ids
+        self._liked_track_ids_fetched_at = now
+        return ids
+
+    def is_track_liked(self, track_id: str) -> bool:
+        sp = self._client()
+        if not sp or not track_id:
+            return False
+        return track_id in self._get_liked_track_ids(sp)
+
+    def _get_weekly_playlist_id(self, sp) -> str | None:
+        if self._weekly_playlist_id:
+            return self._weekly_playlist_id
+        try:
+            res = sp.current_user_playlists(limit=50)
+            items = res.get("items", []) if res else []
+            for p in items:
+                if (p.get("name") or "").strip().lower() in WEEKLY_PLAYLIST_NAMES:
+                    self._weekly_playlist_id = p.get("id")
+                    break
+        except Exception:
+            pass
+        return self._weekly_playlist_id
+
+    def is_track_in_weekly(self, track_id: str) -> bool:
+        """True si la pista esta en el "Descubrimiento semanal"/"Discover
+        Weekly" del usuario. Solo lectura -- la API de Spotify no deja
+        añadir canciones a esta playlist (la genera el algoritmo, no
+        pertenece al usuario; un intento de Playlist.Add ahi da 403)."""
+        sp = self._client()
+        if not sp or not track_id:
+            return False
+        playlist_id = self._get_weekly_playlist_id(sp)
+        if not playlist_id:
+            return False
+        try:
+            res = sp.playlist_items(playlist_id, fields="items.track.id")
+            ids = {it.get("track", {}).get("id") for it in res.get("items", []) if it.get("track")}
+        except Exception:
+            return False
+        return track_id in ids
 
     def get_authorize_url(self) -> str | None:
         return self._oauth.get_authorize_url() if self._oauth else None

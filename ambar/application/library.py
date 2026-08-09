@@ -17,6 +17,18 @@ class LibraryService:
     def spotify_status(self) -> dict:
         return {"available": self._spotify.is_configured()}
 
+    def spotify_track_status(self, track_id: str) -> dict:
+        # Estado de la pista actual respecto a "Me gusta" y al Descubrimiento
+        # semanal -- ambos de solo lectura (ver SpotifyGateway: anadir a "Me
+        # gusta" via API da 403 Forbidden para esta app, restriccion de
+        # Spotify no de nuestro codigo, documentado en TODO.md).
+        if not track_id:
+            return {"liked": False, "in_weekly": False}
+        return {
+            "liked": self._spotify.is_track_liked(track_id),
+            "in_weekly": self._spotify.is_track_in_weekly(track_id),
+        }
+
     def kodi_artists(self) -> list:
         return self._kodi.get_artists()
 

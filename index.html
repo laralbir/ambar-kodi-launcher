@@ -107,6 +107,15 @@
   }
   .track-title.marquee, .track-meta.marquee{ text-overflow:clip; }
   .marquee-inner{ display:inline-block; }
+
+  .spotify-badges{display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.4rem;}
+  .spotify-badges[hidden]{display:none !important;}
+  .spotify-badge{
+    display:inline-flex; align-items:center; gap:0.4rem;
+    font-size:0.8rem; padding:0.3rem 0.7rem; border-radius:999px;
+    border:1px solid var(--line); color:var(--text-dim); background:var(--panel-raised);
+  }
+  .spotify-badge.on{color:var(--spotify); border-color:var(--spotify);}
   .marquee .marquee-inner{
     animation-name: marquee-scroll; animation-timing-function:linear; animation-iteration-count:infinite;
     animation-duration: var(--marquee-duration, 10s);
@@ -260,6 +269,30 @@
   .vumeter-fullscreen-container .vu-ch-label{font-size:1.1rem; width:auto;}
   .vumeter-fullscreen-container .vu-db-label{font-size:1.1rem; width:auto;}
   .vumeter-fullscreen-container .vu-channel-needle svg{max-height:min(60vh, 500px);}
+
+  .clock-widget{
+    cursor:pointer; text-align:right; padding:0 0.2rem 0.6vh;
+    display:flex; flex-direction:column; gap:0.1rem;
+  }
+  .clock-time{
+    font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--amber);
+    font-size:clamp(1.6rem, 3.4vh, 2.4rem); line-height:1.05; letter-spacing:0.02em;
+  }
+  .clock-date{
+    font-family:'JetBrains Mono', monospace; color:var(--text-dim);
+    font-size:clamp(0.75rem, 1.4vh, 0.95rem);
+  }
+
+  #view-clock-fullscreen{
+    display:none; position:absolute; inset:0; background:var(--bg); z-index:10;
+    align-items:center; justify-content:center;
+  }
+  #view-clock-fullscreen.visible{display:flex;}
+  #clock-fullscreen-back{position:absolute; top:1.2rem; left:1.2rem;}
+  .clock-fullscreen-container{text-align:center; cursor:pointer;}
+  .clock-fullscreen-container .clock-time{font-size:min(22vw, 16rem); letter-spacing:0.01em;}
+  .clock-fullscreen-container .clock-date{font-size:min(4vw, 2.4rem); margin-top:1vh;}
+
   .playlist-content{flex:1; overflow-y:auto; padding:1.2rem;}
   .playlist-item{
     display:flex; align-items:center; gap:1rem; padding:0.9rem 1rem; border-radius:8px;
@@ -462,6 +495,11 @@
       <div class="track-title" id="track-title"><span class="marquee-inner">Nada sonando</span></div>
       <div class="track-meta" id="track-meta"><span class="marquee-inner">Elige música desde la biblioteca o desde Spotify en tu móvil</span></div>
 
+      <div class="spotify-badges" id="spotify-badges" hidden>
+        <div class="spotify-badge" id="badge-liked" title="Está en tu biblioteca de Me gusta">🤍 Me gusta</div>
+        <div class="spotify-badge" id="badge-weekly" title="Descubrimiento semanal">📻 Semanal</div>
+      </div>
+
       <div class="vu-bar" id="vu-bar"><div class="vu-fill" id="vu-fill"></div></div>
       <div class="time-row">
         <span id="time-elapsed-total">0:00 / 0:00</span>
@@ -491,6 +529,10 @@
     </div>
 
     <div class="side-actions">
+      <div class="clock-widget" id="clock-widget" title="Pantalla completa">
+        <div class="clock-time" id="clock-time">--:--</div>
+        <div class="clock-date" id="clock-date">—</div>
+      </div>
       <div class="action-card kodi" id="open-library-kodi">
         <div class="eyebrow">FLAC · MP3 · CD</div>
         <div class="label">Biblioteca</div>
@@ -546,6 +588,12 @@
   <div id="view-vumeter-fullscreen">
     <div class="vumeter-fullscreen-container" id="vumeter-fullscreen-container"></div>
     <div class="back-btn" id="vumeter-fullscreen-back">←</div>
+  </div>
+
+  <!-- CLOCK FULLSCREEN VIEW -->
+  <div id="view-clock-fullscreen">
+    <div class="clock-fullscreen-container" id="clock-fullscreen-container"></div>
+    <div class="back-btn" id="clock-fullscreen-back">←</div>
   </div>
 
   <!-- SETTINGS MODAL -->
@@ -651,6 +699,8 @@
   let currentSource = null;
   let lastArtSrc = null;
   let lastKnownTotalSeconds = 0;
+  let lastCheckedTrackId = null;
+  let currentTrackLiked = false;
 
   function formatTime(totalSeconds){
     totalSeconds = Math.max(0, Math.round(totalSeconds));
@@ -799,7 +849,7 @@
   // ambar/domain/audio.py (solo se usa el "release" aqui, para que el
   // watchdog de caida en silencio del frontend se comporte igual que la
   // ballistica real del backend mientras hay audio sonando).
-  const VU_SMOOTHING_RELEASE_SECONDS = { fast: 0.15, normal: 0.3, smooth: 0.7 };
+  const VU_SMOOTHING_RELEASE_SECONDS = { fast: 0.1, normal: 0.3, smooth: 0.7 };
   let vuMeterSmoothing = "normal";
 
   function applyVuMeterSmoothing(preset){
@@ -834,6 +884,32 @@
   el("view-vumeter-fullscreen").addEventListener("click", (e) => {
     if(e.target.id === "view-vumeter-fullscreen") toggleVuMeterFullscreen(false);
   });
+
+  // ---------- RELOJ (fecha/hora con el formato regional del sistema) ----------
+  // Sin locale explicito: toLocaleTimeString()/toLocaleDateString() usan el
+  // idioma/region configurados en el propio Windows (o el navegador, en
+  // modo desarrollo), tal cual pide el requisito -- nada hardcodeado aqui.
+  function updateClock(){
+    const now = new Date();
+    const timeEl = el("clock-time"), dateEl = el("clock-date");
+    if(timeEl) timeEl.textContent = now.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    if(dateEl) dateEl.textContent = now.toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Mismo patron que el VU-metro: mueve los mismos elementos (no los
+  // duplica) entre el home y el overlay a pantalla completa.
+  function toggleClockFullscreen(active){
+    const time = el("clock-time"), date = el("clock-date");
+    const target = active ? el("clock-fullscreen-container") : el("clock-widget");
+    target.appendChild(time);
+    target.appendChild(date);
+    el("view-clock-fullscreen").classList.toggle("visible", active);
+  }
+  el("clock-widget").addEventListener("click", () => toggleClockFullscreen(true));
+  el("clock-fullscreen-back").addEventListener("click", () => toggleClockFullscreen(false));
+  el("clock-fullscreen-container").addEventListener("click", () => toggleClockFullscreen(false));
 
   function formatDb(db){
     return (db <= VU_DB_MIN ? "-Inf" : Math.round(db)) + " dB";
@@ -934,6 +1010,45 @@
     applyMarquee(el("track-meta"));
   });
 
+  // ---------- INSIGNIAS DE SPOTIFY (Me gusta / Descubrimiento semanal) ----------
+  // Solo se comprueba contra la API cuando cambia la pista (no en cada
+  // sondeo de 2s de "ahora suena") -- evita golpear la API de Spotify sin
+  // necesidad y respeta mejor sus limites de peticiones.
+  function updateSpotifyBadges(trackId){
+    const container = el("spotify-badges");
+    if(!trackId){
+      container.hidden = true;
+      lastCheckedTrackId = null;
+      return;
+    }
+    container.hidden = false;
+    if(trackId === lastCheckedTrackId) return;
+    lastCheckedTrackId = trackId;
+    el("badge-liked").textContent = "⏳ Me gusta";
+    el("badge-liked").classList.remove("on");
+    el("badge-weekly").classList.remove("on");
+    fetch(API_BASE + "/api/library/spotify/track-status?track_id=" + encodeURIComponent(trackId))
+      .then(r => r.json())
+      .then(status => {
+        if(trackId !== lastCheckedTrackId) return; // la pista ya cambio mientras llegaba la respuesta
+        applyLikedBadge(status.liked);
+        el("badge-weekly").classList.toggle("on", !!status.in_weekly);
+        el("badge-weekly").textContent = status.in_weekly ? "📻 En tu Semanal" : "📻 No en tu Semanal";
+      })
+      .catch(() => {});
+  }
+
+  // Solo indicador, no clicable: añadir/quitar de "Me gusta" via API da 403
+  // Forbidden para esta app (restriccion de Spotify, no arreglable desde
+  // aqui -- ver TODO.md). El icono refleja el estado real (biblioteca
+  // completa de "Me gusta" descargada y cacheada en el backend), pero no
+  // se puede tocar desde el launcher.
+  function applyLikedBadge(liked){
+    currentTrackLiked = !!liked;
+    el("badge-liked").classList.toggle("on", currentTrackLiked);
+    el("badge-liked").textContent = currentTrackLiked ? "❤️ En Me gusta" : "🤍 No está en Me gusta";
+  }
+
   // Render UI
   function render(data){
     currentSource = data.source;
@@ -949,6 +1064,8 @@
       setMarqueeText(el("track-title"), "Nada sonando");
       setMarqueeText(el("track-meta"), "Elige música desde la biblioteca o desde Spotify en tu móvil");
     }
+
+    updateSpotifyBadges(data.source === "spotify" ? data.track_id : null);
 
     el("vu-fill").style.width = (data.progress || 0) + "%";
     const elapsed = data.elapsed_seconds || 0, total = data.total_seconds || 0;

@@ -35,9 +35,11 @@ class AudioLevelService:
     def stop(self) -> None:
         self._source.stop()
 
-    def set_smoothing(self, attack_seconds: float, release_seconds: float) -> None:
+    def set_smoothing(self, attack_seconds: float, release_seconds: float, throttle_hz: float | None = None) -> None:
         self._attack_seconds = attack_seconds
         self._release_seconds = release_seconds
+        if throttle_hz:
+            self._min_interval = 1.0 / throttle_hz
         for meter in self._meters:
             meter.set_ballistics(attack_seconds, release_seconds)
 

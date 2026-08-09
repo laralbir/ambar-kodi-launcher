@@ -17,10 +17,18 @@ VU_RELEASE_SECONDS = 0.3
 # nervioso/vivo, sigue de cerca cada transitorio); "smooth" es mas lento y
 # amortiguado (movimiento mas fluido/cinematografico, menos fiel al pico
 # exacto). "normal" son las constantes de siempre.
+#
+# throttle_hz (frecuencia de publicacion por WebSocket, ver AudioLevelService)
+# tambien escala por preset -- antes era fija a 20Hz siempre, asi que "fast"
+# tenia una ballistica mas agil por dentro pero el frontend solo veia una
+# muestra cada 50ms igual que "normal", y el movimiento no se notaba mas de
+# verdad. Confirmado en vivo: subir throttle_hz en "fast" (mas muestras
+# distintas llegando al frontend) es lo que de verdad hace notarse el
+# movimiento, no solo estrechar attack/release.
 VU_SMOOTHING_PRESETS = {
-    "fast": {"attack": 0.04, "release": 0.15},
-    "normal": {"attack": VU_ATTACK_SECONDS, "release": VU_RELEASE_SECONDS},
-    "smooth": {"attack": 0.18, "release": 0.7},
+    "fast": {"attack": 0.02, "release": 0.1, "throttle_hz": 30.0},
+    "normal": {"attack": VU_ATTACK_SECONDS, "release": VU_RELEASE_SECONDS, "throttle_hz": 20.0},
+    "smooth": {"attack": 0.18, "release": 0.7, "throttle_hz": 15.0},
 }
 
 

@@ -128,6 +128,11 @@ def create_app(container) -> Flask:
     def spotify_status():
         return jsonify(container.library_service.spotify_status())
 
+    @app.route("/api/library/spotify/track-status")
+    def spotify_track_status():
+        track_id = request.args.get("track_id", "")
+        return jsonify(container.library_service.spotify_track_status(track_id))
+
     @app.route("/api/library/kodi/artists")
     def kodi_artists():
         return jsonify(container.library_service.kodi_artists())
