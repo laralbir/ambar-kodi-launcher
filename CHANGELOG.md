@@ -16,15 +16,23 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   sector CD-DA) y la consulta contra la API pública de MusicBrainz (sin
   API key), igual que hacen reproductores como foobar2000/MusicBrainz
   Picard. Si encuentra coincidencia, sustituye los títulos genéricos por
-  los reales en la pestaña "CD" y en "ahora suena" (título, artista,
-  álbum y carátula, esta última vía Cover Art Archive). Si el disco no
-  está catalogado o no hay internet, sigue mostrando lo genérico de Kodi
-  como hasta ahora — no rompe nada. Nuevo adapter
-  `ambar/adapters/musicbrainz/gateway.py`, con resultado cacheado en
-  memoria mientras el mismo CD siga insertado (no repite la consulta en
-  cada sondeo). **Verificado en vivo** con un CD real: "Yo, minoría
-  absoluta" de Extremoduro identificado correctamente, con sus 10
-  canciones y carátula.
+  los reales en la pestaña "CD", en la lista de reproducción actual y en
+  "ahora suena" (título, artista, álbum y carátula en calidad "grande",
+  vía Cover Art Archive). Si el disco no está catalogado o no hay
+  internet, sigue mostrando lo genérico de Kodi como hasta ahora — no
+  rompe nada. Nuevo adapter `ambar/adapters/musicbrainz/gateway.py`, con
+  resultado cacheado **en disco** (junto a `config.json`/`.spotify-cache`,
+  sobrevive a reinicios del launcher, no solo mientras el proceso sigue
+  vivo). La pestaña CD muestra una cabecera con carátula/álbum/artista y
+  un botón 🔄 para forzar una nueva identificación ignorando la caché —
+  útil si el disco se identificó mal, o si la primera consulta falla por
+  una conexión lenta al arrancar (timeout subido de 5s a 10s tras
+  confirmar en vivo un fallo así en el primer intento, resuelto al
+  instante con el botón de refrescar). **Verificado en vivo** con un CD
+  real: "Yo, minoría absoluta" de Extremoduro identificado
+  correctamente, con sus 10 canciones y carátula, y con la config
+  (`config.json`/`.spotify-cache`) preservada entre recompilaciones (ver
+  más abajo, sección `build.py`).
 - **Conexión con Spotify más amigable**: en Ajustes, junto a los
   campos de credenciales, un indicador de estado en vivo ("Conectado"
   / "Sin autorizar todavía", sondeado cada 3s mientras Ajustes está
@@ -87,6 +95,15 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   no dejaba claro por dónde se estaba navegando.
 
 ### Fixed
+- **`python build.py` borraba en silencio `config.json`/`.spotify-cache` del
+  `.exe` compilado en Windows.** Causa: PyInstaller (`--clean`) borra y
+  recrea `dist/Ambar/` entero en cada build, y ahí es donde vive la
+  config en tiempo de ejecución en Windows (a diferencia de macOS, donde
+  `_get_data_dir` ya usa la carpeta *contenedora* del `.app` precisamente
+  para evitar esto). Confirmado en vivo: se perdieron credenciales de
+  Spotify ya autorizadas. `build.py` ahora hace backup de
+  `config.json`/`.spotify-cache`/`cd_cache.json`/`skins/` antes de
+  invocar a PyInstaller y los restaura después.
 - **La pestaña CD nunca se habilitaba en Windows aunque Kodi reprodujera
   el CD sin problema.** Causa: `has_audio_cd()` dependía de los
   booleanos `system.hasmediadvdaudio`/`system.hasaudiocd` de

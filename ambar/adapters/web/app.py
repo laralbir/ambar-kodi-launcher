@@ -153,7 +153,8 @@ def create_app(container) -> Flask:
 
     @app.route("/api/library/kodi/cd-metadata")
     def kodi_cd_metadata():
-        return jsonify(container.library_service.kodi_cd_metadata())
+        force = request.args.get("force", "").lower() == "true"
+        return jsonify(container.library_service.kodi_cd_metadata(force=force))
 
     @app.route("/api/library/kodi/play", methods=["POST"])
     def kodi_play():

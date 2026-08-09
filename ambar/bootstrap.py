@@ -186,8 +186,11 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     # MusicBrainzGateway identifica CDs de audio insertados (titulo, artista,
     # pistas, caratula) via la tabla de contenidos del disco -- ver
     # ambar/adapters/musicbrainz/gateway.py. Inyectado en KodiGateway porque
-    # es el unico que conoce el TOC (deriva de Files.GetDirectory).
-    kodi_gateway = KodiGateway(kodi_host, kodi_port, cd_identifier=MusicBrainzGateway())
+    # es el unico que conoce el TOC (deriva de Files.GetDirectory). Cache en
+    # disco junto a config.json/.spotify-cache -- sobrevive a reinicios del
+    # launcher, no solo mientras el proceso sigue vivo.
+    musicbrainz_gateway = MusicBrainzGateway(cache_path=os.path.join(data_dir, "cd_cache.json"))
+    kodi_gateway = KodiGateway(kodi_host, kodi_port, cd_identifier=musicbrainz_gateway)
 
     spotify_gateway = SpotifyGateway(os.path.join(data_dir, ".spotify-cache"))
     _configure_spotify(spotify_gateway, app_config)

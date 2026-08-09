@@ -84,13 +84,7 @@ class KodiGateway:
         cd_meta = self._cd_identifier.get_last()
         if not cd_meta:
             return title, artist, album, art
-        try:
-            position = int(file_path.rsplit("/", 1)[-1].split(".")[0])
-        except (ValueError, IndexError):
-            position = None
-        tracks = cd_meta.get("tracks") or []
-        if position and 1 <= position <= len(tracks):
-            title = tracks[position - 1] or title
+        title = self._track_title_at(file_path, cd_meta.get("tracks") or []) or title
         return title, cd_meta.get("artist") or artist, cd_meta.get("title") or album, cd_meta.get("art") or art
 
     @staticmethod
@@ -192,15 +186,10 @@ class KodiGateway:
         cual (mismo fallback que el resto de adapters de audio)."""
         metadata = self.get_audio_cd_metadata()
         tracks = (metadata or {}).get("tracks") or []
-        if not tracks:
-            return
         for f in files:
-            try:
-                position = int(f["file"].rsplit("/", 1)[-1].split(".")[0])
-            except (KeyError, ValueError, IndexError):
-                continue
-            if 1 <= position <= len(tracks) and tracks[position - 1]:
-                f["label"] = tracks[position - 1]
+            title = self._track_title_at(f.get("file", ""), tracks)
+            if title:
+                f["label"] = title
 
     def seek(self, percentage: float) -> None:
         players = self.rpc("Player.GetActivePlayers")
@@ -220,18 +209,32 @@ class KodiGateway:
         current_position = (props or {}).get("position", -1)
         res = self.rpc("Playlist.GetItems", {
             "playlistid": 0,
-            "properties": ["title", "artist", "album"],
+            "properties": ["title", "artist", "album", "file"],
         })
         items = res.get("items", []) if res else []
-        return [
-            {
+        # Los titulos de CD que da Kodi son genericos ("Track 01"...); si
+        # hay alguna pista de CD en la lista, se identifica una sola vez
+        # (no por pista) y se usa para sustituir titulo/artista reales,
+        # igual que en el listado de la pestaña CD y en "ahora suena".
+        cd_metadata = None
+        if any(it.get("file", "").startswith("cdda://") for it in items):
+            cd_metadata = self.get_audio_cd_metadata()
+        cd_tracks = (cd_metadata or {}).get("tracks") or []
+        result = []
+        for idx, it in enumerate(items):
+            title = it.get("title") or it.get("label") or "Pista sin titulo"
+            artist = ", ".join(it.get("artist", []))
+            cd_title = self._track_title_at(it.get("file", ""), cd_tracks)
+            if cd_title:
+                title = cd_title
+                artist = cd_metadata.get("artist") or artist
+            result.append({
                 "position": idx,
-                "title": it.get("title") or it.get("label") or "Pista sin titulo",
-                "artist": ", ".join(it.get("artist", [])),
+                "title": title,
+                "artist": artist,
                 "current": idx == current_position,
-            }
-            for idx, it in enumerate(items)
-        ]
+            })
+        return result
 
     def goto_position(self, position: int) -> None:
         players = self.rpc("Player.GetActivePlayers")
@@ -283,16 +286,35 @@ class KodiGateway:
             offset += f.get("size", 0) // FRAME_BYTES
         return [1, len(files), offset] + track_offsets
 
-    def get_audio_cd_metadata(self) -> dict | None:
+    def get_audio_cd_metadata(self, force: bool = False) -> dict | None:
         """Identifica el CD insertado contra MusicBrainz (titulo, artista,
         pistas, caratula) -- None si no hay identificador configurado, no
-        hay CD, o no se encontro coincidencia."""
+        hay CD, o no se encontro coincidencia. force=True ignora la cache
+        (boton "actualizar" del CD tab)."""
         if not self._cd_identifier:
             return None
         toc = self.get_audio_cd_toc()
         if not toc:
             return None
-        return self._cd_identifier.identify(toc)
+        return self._cd_identifier.identify(toc, force=force)
+
+    @staticmethod
+    def _track_title_at(file_path: str, tracks: list[str]) -> str | None:
+        """Titulo real (MusicBrainz) para una pista cdda://local/NN.cdda,
+        dada la lista de pistas ya identificada -- None si no aplica o la
+        posicion no tiene titulo. Comparte la logica de "posicion de
+        fichero -> indice de la lista de pistas" entre el listado de la
+        pestaña CD y la lista de reproduccion, sin repetir la consulta de
+        identificacion por cada pista."""
+        if not file_path.startswith("cdda://") or not tracks:
+            return None
+        try:
+            position = int(file_path.rsplit("/", 1)[-1].split(".")[0])
+        except (ValueError, IndexError):
+            return None
+        if 1 <= position <= len(tracks) and tracks[position - 1]:
+            return tracks[position - 1]
+        return None
 
     def play(self, item: dict) -> None:
         self.rpc("Playlist.Clear", {"playlistid": 0})

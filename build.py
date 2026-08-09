@@ -1,9 +1,59 @@
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 
 APP_NAME = "Ambar"
+
+# Datos de usuario que vive junto al ejecutable en tiempo de ejecucion (ver
+# ambar/bootstrap.py:_get_data_dir), NO generados por PyInstaller. En
+# Windows esa carpeta es la misma que --clean borra y recrea entera en cada
+# build (dist/Ambar/), asi que sin este backup/restore un `python build.py`
+# borraba silenciosamente la config de Kodi/Spotify (credenciales, CD
+# autorizado) del usuario -- confirmado en vivo que se perdio asi. En macOS
+# no hace falta (_get_data_dir ya usa la carpeta *contenedora* del .app,
+# que PyInstaller no toca), pero preservarlo ahi tambien es inofensivo.
+PRESERVE_FILES = ["config.json", ".spotify-cache", "cd_cache.json"]
+PRESERVE_DIRS = ["skins"]
+
+
+def _dist_dir() -> str:
+    name = f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME
+    return os.path.join("dist", name)
+
+
+def backup_runtime_data(backup_dir: str) -> None:
+    dist_dir = _dist_dir()
+    if not os.path.isdir(dist_dir):
+        return
+    if os.path.exists(backup_dir):
+        shutil.rmtree(backup_dir)
+    os.makedirs(backup_dir)
+    for name in PRESERVE_FILES:
+        src = os.path.join(dist_dir, name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(backup_dir, name))
+    for name in PRESERVE_DIRS:
+        src = os.path.join(dist_dir, name)
+        if os.path.isdir(src):
+            shutil.copytree(src, os.path.join(backup_dir, name))
+
+
+def restore_runtime_data(backup_dir: str) -> None:
+    if not os.path.isdir(backup_dir):
+        return
+    dist_dir = _dist_dir()
+    os.makedirs(dist_dir, exist_ok=True)
+    for name in PRESERVE_FILES:
+        src = os.path.join(backup_dir, name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(dist_dir, name))
+    for name in PRESERVE_DIRS:
+        src = os.path.join(backup_dir, name)
+        if os.path.isdir(src):
+            shutil.copytree(src, os.path.join(dist_dir, name))
+    shutil.rmtree(backup_dir)
 
 
 def read_version():
@@ -160,8 +210,13 @@ def build():
 
     cmd.append("kiosk_server.py")
 
+    backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_build_data_backup")
+    backup_runtime_data(backup_dir)
+
     print("Ejecutando:", " ".join(cmd))
     subprocess.run(cmd, check=True)
+
+    restore_runtime_data(backup_dir)
 
     if sys.platform == "darwin":
         set_macos_bundle_version(version)

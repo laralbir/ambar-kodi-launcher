@@ -15,10 +15,13 @@ __pycache__/
 # Ficheros de la app y empaquetado
 config.json
 .spotify-cache
+cd_cache.json
 skins/
 dist/
 build/
 *.spec
+_build_data_backup/
+_version_info.txt
 
 # IDEs
 .idea/

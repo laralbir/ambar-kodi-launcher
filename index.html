@@ -320,6 +320,27 @@
     background:rgba(255,176,32,0.1); border:1px solid rgba(255,176,32,0.35);
     color:var(--amber); font-size:0.9rem; line-height:1.4;
   }
+  .cd-header{
+    max-width:800px; margin:0 auto 1rem; padding:0.9rem; border-radius:8px;
+    background:var(--panel); border:1px solid var(--line);
+    display:flex; align-items:center; gap:1rem;
+  }
+  .cd-header-art{
+    width:64px; height:64px; flex:0 0 auto; border-radius:6px; overflow:hidden;
+    background:#111; display:flex; align-items:center; justify-content:center; font-size:1.8rem;
+  }
+  .cd-header-art img{width:100%; height:100%; object-fit:cover;}
+  .cd-header-info{flex:1; min-width:0;}
+  .cd-header-title{font-weight:600; font-size:1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cd-header-artist{font-size:0.85rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cd-header-refresh{
+    flex:0 0 auto; width:2.6rem; height:2.6rem; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; cursor:pointer;
+  }
+  .cd-header-refresh:active{background:var(--amber-dim); color:var(--amber);}
+  .cd-header-refresh.spinning{animation:spin 1s linear infinite;}
+  @keyframes spin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
   .list-item{
     display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--panel);
     border:1px solid var(--line); border-radius:8px; cursor:pointer;
@@ -1259,10 +1280,20 @@
 
       else if(viewNode.tab === "cd") {
         el("lib-title").textContent = "CD de audio";
-        const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/"));
-        const items = await res.json();
+        const [dirRes, metaRes] = await Promise.all([
+          fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/")),
+          fetch("/api/library/kodi/cd-metadata"),
+        ]);
+        const items = await dirRes.json();
+        const meta = await metaRes.json().catch(() => ({available: false}));
         const warning = cdDetectionReliable ? "" : `<div class="cd-warning">⚠ En este sistema, Kodi no siempre detecta correctamente los CD de audio. Si no ves pistas aquí, puede que el CD no se esté leyendo bien — no significa necesariamente que no haya un CD puesto.</div>`;
-        renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero", warning);
+        renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero", renderCdHeader(meta) + warning);
+        el("cd-refresh-btn")?.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          e.target.classList.add("spinning");
+          await fetch("/api/library/kodi/cd-metadata?force=true").catch(() => {});
+          loadView(viewNode);
+        });
       }
 
       else if(viewNode.tab === "spotify-pl") {
@@ -1402,6 +1433,34 @@
     items.forEach((it, idx) => {
       document.getElementById(`sitem-${idx}`).addEventListener("click", () => onClick(it));
     });
+  }
+
+  function renderCdHeader(meta){
+    // Cabecera con lo identificado contra MusicBrainz (album/artista/
+    // caratula, ver /api/library/kodi/cd-metadata) y un boton para forzar
+    // una nueva identificacion (ignora la cache en disco) -- util si el
+    // CD se puso despues de entrar en la pestaña, o si se identifico mal.
+    if(!meta || !meta.available){
+      return `<div class="cd-header">
+        <div class="cd-header-art">💿</div>
+        <div class="cd-header-info">
+          <div class="cd-header-title">Álbum no identificado</div>
+          <div class="cd-header-artist">Los nombres de pista son los genéricos de Kodi</div>
+        </div>
+        <div class="cd-header-refresh" id="cd-refresh-btn" title="Buscar información del CD">🔄</div>
+      </div>`;
+    }
+    const art = meta.art
+      ? `<img src="${meta.art}" alt="">`
+      : '💿';
+    return `<div class="cd-header">
+      <div class="cd-header-art">${art}</div>
+      <div class="cd-header-info">
+        <div class="cd-header-title">${meta.title || 'Álbum desconocido'}</div>
+        <div class="cd-header-artist">${meta.artist || ''}</div>
+      </div>
+      <div class="cd-header-refresh" id="cd-refresh-btn" title="Actualizar información del CD">🔄</div>
+    </div>`;
   }
 
   function renderDirectoryList(items, playWholePath, tab, playWholeLabel, warningHtml) {

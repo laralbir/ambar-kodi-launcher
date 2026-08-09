@@ -1,7 +1,14 @@
+import json
+import os
+
 import requests
 
 MUSICBRAINZ_URL = "https://musicbrainz.org/ws/2/discid/-"
-COVER_ART_URL = "https://coverartarchive.org/release/{mbid}/front-250"
+# "-1200" (lado grande de Cover Art Archive, tipicamente 1200px) en vez del
+# thumbnail "-250" original: bastante mas nitida en la caratula grande del
+# launcher (82vh en la pantalla panoramica) sin tirar de la imagen a
+# resolucion completa, que puede pesar varios MB.
+COVER_ART_URL = "https://coverartarchive.org/release/{mbid}/front-1200"
 USER_AGENT = "AmbarKodiLauncher/0.2 ( https://github.com/laralbir/ambar-kodi-launcher )"
 
 
@@ -21,12 +28,37 @@ class MusicBrainzGateway:
     pocos sectores por pista), y devuelve varios candidatos entre los que
     hay que elegir el mas cercano -- ver _best_match.
 
-    Resultado cacheado en memoria por proceso (clave = TOC exacto), para
-    no repetir la consulta de red mientras el mismo CD siga insertado."""
+    Resultado cacheado en disco (cache_path, un JSON en el mismo directorio
+    de datos que config.json/.spotify-cache -- ver ambar/bootstrap.py),
+    clave = TOC exacto: sobrevive a reinicios del launcher, para no repetir
+    la consulta de red cada vez que se vuelve a poner el mismo CD."""
 
-    def __init__(self):
-        self._cache: dict[tuple, dict | None] = {}
+    def __init__(self, cache_path: str | None = None):
+        self._cache_path = cache_path
+        self._cache: dict[str, dict | None] = self._load_cache()
         self._last: dict | None = None
+
+    def _load_cache(self) -> dict:
+        if not self._cache_path or not os.path.exists(self._cache_path):
+            return {}
+        try:
+            with open(self._cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _save_cache(self) -> None:
+        if not self._cache_path:
+            return
+        try:
+            with open(self._cache_path, "w", encoding="utf-8") as f:
+                json.dump(self._cache, f, ensure_ascii=False)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _key(toc: list[int]) -> str:
+        return ",".join(str(n) for n in toc)
 
     def get_last(self) -> dict | None:
         """Ultimo resultado identificado con exito, sin tocar la cache ni
@@ -34,13 +66,18 @@ class MusicBrainzGateway:
         no puede permitirse esperar a una consulta HTTP en cada vuelta."""
         return self._last
 
-    def identify(self, toc: list[int]) -> dict | None:
-        key = tuple(toc)
-        if key in self._cache:
+    def identify(self, toc: list[int], force: bool = False) -> dict | None:
+        """force=True ignora la cache (en disco y en memoria) y repite la
+        consulta -- para el boton "actualizar" del CD tab del frontend,
+        util si el disco se identifico mal o se puso otro CD sin que el
+        TOC cambiara lo suficiente para notarlo por si solo."""
+        key = self._key(toc)
+        if not force and key in self._cache:
             result = self._cache[key]
         else:
             result = self._lookup(toc)
             self._cache[key] = result
+            self._save_cache()
         if result:
             self._last = result
         return result
@@ -55,7 +92,11 @@ class MusicBrainzGateway:
                     "inc": "recordings+artist-credits",
                 },
                 headers={"User-Agent": USER_AGENT},
-                timeout=5,
+                # 10s, no 5: confirmado en vivo que la primera consulta del
+                # proceso (DNS/TLS en frio) puede tardar mas que un timeout
+                # corto y fallar sin necesidad -- se cachea igual como "no
+                # encontrado" (ver identify) hasta que se fuerce un reintento.
+                timeout=10,
             )
             data = r.json()
         except Exception:
