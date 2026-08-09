@@ -16,6 +16,7 @@ from ambar.adapters.desktop.null_wake_lock import NullWakeLock
 from ambar.adapters.desktop.webview_window import WebviewWindowController
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.kodi.ws_listener import listen as kodi_listen
+from ambar.adapters.musicbrainz.gateway import MusicBrainzGateway
 from ambar.adapters.persistence.json_config_repository import JsonConfigRepository
 from ambar.adapters.spotify.gateway import SpotifyGateway
 from ambar.adapters.spotify.poller import poll as spotify_poll
@@ -182,7 +183,11 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
 
     kodi_host = app_config.get("KODI_HOST") or os.environ.get("KODI_HOST", "localhost")
     kodi_port = app_config.get("KODI_PORT") or os.environ.get("KODI_PORT", "8080")
-    kodi_gateway = KodiGateway(kodi_host, kodi_port)
+    # MusicBrainzGateway identifica CDs de audio insertados (titulo, artista,
+    # pistas, caratula) via la tabla de contenidos del disco -- ver
+    # ambar/adapters/musicbrainz/gateway.py. Inyectado en KodiGateway porque
+    # es el unico que conoce el TOC (deriva de Files.GetDirectory).
+    kodi_gateway = KodiGateway(kodi_host, kodi_port, cd_identifier=MusicBrainzGateway())
 
     spotify_gateway = SpotifyGateway(os.path.join(data_dir, ".spotify-cache"))
     _configure_spotify(spotify_gateway, app_config)

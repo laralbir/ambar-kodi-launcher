@@ -41,6 +41,17 @@ class LibraryService:
             "detection_reliable": sys.platform != "darwin",
         }
 
+    def kodi_cd_metadata(self) -> dict:
+        # Identificacion online del CD contra MusicBrainz (titulo, artista,
+        # pistas, caratula) -- ver KodiGateway.get_audio_cd_metadata. None
+        # si no hay CD, no hay internet, o no se encontro coincidencia (CDs
+        # promocionales/no catalogados): "available" queda en False y el
+        # frontend sigue mostrando las etiquetas genericas de Kodi.
+        metadata = self._kodi.get_audio_cd_metadata()
+        if not metadata:
+            return {"available": False}
+        return {"available": True, **metadata}
+
     def kodi_play(self, body: dict) -> None:
         self._spotify.pause()
         item = {}

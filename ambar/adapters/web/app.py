@@ -151,6 +151,10 @@ def create_app(container) -> Flask:
     def kodi_cd_available():
         return jsonify(container.library_service.kodi_cd_status())
 
+    @app.route("/api/library/kodi/cd-metadata")
+    def kodi_cd_metadata():
+        return jsonify(container.library_service.kodi_cd_metadata())
+
     @app.route("/api/library/kodi/play", methods=["POST"])
     def kodi_play():
         body = request.get_json(force=True) or {}

@@ -8,6 +8,23 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Identificación de CD de audio (título de álbum, artista, canciones y
+  carátula)**: un CD de audio Redbook no lleva metadatos propios, así que
+  Kodi solo veía "Track 01", "Track 02"... Ahora `KodiGateway` calcula la
+  tabla de contenidos (TOC) del disco a partir de los tamaños de pista
+  que ya da Kodi (`Files.GetDirectory`/`cdda://local/`, 2352 bytes por
+  sector CD-DA) y la consulta contra la API pública de MusicBrainz (sin
+  API key), igual que hacen reproductores como foobar2000/MusicBrainz
+  Picard. Si encuentra coincidencia, sustituye los títulos genéricos por
+  los reales en la pestaña "CD" y en "ahora suena" (título, artista,
+  álbum y carátula, esta última vía Cover Art Archive). Si el disco no
+  está catalogado o no hay internet, sigue mostrando lo genérico de Kodi
+  como hasta ahora — no rompe nada. Nuevo adapter
+  `ambar/adapters/musicbrainz/gateway.py`, con resultado cacheado en
+  memoria mientras el mismo CD siga insertado (no repite la consulta en
+  cada sondeo). **Verificado en vivo** con un CD real: "Yo, minoría
+  absoluta" de Extremoduro identificado correctamente, con sus 10
+  canciones y carátula.
 - **Conexión con Spotify más amigable**: en Ajustes, junto a los
   campos de credenciales, un indicador de estado en vivo ("Conectado"
   / "Sin autorizar todavía", sondeado cada 3s mientras Ajustes está

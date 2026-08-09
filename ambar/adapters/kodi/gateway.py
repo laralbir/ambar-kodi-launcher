@@ -8,9 +8,10 @@ from ambar.domain.playback import PlaybackState
 class KodiGateway:
     """Adapter hacia Kodi: JSON-RPC por HTTP, mas la URL de WebSocket para eventos."""
 
-    def __init__(self, host: str, port: str):
+    def __init__(self, host: str, port: str, cd_identifier=None):
         self.host = host
         self.port = port
+        self._cd_identifier = cd_identifier
 
     @property
     def rpc_url(self) -> str:
@@ -37,7 +38,7 @@ class KodiGateway:
         player_id = players[0]["playerid"]
         item = self.rpc("Player.GetItem", {
             "playerid": player_id,
-            "properties": ["title", "artist", "album", "thumbnail"],
+            "properties": ["title", "artist", "album", "thumbnail", "file"],
         })
         props = self.rpc("Player.GetProperties", {
             "playerid": player_id,
@@ -50,17 +51,47 @@ class KodiGateway:
         thumb = info.get("thumbnail")
         if thumb:
             art = "/api/art?path=" + quote(thumb, safe="")
+        title = info.get("title") or info.get("label") or "Pista sin titulo"
+        artist = ", ".join(info.get("artist", [])) or "CD / biblioteca local"
+        album = info.get("album", "")
+        title, artist, album, art = self._enrich_cd_now_playing(
+            info.get("file", ""), title, artist, album, art
+        )
         return PlaybackState(
             source="kodi",
             playing=bool(props and props.get("speed", 0) != 0),
-            title=info.get("title") or info.get("label") or "Pista sin titulo",
-            artist=", ".join(info.get("artist", [])) or "CD / biblioteca local",
-            album=info.get("album", ""),
+            title=title,
+            artist=artist,
+            album=album,
             art=art,
             progress=(props or {}).get("percentage", 0),
             elapsed_seconds=self._time_to_seconds((props or {}).get("time")),
             total_seconds=self._time_to_seconds((props or {}).get("totaltime")),
         )
+
+    def _enrich_cd_now_playing(self, file_path: str, title: str, artist: str, album: str, art: str | None):
+        """Sustituye titulo/artista/album/caratula genericos de Kodi para
+        una pista de CD por los datos reales de MusicBrainz, si ya se
+        identifico el disco (ver get_audio_cd_metadata). Solo usa lo que
+        ya este en cache -- get_last() no hace ninguna llamada de red ni a
+        Kodi, para no bloquear el sondeo de "ahora suena" (cada 2s). Si el
+        disco aun no se ha identificado (p. ej. el CD se puso a reproducir
+        desde el propio Kodi sin pasar antes por la pestaña CD de Ambar,
+        que es lo que dispara la identificacion), se queda con lo generico
+        de Kodi hasta que se identifique."""
+        if not file_path.startswith("cdda://") or not self._cd_identifier:
+            return title, artist, album, art
+        cd_meta = self._cd_identifier.get_last()
+        if not cd_meta:
+            return title, artist, album, art
+        try:
+            position = int(file_path.rsplit("/", 1)[-1].split(".")[0])
+        except (ValueError, IndexError):
+            position = None
+        tracks = cd_meta.get("tracks") or []
+        if position and 1 <= position <= len(tracks):
+            title = tracks[position - 1] or title
+        return title, cd_meta.get("artist") or artist, cd_meta.get("title") or album, cd_meta.get("art") or art
 
     @staticmethod
     def _time_to_seconds(time_obj: dict | None) -> int:
@@ -146,7 +177,30 @@ class KodiGateway:
             "media": "music",
             "properties": ["thumbnail", "file", "mimetype"],
         })
-        return res.get("files", []) if res else []
+        files = res.get("files", []) if res else []
+        if path.startswith("cdda://"):
+            self._enrich_cd_track_labels(files)
+        return files
+
+    def _enrich_cd_track_labels(self, files: list) -> None:
+        """Sustituye las etiquetas genericas "Track NN" de Kodi por los
+        titulos reales cuando MusicBrainz identifica el CD (bloqueante:
+        esta ruta la dispara el usuario al entrar en la pestaña CD, no un
+        sondeo periodico, asi que una consulta de red aqui es aceptable --
+        UX ya cubierta por el spinner de carga del frontend). Si no hay
+        coincidencia o falla la consulta, deja las etiquetas de Kodi tal
+        cual (mismo fallback que el resto de adapters de audio)."""
+        metadata = self.get_audio_cd_metadata()
+        tracks = (metadata or {}).get("tracks") or []
+        if not tracks:
+            return
+        for f in files:
+            try:
+                position = int(f["file"].rsplit("/", 1)[-1].split(".")[0])
+            except (KeyError, ValueError, IndexError):
+                continue
+            if 1 <= position <= len(tracks) and tracks[position - 1]:
+                f["label"] = tracks[position - 1]
 
     def seek(self, percentage: float) -> None:
         players = self.rpc("Player.GetActivePlayers")
@@ -203,8 +257,42 @@ class KodiGateway:
         Probar cdda://local/ directamente es lo unico que reflejo el
         estado real: hay que fiarse del propio recurso que usa la pestaña
         CD, no de los booleanos de estado de Kodi."""
-        res = self.rpc("Files.GetDirectory", {"directory": "cdda://local/", "media": "music"})
-        return bool(res and res.get("files"))
+        return bool(self.get_audio_cd_toc())
+
+    def get_audio_cd_toc(self) -> list[int] | None:
+        """Tabla de contenidos (TOC) del CD insertado, en el formato que
+        espera la busqueda por TOC de MusicBrainz: [pista_inicial,
+        pista_final, offset_leadout, offset_pista_1, ..., offset_pista_N],
+        todo en sectores/frames CD-DA (75 por segundo). Kodi no expone
+        esto directamente via JSON-RPC, asi que se deriva del tamaño en
+        bytes de cada pista de cdda://local/ (2352 bytes = 1 sector CD-DA
+        de audio, 176400 bytes/s = 44100Hz * 2 canales * 2 bytes; probado
+        en vivo que los tamaños que da Kodi son multiplos exactos de
+        2352). None si no hay CD insertado/legible."""
+        res = self.rpc("Files.GetDirectory", {
+            "directory": "cdda://local/", "media": "music", "properties": ["size"],
+        })
+        files = (res or {}).get("files") or []
+        if not files:
+            return None
+        FRAME_BYTES = 2352
+        offset = 150  # pregap estandar de 2s (00:02:00 en MSF)
+        track_offsets = []
+        for f in files:
+            track_offsets.append(offset)
+            offset += f.get("size", 0) // FRAME_BYTES
+        return [1, len(files), offset] + track_offsets
+
+    def get_audio_cd_metadata(self) -> dict | None:
+        """Identifica el CD insertado contra MusicBrainz (titulo, artista,
+        pistas, caratula) -- None si no hay identificador configurado, no
+        hay CD, o no se encontro coincidencia."""
+        if not self._cd_identifier:
+            return None
+        toc = self.get_audio_cd_toc()
+        if not toc:
+            return None
+        return self._cd_identifier.identify(toc)
 
     def play(self, item: dict) -> None:
         self.rpc("Playlist.Clear", {"playlistid": 0})
