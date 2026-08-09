@@ -189,14 +189,22 @@ class KodiGateway:
         return self.rpc("JSONRPC.Ping") == "pong"
 
     def has_audio_cd(self) -> bool:
-        """True si Kodi detecta un CD de audio (Redbook/CDDA) reproducible
-        en la unidad -- no confundir con un disco de datos con FLAC/MP3
-        (esos se navegan como una fuente de archivos normal, no por aqui).
-        XBMC.GetInfoBooleans, no System.GetInfoBooleans (probado en vivo:
-        el namespace System.* da "Method not found" para esto en esta
-        build de Kodi, el namespace legacy XBMC.* si funciona)."""
-        res = self.rpc("XBMC.GetInfoBooleans", {"booleans": ["system.hasmediadvdaudio"]})
-        return bool(res and res.get("system.hasmediadvdaudio"))
+        """True si Kodi puede listar pistas reales en cdda://local/ (CD de
+        audio Redbook/CDDA insertado y legible) -- no confundir con un
+        disco de datos con FLAC/MP3 (esos se navegan como una fuente de
+        archivos normal, no por aqui).
+
+        NO usa XBMC.GetInfoBooleans (system.hasmediadvdaudio/
+        system.hasaudiocd): confirmado en vivo en Windows que ambos
+        booleanos se quedan en False de forma permanente incluso con un CD
+        de audio insertado y reproducible sin problema por Kodi (via la
+        fuente "G: (Audio-CD)" que Kodi crea solo) -- solo
+        system.hasmediadvd (generico, cualquier disco optico) daba True.
+        Probar cdda://local/ directamente es lo unico que reflejo el
+        estado real: hay que fiarse del propio recurso que usa la pestaña
+        CD, no de los booleanos de estado de Kodi."""
+        res = self.rpc("Files.GetDirectory", {"directory": "cdda://local/", "media": "music"})
+        return bool(res and res.get("files"))
 
     def play(self, item: dict) -> None:
         self.rpc("Playlist.Clear", {"playlistid": 0})

@@ -70,6 +70,44 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   no dejaba claro por dónde se estaba navegando.
 
 ### Fixed
+- **La pestaña CD nunca se habilitaba en Windows aunque Kodi reprodujera
+  el CD sin problema.** Causa: `has_audio_cd()` dependía de los
+  booleanos `system.hasmediadvdaudio`/`system.hasaudiocd` de
+  `XBMC.GetInfoBooleans`, y confirmado en vivo (con un CD real
+  insertado en el mini PC) que ambos se quedan permanentemente en
+  `False` en esta build de Kodi para Windows, aunque Kodi ya detecta el
+  disco solo como fuente "G: (Audio-CD)" y `cdda://local/` devuelve las
+  pistas reales sin problema — solo `system.hasmediadvd` (genérico,
+  cualquier disco óptico) daba `True`. Mismo tipo de fallo ya conocido
+  en macOS (ver `TODO.md`), pero con un arreglo distinto porque aquí
+  `cdda://local/` sí funciona: `has_audio_cd()` ahora comprueba
+  directamente si `Files.GetDirectory` sobre `cdda://local/` devuelve
+  pistas, en vez de fiarse de los booleanos de estado de Kodi.
+- **Control de volumen no disponible en Windows** (`WinError
+  -2147417850`, "no se puede cambiar el modo de subproceso después de
+  establecerlo"). Causa: `soundcard` (VU-metro) inicializa COM en modo
+  multi-hilo (MTA) en el hilo principal al importarse, y `comtypes`
+  (control de volumen, vía `pycaw`) inicializa COM en modo un-solo-hilo
+  (STA) por defecto en cuanto se importa — Windows no permite cambiar
+  el modelo de hilos COM ya establecido en un hilo
+  (`RPC_E_CHANGED_MODE`). `windows_volume.py` ahora fija
+  `sys.coinit_flags` a MTA antes de importar `comtypes`, para que
+  coincida con el modo que `soundcard` ya deja puesto.
+- **Los botones y la barra de volumen no hacían nada en Windows,
+  siempre mostrando 0%** (segundo fallo distinto al anterior, tras
+  arreglar el choque COM). Causa real: `pycaw` no tenía versión fijada
+  en `requirements.txt`, así que se instaló una release reciente
+  (`20251023`) cuya `AudioUtilities.GetSpeakers()` ya no devuelve el
+  puntero COM crudo, sino un wrapper `AudioDevice` sin método
+  `.Activate()` — `_endpoint_volume()` lanzaba `AttributeError` en cada
+  llamada, silenciado por el `try/except` de `get()`/`set_level()`/
+  `set_muted()`, así que nunca se veía el error. Arreglado usando la
+  propiedad `.EndpointVolume` del wrapper (hace el
+  `Activate`+`QueryInterface` por dentro) y fijada la versión de
+  `pycaw` en `requirements.txt` para que no vuelva a romperse solo con
+  una reinstalación. **Verificado en vivo en el mini PC real**: lectura
+  del volumen real (70%), bajado a 40%, silenciado, quitado el
+  silencio y restaurado a 70% sin dejar el volumen del equipo alterado.
 - **Navegación por artista de Spotify daba "no hay artistas o falta
   autorizar" con artistas seguidos de verdad.** Causa real: al scope
   de OAuth (`SPOTIFY_SCOPE`) le faltaba `user-follow-read`, necesario

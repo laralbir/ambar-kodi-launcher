@@ -28,9 +28,11 @@ de aquí.
   `/Volumes/` vía `diskutil`) porque rompería la paridad de
   comportamiento con Windows. Mientras tanto: en macOS la pestaña "CD"
   nunca se deshabilita (no hay forma fiable de saberlo) y se muestra
-  un aviso al entrar; en Windows/Linux sí se habilita/deshabilita
-  según `system.hasmediadvdaudio` real. **Pendiente de confirmar si
-  Kodi para Windows detecta correctamente el CD en el mini PC real.**
+  un aviso al entrar. **Confirmado en el mini PC real con Windows que
+  `system.hasmediadvdaudio`/`system.hasaudiocd` también fallan ahí**
+  (mismo síntoma que macOS, aunque Kodi sí reproduce el CD sin
+  problema) — arreglado usando `cdda://local/` directamente en vez de
+  esos booleanos, ver `CHANGELOG.md`.
 
 ## Pendiente
 
@@ -130,9 +132,10 @@ de aquí.
   mando, Ajustes del propio SO), no solo los del launcher. macOS vía
   `osascript` (verificado en vivo: volumen real subido/bajado/
   silenciado y restaurado); Windows vía `pycaw`/`IAudioEndpointVolume`
-  (sin verificar en hardware/VM Windows real, mismo patrón que el resto
-  de adapters de audio). El selector de dispositivo de salida queda
-  fuera de este cambio (ver más arriba, en "Pendiente").
+  (verificado en vivo en el mini PC real tras arreglar dos fallos —
+  choque de modelo de hilos COM y API de `pycaw` cambiada por no tener
+  versión fijada, ver `CHANGELOG.md`). El selector de dispositivo de
+  salida queda fuera de este cambio (ver más arriba, en "Pendiente").
 - Pantalla de arranque configurable desde Ajustes (relevante porque el
   mini PC saca a la vez a la pantalla táctil y a la TV): usa el
   parámetro `screen` nativo de `pywebview.create_window()` (no hace

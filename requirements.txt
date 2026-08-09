@@ -16,5 +16,5 @@ pyobjc-framework-CoreMedia; sys_platform == "darwin"
 
 # Control de volumen del sistema (ver ambar/adapters/audio/*_volume.py).
 # En macOS se usa `osascript` (ya viene con el sistema, sin dependencia extra).
-pycaw; sys_platform == "win32"
+pycaw==20251023; sys_platform == "win32"
 comtypes; sys_platform == "win32"
