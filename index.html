@@ -24,6 +24,15 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
   html,body{margin:0; padding:0; width:100%; height:100%; background:var(--bg); overflow:hidden;
     font-family:'Inter',sans-serif; color:var(--text);}
+
+  /* Kiosko a pantalla completa en una tactil -- el puntero del raton
+     (incluido el que mueve el mando en air mode) solo estorba, nunca
+     hace falta verlo para tocar/apuntar con el dedo o el mando. Con
+     !important sobre el universal a proposito: casi todos los botones/
+     tarjetas ya declaran cursor:pointer de forma explicita (mas
+     especifico que html,body), asi que un cursor:none ahi solo no
+     bastaba -- confirmado en vivo que seguia viendose sobre ellos. */
+  *, *::before, *::after{cursor:none !important;}
   #app{position:relative; width:100vw; height:100vh;}
 
   .brushed{
@@ -54,8 +63,11 @@
   .art-frame:active{filter:brightness(0.85);}
   .art-frame.refreshing{opacity:0.6; transition:opacity 0.15s;}
   .art-frame img{width:100%; height:100%; object-fit:cover; display:block;}
-  .art-frame .placeholder{text-align:center; padding: 1rem;}
-  .art-frame .placeholder svg.vinyl-placeholder{width:52%;}
+  .art-frame .placeholder{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    box-sizing:border-box; padding:1rem;
+  }
+  .art-frame .placeholder svg.vinyl-placeholder{width:82%; height:82%;}
   .vinyl-body{fill:#1a1b1d; stroke:var(--line); stroke-width:1;}
   .vinyl-groove{fill:none; stroke:#2a2c30; stroke-width:1;}
   .vinyl-sheen{fill:none; stroke:rgba(255,255,255,0.06); stroke-width:14; stroke-linecap:round;}
@@ -481,6 +493,28 @@
     z-index:20; flex-direction:column;
   }
   #view-settings.visible{display:flex;}
+
+  /* ---------- CONFIRM/ALERT MODAL ---------- */
+  /* Sustituye a confirm()/alert() nativos: los diálogos nativos del
+     navegador no se pueden estilar, no encajan con la estética del resto
+     del launcher, y sobre todo -- el motivo real de este componente -- no
+     son "clicables" por el mando (JZK G20S Pro): en air mode, OK/Atrás son
+     clic izquierdo/derecho reales sobre el DOM (ver SystemService.
+     secure_cursor), y un confirm()/alert() nativo vive fuera del DOM de la
+     página, así que ningún botón del mando podía aceptar ni cancelar uno. */
+  #view-confirm{
+    display:none; position:absolute; inset:0; z-index:200;
+    background:rgba(10,10,11,0.72); align-items:center; justify-content:center;
+  }
+  #view-confirm.visible{display:flex;}
+  .confirm-box{
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:10px;
+    padding:2rem 2.2rem; max-width:420px; width:88%; text-align:center;
+    box-shadow:0 12px 34px rgba(0,0,0,0.55);
+  }
+  .confirm-message{color:var(--text); font-size:1.05rem; line-height:1.5; margin-bottom:1.6rem; white-space:pre-line;}
+  .confirm-actions{display:flex; gap:1rem; justify-content:center;}
+  .confirm-actions .btn{flex:1;}
   .settings-box{
     background:var(--bg); width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden;
   }
@@ -543,6 +577,16 @@
   }
   .settings-footer{
     padding:1.5rem; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:1rem;
+  }
+
+  /* Navegacion con mando/teclado (D-pad) -- ver el bloque de JS al final
+     del script. Un unico estilo de foco generico que funciona igual de
+     bien sobre tarjetas de grid, filas de lista, botones circulares de
+     transporte y pestañas, en vez de un estilo distinto por tipo de
+     elemento. */
+  .nav-focused{
+    outline: 3px solid var(--amber) !important;
+    outline-offset: 3px;
   }
 </style>
 </head>
@@ -805,6 +849,17 @@
     </div>
   </div>
 
+  <!-- CONFIRM/ALERT MODAL -->
+  <div id="view-confirm">
+    <div class="confirm-box">
+      <div class="confirm-message" id="confirm-message"></div>
+      <div class="confirm-actions" id="confirm-actions">
+        <div class="btn" id="confirm-cancel-btn">Cancelar</div>
+        <div class="btn btn-primary" id="confirm-accept-btn">Aceptar</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Socket.IO -->
@@ -812,6 +867,8 @@
 <script>
   const API_BASE = "";
   let currentSource = null;
+  let currentArtist = "";
+  let currentAlbum = "";
   let lastArtSrc = null;
   let lastKnownTotalSeconds = 0;
   let lastCheckedTrackId = null;
@@ -1119,6 +1176,14 @@
   updateClock();
   setInterval(updateClock, 1000);
 
+  // Fija el cursor en su sitio desde el arranque (no solo tras el primer
+  // movimiento del D-pad) y lo repite cada 2s -- por si Windows llega a
+  // liberar el bloqueo por su cuenta (lo hace si Ambar pierde el foco un
+  // instante) sin que de tiempo a que el usuario mueva el D-pad para
+  // que se reaplique solo. Ver SystemService.secure_cursor.
+  fetch("/api/system/secure-cursor", {method: "POST"}).catch(() => {});
+  setInterval(() => fetch("/api/system/secure-cursor", {method: "POST"}).catch(() => {}), 2000);
+
   // Cancion en reproduccion (si la hay) en las pantallas completas de
   // reloj y VU-metro -- actualizado desde render() con el mismo estado
   // que ya usa el resto de la pantalla, sin sondeo propio. Sin fuente
@@ -1320,6 +1385,8 @@
   // Render UI
   function render(data){
     currentSource = data.source;
+    currentArtist = data.artist || "";
+    currentAlbum = data.album || "";
     const badge = el("source-badge");
     badge.className = "source-badge" + (data.source ? " active " + data.source : "");
     el("source-label").textContent = data.source === "kodi" ? "Kodi"
@@ -1369,15 +1436,25 @@
   // esperar al sondeo de 2s) y, si la fuente es Kodi, fuerza tambien una
   // nueva identificacion del CD (ver /api/library/kodi/cd-metadata?force,
   // el mismo botón 🔄 de la pestaña CD) -- no hace nada si no hay CD
-  // puesto, solo tarda un poco mas. La lista de reproducción abierta (si
-  // la hay) se refresca despues, para que tambien recoja los títulos
-  // reales si era un CD.
+  // puesto, solo tarda un poco mas. Para pistas normales (no CD) sin
+  // caratula propia en Kodi, fuerza tambien una busqueda por texto en
+  // MusicBrainz (?force=true, ignora la cache de "no encontrado" de un
+  // intento anterior) -- mismo servicio externo que ya se usaba para los
+  // CD, solo que por artista+album en vez de por TOC. Se salta sola si
+  // currentAlbum esta vacio (p.ej. un CD sin identificar aun, donde Kodi
+  // no da nombre de album real). La lista de reproducción abierta (si la
+  // hay) se refresca despues, para que tambien recoja los títulos reales
+  // si era un CD.
   el("art-frame").addEventListener("click", async () => {
     const frame = el("art-frame");
     frame.classList.add("refreshing");
     try{
       if(currentSource === "kodi"){
-        await fetch(API_BASE + "/api/library/kodi/cd-metadata?force=true").catch(() => {});
+        const jobs = [fetch(API_BASE + "/api/library/kodi/cd-metadata?force=true").catch(() => {})];
+        if(currentArtist && currentAlbum){
+          jobs.push(fetch(API_BASE + "/api/library/kodi/album-art?force=true&artist=" + encodeURIComponent(currentArtist) + "&title=" + encodeURIComponent(currentAlbum)).catch(() => {}));
+        }
+        await Promise.all(jobs);
       }
       const res = await fetch(API_BASE + "/api/now-playing");
       render(await res.json());
@@ -2242,8 +2319,8 @@
       await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       applySkin(payload.SKIN);
       closeSettings();
-      alert("Guardado. El servidor se ha reconfigurado.");
-    } catch(e) { alert("Error guardando la configuración."); }
+      await showModal("Guardado. El servidor se ha reconfigurado.", {mode:'alert'});
+    } catch(e) { await showModal("Error guardando la configuración.", {mode:'alert'}); }
   });
 
   async function systemAction(action){
@@ -2251,9 +2328,271 @@
     if(action === 'shutdown') msg = "¿Apagar el equipo por completo?";
     if(action === 'restart') msg = "¿Reiniciar el equipo?";
     if(action === 'exit') msg = "¿Cerrar el launcher Ámbar?";
-    if(msg && !confirm(msg)) return;
+    if(msg && !(await showModal(msg, {mode:'confirm'}))) return;
     try{ await fetch("/api/system", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action}) }); }catch(e){}
   }
+
+  // Sustituye a confirm()/alert() nativos -- ver comentario CSS de
+  // #view-confirm para el motivo (no son clicables por el mando). mode
+  // 'confirm' muestra Cancelar+Aceptar y resuelve true/false; 'alert' solo
+  // muestra Aceptar y resuelve true tanto al aceptar como al pulsar
+  // Atrás/Esc (no hay nada que "cancelar" en un aviso informativo).
+  let confirmResolve = null;
+  function showModal(message, {mode = 'confirm', acceptLabel = 'Aceptar', cancelLabel = 'Cancelar'} = {}){
+    return new Promise((resolve) => {
+      confirmResolve = resolve;
+      el('confirm-message').textContent = message;
+      el('confirm-accept-btn').textContent = acceptLabel;
+      const cancelBtn = el('confirm-cancel-btn');
+      cancelBtn.style.display = mode === 'confirm' ? '' : 'none';
+      cancelBtn.textContent = cancelLabel;
+      el('view-confirm').classList.add('visible');
+      navSetFocus(null);
+      navEnsureFocus();
+    });
+  }
+  function closeModal(result){
+    el('view-confirm').classList.remove('visible');
+    navSetFocus(null);
+    if(confirmResolve){ const resolve = confirmResolve; confirmResolve = null; resolve(result); }
+  }
+  el('confirm-accept-btn').addEventListener('click', () => closeModal(true));
+  el('confirm-cancel-btn').addEventListener('click', () => closeModal(false));
+
+  // ===================== Navegación con mando/teclado (D-pad) =====================
+  // El mando (JZK G20S Pro) funciona como teclado/ratón HID estándar: las
+  // flechas del D-pad mandan ArrowUp/Down/Left/Right, y el círculo
+  // central "OK" manda Enter. No hace falta tocar ninguna función de
+  // renderGrid/renderList/etc. -- se reutilizan las mismas clases CSS que
+  // ya usan todas ellas (.grid-card, .list-item...) para encontrar qué
+  // hay navegable en cada momento, sin necesidad de marcarlo aparte ni
+  // de mantener una lista cacheada que haya que refrescar a mano cada
+  // vez que cambia la vista.
+  let navCurrentEl = null;
+  let navLastEnterAt = 0;
+  let navLastArrowAt = 0;
+
+  function navSelector(){
+    return '.grid-card, .list-item, .tbtn, .action-card, .lib-tab, .back-btn, ' +
+      '.btn:not(.disabled), .playlist-toggle-btn, .volume-inline-btn, ' +
+      '.art-frame, .clock-widget, .cd-header-refresh, [data-nav-item]';
+  }
+
+  function navIsVisible(el){
+    if(el.classList.contains('disabled')) return false;
+    // offsetParent es null si el propio elemento o un ancestro tiene
+    // display:none (incluye pestañas de biblioteca no activas) -- no
+    // cubre visibility:hidden, pero aquí no se usa ese patrón.
+    return el.offsetParent !== null;
+  }
+
+  // Las vistas superpuestas (biblioteca, artista, ajustes, pantalla
+  // completa...) se dibujan ENCIMA de #view-home, pero #view-home en si
+  // nunca se oculta de verdad (sigue con display:flex por debajo) --
+  // confirmado en vivo que sin acotar la búsqueda a la vista realmente
+  // visible, el foco podía "saltar" a un botón del home tapado por el
+  // overlay (se ve como si desapareciera, hay que pulsar otra vez para
+  // volver a algo visible de verdad). Se busca solo dentro de la vista
+  // superpuesta abierta en este momento (la primera que haya, por
+  // prioridad), o en #view-home si no hay ninguna abierta.
+  function navActiveRoot(){
+    const overlayIds = [
+      'view-confirm',
+      'view-vumeter-fullscreen', 'view-clock-fullscreen',
+      'view-settings', 'view-artist', 'view-playlist', 'view-library',
+    ];
+    for(const id of overlayIds){
+      const view = el(id);
+      if(view && view.classList.contains('visible')) return view;
+    }
+    return el('view-home');
+  }
+
+  function navVisibleItems(){
+    return Array.from(navActiveRoot().querySelectorAll(navSelector())).filter(navIsVisible);
+  }
+
+  function navSetFocus(el){
+    if(navCurrentEl) navCurrentEl.classList.remove('nav-focused');
+    navCurrentEl = el;
+    if(el){
+      el.classList.add('nav-focused');
+      el.scrollIntoView({block:'nearest', inline:'nearest'});
+    }
+  }
+
+  function navEnsureFocus(){
+    const items = navVisibleItems();
+    if(items.length === 0){ navSetFocus(null); return; }
+    if(navCurrentEl && navIsVisible(navCurrentEl) && items.includes(navCurrentEl)) return;
+    navSetFocus(items[0]);
+  }
+
+  // Navegación espacial (no orden del DOM): busca, entre los elementos
+  // visibles, el más cercano en la dirección pedida -- imprescindible en
+  // grids (flecha derecha ha de ir a la tarjeta de al lado, no a la
+  // siguiente del DOM si el layout no coincide).
+  function navMove(dx, dy){
+    navLastArrowAt = Date.now();
+    // Confina el cursor real del raton dentro de la propia ventana
+    // (ClipCursor) y lo aparca en una esquina vacia -- el mando en "air
+    // mode" mueve el puntero de verdad, y sin esto podia salirse a otro
+    // monitor (quitandole el foco de Windows a Ambar) o quedar encima de
+    // un elemento real cualquiera. Windows libera el confinamiento el
+    // solo si Ambar pierde el foco, por eso se reaplica en cada
+    // movimiento del D-pad, no solo una vez. Ver SystemService.
+    // secure_cursor. Best-effort, no bloqueante.
+    fetch("/api/system/secure-cursor", {method: "POST"}).catch(() => {});
+    navEnsureFocus();
+    const items = navVisibleItems();
+    if(!navCurrentEl || items.length === 0) return;
+    const cur = navCurrentEl.getBoundingClientRect();
+    const curCenter = {x: cur.left + cur.width/2, y: cur.top + cur.height/2};
+    let best = null, bestScore = Infinity;
+    for(const el of items){
+      if(el === navCurrentEl) continue;
+      const r = el.getBoundingClientRect();
+      const center = {x: r.left + r.width/2, y: r.top + r.height/2};
+      const vx = center.x - curCenter.x, vy = center.y - curCenter.y;
+      const dot = vx*dx + vy*dy;
+      if(dot <= 0) continue; // no está en la direccion pedida
+      const perp = Math.abs(vx*dy - vy*dx); // desvio lateral respecto al eje pedido
+      const score = dot + perp*2.5;
+      if(score < bestScore){ bestScore = score; best = el; }
+    }
+    if(best) navSetFocus(best);
+  }
+
+  function navActivate(){
+    if(!navCurrentEl) return;
+    navLastEnterAt = Date.now();
+    navCurrentEl.click();
+  }
+
+  function navBack(){
+    // El modal de confirmación/aviso, si está abierto, se lleva Atrás
+    // entero -- equivale a "Cancelar" (o a "Aceptar" si es un aviso sin
+    // opción de cancelar, ver showModal) en vez de dejar pasar el Atrás a
+    // lo que haya debajo (p.ej. cerrando también Ajustes de golpe).
+    const confirmView = el('view-confirm');
+    if(confirmView && confirmView.classList.contains('visible')){
+      const cancelBtn = el('confirm-cancel-btn');
+      if(cancelBtn && navIsVisible(cancelBtn)) cancelBtn.click();
+      else el('confirm-accept-btn').click();
+      return;
+    }
+    // Botones de "volver"/cerrar conocidos, el primero que esté visible
+    // gana -- cubre todas las vistas superpuestas (biblioteca, artista,
+    // ajustes, pantalla completa de reloj/VU-metro, lista de reproduccion).
+    const backIds = [
+      'artist-btn-back', 'playlist-btn-back', 'lib-btn-back',
+      'btn-close-settings', 'clock-fullscreen-back', 'vumeter-fullscreen-back',
+    ];
+    for(const id of backIds){
+      const btn = el(id);
+      if(btn && navIsVisible(btn)){ btn.click(); return; }
+    }
+  }
+
+  // Botón "Home" del mando -- confirmado en vivo que manda
+  // keyCode=172 (VK_BROWSER_HOME / event.key "BrowserHome"). Cierra
+  // TODAS las vistas superpuestas de golpe (a diferencia de Atrás, que
+  // solo cierra la de más arriba) y vuelve al home.
+  function navGoHome(){
+    closeSettings();
+    el("view-library").classList.remove("visible");
+    el("view-artist").classList.remove("visible");
+    applyPlaylistVisibility(false);
+    toggleClockFullscreen(false);
+    toggleVuMeterFullscreen(false);
+  }
+
+  // No todos los mandos combo teclado+raton reportan ev.key con el valor
+  // estandar para OK/Atras (confirmado en vivo con el G20S Pro: Enter/
+  // Escape por nombre no llegaban a activarse) -- se admite tambien el
+  // keyCode clasico y variantes habituales como respaldo, en vez de
+  // depender solo del nombre.
+  function isOkKey(ev){ return ev.key === 'Enter' || ev.key === 'NumpadEnter' || ev.key === ' ' || ev.keyCode === 13 || ev.keyCode === 32; }
+  function isBackKey(ev){ return ev.key === 'Escape' || ev.key === 'Backspace' || ev.key === 'GoBack' || ev.key === 'BrowserBack' || ev.keyCode === 27 || ev.keyCode === 8 || ev.keyCode === 166; }
+  // Boton "Home" del mando -- confirmado en vivo: keyCode=172
+  // (VK_BROWSER_HOME / event.key "BrowserHome").
+  function isHomeKey(ev){ return ev.key === 'BrowserHome' || ev.keyCode === 172; }
+
+  document.addEventListener('keydown', (ev) => {
+    // Dentro de un campo de texto (Ajustes: host/puerto/credenciales) las
+    // flechas mueven el cursor y Backspace borra -- comportamiento nativo
+    // del navegador, no hay que interceptarlo. Solo Escape sigue
+    // funcionando ahi (para poder salir del campo con el mando).
+    const tag = document.activeElement && document.activeElement.tagName;
+    const inTextField = tag === 'INPUT' || tag === 'TEXTAREA';
+    if(inTextField && !isBackKey(ev)) return;
+    if(isOkKey(ev)){ ev.preventDefault(); navActivate(); return; }
+    // Atras actua al instante en keydown, sin mas logica -- se probo a
+    // distinguir pulsacion corta/larga (cerrar Ambar con una pulsacion
+    // larga) y se descarto: este mando no manda un keyup fiable, lo que
+    // rompia hasta el caso simple, y ademas resultaba molesto en el uso
+    // normal. navBack() es idempotente (cerrar algo ya cerrado no hace
+    // nada), asi que no pasa nada si algun evento duplicado del mando lo
+    // llama de mas.
+    if(isBackKey(ev)){ ev.preventDefault(); navBack(); return; }
+    if(isHomeKey(ev)){ ev.preventDefault(); navGoHome(); return; }
+    switch(ev.key){
+      case 'ArrowUp': ev.preventDefault(); navMove(0, -1); break;
+      case 'ArrowDown': ev.preventDefault(); navMove(0, 1); break;
+      case 'ArrowLeft': ev.preventDefault(); navMove(-1, 0); break;
+      case 'ArrowRight': ev.preventDefault(); navMove(1, 0); break;
+    }
+  });
+
+  // Mandos combo teclado+ratón como el G20S Pro pueden disparar TAMBIÉN
+  // un click de ratón (en la posición donde estuviera el cursor, no
+  // sobre el elemento con foco del D-pad) al pulsar OK, además del/en
+  // vez del Enter. Si ese click cae fuera del elemento realmente
+  // enfocado justo después de un Enter que sí llegó, se descarta -- el
+  // propio click sintético de navActivate() sí pasa (su target es
+  // exactamente navCurrentEl).
+  document.addEventListener('click', (ev) => {
+    if(Date.now() - navLastEnterAt < 400 && ev.target !== navCurrentEl && !(navCurrentEl && navCurrentEl.contains(ev.target))){
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+  }, true);
+
+  // El boton OK del mando G20S Pro no manda nada detectable por ningun
+  // camino (confirmado en vivo: ni evento de teclado/click/pointer a
+  // nivel de pagina, ni evento de teclado a nivel de Windows con un
+  // gancho global de bajo nivel, ni bytes en crudo leyendo directamente
+  // las 3 interfaces HID no estandar del receptor -- control de
+  // consumo, control de sistema, y la definida por el proveedor. Las
+  // flechas/Atras/Home si funcionan, todas por teclado normal. Es una
+  // limitacion del mando/receptor en su modo de emparejamiento actual,
+  // no arreglable desde la app -- ver TODO.md. Por si acaso el click
+  // fantasma SI llegara a producirse en otro mando/config (u otro
+  // mando): si un click no llega a ningun elemento de navSelector(), se
+  // reinterpreta como "activar el elemento con foco del D-pad" -- pero
+  // SOLO si se ha usado el D-pad hace poco (8s), para no comerse un
+  // toque accidental en un hueco vacio de la pantalla tactil cuando
+  // nadie ha tocado el mando. Un toque sobre un elemento real (tarjeta,
+  // boton) siempre funciona igual, tenga o no el foco del D-pad --
+  // eso se resuelve solo, antes de llegar aqui.
+  document.addEventListener('click', (ev) => {
+    if(!navCurrentEl) return;
+    if(Date.now() - navLastArrowAt > 8000) return;
+    if(ev.target.closest(navSelector())) return;
+    navActivate();
+  });
+
+  // El boton Atras del mando, confirmado en vivo con el panel de
+  // diagnostico, es un CLIC DERECHO del raton en air mode (button=2),
+  // no una tecla -- mismo patron que OK siendo clic izquierdo. Se
+  // intercepta por "contextmenu" (el evento estandar de clic derecho en
+  // la web) en vez de "mousedown" directamente: preventDefault() ahi es
+  // lo que evita que aparezca el menu contextual nativo del navegador,
+  // que "mousedown" solo no bloquea.
+  document.addEventListener('contextmenu', (ev) => {
+    ev.preventDefault();
+    navBack();
+  });
 </script>
 </body>
 </html>

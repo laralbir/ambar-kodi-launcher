@@ -332,14 +332,28 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
     return container, event_bus
 
 
+def _ensure_kodi_cd_autoplay(kodi_gateway: KodiGateway) -> None:
+    """Reintenta activar KodiGateway.enable_cd_autoplay hasta que Kodi
+    responda -- Kodi puede tardar en arrancar o arrancar despues que
+    Ambar, no hay que perder el intento por probar una unica vez
+    demasiado pronto. ~5 minutos de reintentos como mucho; si Kodi sigue
+    sin responder para entonces, probablemente no este en marcha de
+    verdad y seguir insistiendo no ayuda."""
+    for _ in range(30):
+        if kodi_gateway.enable_cd_autoplay():
+            return
+        time.sleep(10)
+
+
 def _start_server(app: Flask, socketio: SocketIO, container: AppContainer, event_bus: EventBus) -> None:
     threading.Thread(
         target=kodi_listen, args=(container.kodi_gateway, container.now_playing_service), daemon=True
     ).start()
     threading.Thread(target=spotify_poll, args=(container.now_playing_service,), daemon=True).start()
+    threading.Thread(target=_ensure_kodi_cd_autoplay, args=(container.kodi_gateway,), daemon=True).start()
     container.audio_level_service.start()
     container.system_service.start()
-    print("Servidor corriendo en http://localhost:5005")
+    print("Servidor corriendo en http://127.0.0.1:5005")
     # allow_unsafe_werkzeug: servidor local de un unico kiosko, no expuesto a
     # internet; el servidor de desarrollo de Werkzeug es suficiente aqui.
     socketio.run(app, host="0.0.0.0", port=5005, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
@@ -394,7 +408,23 @@ def run(app_dir: str) -> None:
 
         webview.create_window(
             title="Ámbar",
-            url="http://localhost:5005",
+            # 127.0.0.1 explicito, NO "localhost": confirmado en vivo que
+            # el servidor solo escucha en IPv4 (host="0.0.0.0" en
+            # socketio.run, mas abajo), pero "localhost" en este Windows
+            # resuelve primero a IPv6 (::1) -- cada peticion que use el
+            # nombre en vez de la IP intentaba conectar a ::1 primero,
+            # se topaba con un rechazo, y ESE rechazo tardaba ~2s en
+            # llegar antes de caer a IPv4 (medido con requests: 127.0.0.1
+            # ~10ms, [::1] ~2.06s antes de fallar con "conexion
+            # rechazada"). Justo lo que se notaba como controles de
+            # reproduccion "colgados" -- no era contencion con la carga
+            # de artistas/albumes/caratulas de Kodi (confirmado que
+            # ocurria igual sin ninguna carga concurrente), era este
+            # tributo de ~2s en CADA peticion por resolver "localhost".
+            # Con la ventana cargando la pagina ya por 127.0.0.1, todas
+            # las llamadas fetch() del frontend heredan el mismo origen
+            # (rutas relativas "/api/..."), asi que basta arreglarlo aqui.
+            url="http://127.0.0.1:5005",
             width=1920,
             height=720,
             frameless=True,

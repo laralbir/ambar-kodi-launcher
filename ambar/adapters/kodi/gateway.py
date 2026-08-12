@@ -1,3 +1,5 @@
+import sys
+import threading
 from urllib.parse import quote
 
 import requests
@@ -12,6 +14,18 @@ class KodiGateway:
         self.host = host
         self.port = port
         self._cd_identifier = cd_identifier
+        # Techo de peticiones de imagen simultaneas al webserver de Kodi
+        # (ver art_proxy) -- confirmado en vivo que un grid con muchas
+        # caratulas propias (la mayoria de albumes/artistas suelen
+        # tenerla) dispara una peticion HTTP directa a Kodi por cada
+        # <img>, todas en paralelo sin limite (el navegador ya manda
+        # varias a la vez el solo). Con Kodi ocupado sirviendo un aluvion
+        # de imagenes, un simple play/pause podia quedarse esperando su
+        # turno -- Kodi no distingue prioridad entre peticiones. Limitar
+        # cuantas mandamos NOSOTROS a la vez le deja margen para
+        # responder a los controles con normalidad mientras las demas
+        # imagenes siguen llegando, solo que un poco escalonadas.
+        self._art_proxy_semaphore = threading.Semaphore(2)
 
     @property
     def rpc_url(self) -> str:
@@ -54,9 +68,21 @@ class KodiGateway:
         title = info.get("title") or info.get("label") or "Pista sin titulo"
         artist = ", ".join(info.get("artist", [])) or "CD / biblioteca local"
         album = info.get("album", "")
+        file_path = info.get("file", "")
         title, artist, album, art = self._enrich_cd_now_playing(
-            info.get("file", ""), title, artist, album, art
+            file_path, title, artist, album, art
         )
+        # Kodi no siempre trae caratula propia para pistas normales (MP3/FLAC
+        # sueltos sin tag embebido) -- si ya se encontro antes por click en
+        # la caratula (ver /api/library/kodi/album-art?force=true), se
+        # reutiliza aqui sin red (get_cached_album_art, solo cache en disco)
+        # para no bloquear el sondeo de "ahora suena" (cada 2s). Los CDs ya
+        # tienen su propio mecanismo via _enrich_cd_now_playing, de ahi el
+        # not file_path.startswith("cdda://").
+        if not art and not file_path.startswith("cdda://") and artist and album and self._cd_identifier:
+            art_path = self._cd_identifier.get_cached_album_art(artist, album)
+            if art_path:
+                art = art_path
         return PlaybackState(
             source="kodi",
             playing=bool(props and props.get("speed", 0) != 0),
@@ -170,10 +196,10 @@ class KodiGateway:
         res = self.rpc("AudioLibrary.GetAlbums", params)
         return res.get("albums", []) if res else []
 
-    def find_album_art(self, artist: str, title: str) -> str | None:
+    def find_album_art(self, artist: str, title: str, force: bool = False) -> str | None:
         if not self._cd_identifier or not artist or not title:
             return None
-        return self._cd_identifier.find_album_art(artist, title)
+        return self._cd_identifier.find_album_art(artist, title, force=force)
 
     def get_songs(self, album_id: int | None = None) -> list:
         params = {"properties": ["duration", "track", "thumbnail"]}
@@ -213,6 +239,14 @@ class KodiGateway:
             for source in sources:
                 source["filetype"] = "directory"
             return sources
+        if path.startswith("cdda://"):
+            # El usuario acaba de entrar en la pestaña CD (o una subcarpeta
+            # suya) -- forzar al lector a "despertarse" antes de preguntarle
+            # a Kodi, ver _wake_cd_drive. No se hace en has_audio_cd() (el
+            # sondeo de fondo cada 15s) a proposito: despertar el lector
+            # solo debe pasar cuando el usuario navega de verdad, no cada
+            # pocos segundos en segundo plano sin que nadie este mirando.
+            self._wake_cd_drive()
         res = self.rpc("Files.GetDirectory", {
             "directory": path,
             "media": "music",
@@ -222,6 +256,86 @@ class KodiGateway:
         if path.startswith("cdda://"):
             self._enrich_cd_track_labels(files)
         return files
+
+    def _wake_cd_drive(self) -> None:
+        """Fuerza al lector optico a "despertarse" antes de preguntarle a
+        Kodi si hay CD -- confirmado que Kodi puede seguir devolviendo
+        "sin CD" (cdda://local/ vacio) con el disco fisicamente puesto,
+        tanto en Windows como en macOS, si el lector ha entrado en reposo
+        por ahorro de energia tras un rato sin usarse: ni el sistema
+        operativo ni Kodi lo vuelven a comprobar solos, hay que forzar una
+        peticion real de bajo nivel al hardware. Best-effort: si falla (no
+        hay lector, permisos, plataforma sin soporte...) no pasa nada --
+        Files.GetDirectory de todas formas seguira dando la respuesta que
+        de, igual que antes de este cambio."""
+        try:
+            if sys.platform == "win32":
+                self._wake_cd_drive_windows()
+            elif sys.platform == "darwin":
+                self._wake_cd_drive_macos()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _wake_cd_drive_windows() -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+            wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        kernel32.DeviceIoControl.restype = wintypes.BOOL
+        kernel32.DeviceIoControl.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+            wintypes.LPVOID, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID,
+        ]
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        GENERIC_READ = 0x80000000
+        FILE_SHARE_READ = 0x1
+        FILE_SHARE_WRITE = 0x2
+        OPEN_EXISTING = 3
+        DRIVE_CDROM = 5
+        # IOCTL_STORAGE_CHECK_VERIFY2 (winioctl.h): fuerza al driver a
+        # comprobar la presencia real de medio en el dispositivo -- a
+        # diferencia de listar el contenido de la unidad (que puede
+        # devolver una respuesta en cache sin llegar a tocar el hardware),
+        # esta llamada obliga a re-consultar el lector de verdad.
+        IOCTL_STORAGE_CHECK_VERIFY2 = 0x2D0800
+        INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+        for code in range(ord("A"), ord("Z") + 1):
+            letter = chr(code)
+            root = f"{letter}:\\"
+            if kernel32.GetDriveTypeW(root) != DRIVE_CDROM:
+                continue
+            handle = kernel32.CreateFileW(
+                f"\\\\.\\{letter}:", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                None, OPEN_EXISTING, 0, None,
+            )
+            if not handle or handle == INVALID_HANDLE_VALUE:
+                continue
+            try:
+                returned = wintypes.DWORD(0)
+                kernel32.DeviceIoControl(
+                    handle, IOCTL_STORAGE_CHECK_VERIFY2, None, 0, None, 0,
+                    ctypes.byref(returned), None,
+                )
+            finally:
+                kernel32.CloseHandle(handle)
+
+    @staticmethod
+    def _wake_cd_drive_macos() -> None:
+        import subprocess
+
+        # drutil status consulta el lector optico directamente -- fuerza
+        # al driver a responder (y al lector a despertarse si hace falta),
+        # a diferencia de mirar /Volumes (que no ayuda si el disco esta
+        # puesto pero el lector dormido y el volumen aun sin montar).
+        subprocess.run(["drutil", "status"], capture_output=True, timeout=5)
 
     def _enrich_cd_track_labels(self, files: list) -> None:
         """Sustituye las etiquetas genericas "Track NN" de Kodi por los
@@ -291,6 +405,19 @@ class KodiGateway:
 
     def is_reachable(self) -> bool:
         return self.rpc("JSONRPC.Ping") == "pong"
+
+    def enable_cd_autoplay(self) -> bool:
+        """Configura Kodi para reproducir un CD de audio automaticamente
+        en cuanto se inserta, en vez de detectarlo y quedarse esperando a
+        que alguien le diga que lo reproduzca. `audiocds.autoaction` es el
+        ajuste nativo de Kodi para esto (ver xbmc/Autorun.cpp/Autorun.h
+        del propio Kodi: AUTOCD_NONE=0, AUTOCD_PLAY=1, AUTOCD_RIP=2) --
+        nada que reimplementar por nuestra cuenta, solo activarlo.
+        Devuelve True si Kodi respondio (para el reintento de
+        _ensure_kodi_cd_autoplay en bootstrap.py, por si Kodi arranca
+        despues que Ambar)."""
+        result = self.rpc("Settings.SetSettingValue", {"setting": "audiocds.autoaction", "value": 1})
+        return result is not None
 
     def has_audio_cd(self) -> bool:
         """True si Kodi puede listar pistas reales en cdda://local/ (CD de
@@ -375,8 +502,9 @@ class KodiGateway:
         # de path -- hay que volver a codificarla, si no Kodi ve barras/
         # dos-puntos sueltos y no la resuelve (404).
         img_url = f"http://{self.host}:{self.port}/image/{quote(path, safe='')}"
-        try:
-            r = requests.get(img_url, timeout=3)
-            return r.content, r.status_code, r.headers.get("Content-Type", "image/jpeg")
-        except Exception:
-            return "", 404, None
+        with self._art_proxy_semaphore:
+            try:
+                r = requests.get(img_url, timeout=3)
+                return r.content, r.status_code, r.headers.get("Content-Type", "image/jpeg")
+            except Exception:
+                return "", 404, None

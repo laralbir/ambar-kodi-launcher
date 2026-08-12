@@ -110,6 +110,11 @@ def create_app(container) -> Flask:
         container.system_service.execute(body.get("action"))
         return jsonify({"ok": True})
 
+    @app.route("/api/system/secure-cursor", methods=["POST"])
+    def api_secure_cursor():
+        container.system_service.secure_cursor()
+        return jsonify({"ok": True})
+
     @app.route("/api/config", methods=["GET", "POST"])
     def api_config():
         if request.method == "POST":
@@ -177,7 +182,8 @@ def create_app(container) -> Flask:
         # es lo lento, no el listado en si.
         artist = request.args.get("artist", "")
         title = request.args.get("title", "")
-        return jsonify({"thumbnail": container.library_service.album_art(artist, title)})
+        force = request.args.get("force", "").lower() == "true"
+        return jsonify({"thumbnail": container.library_service.album_art(artist, title, force=force)})
 
     @app.route("/api/library/kodi/songs")
     def kodi_songs():

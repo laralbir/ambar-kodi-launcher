@@ -49,7 +49,7 @@ Para ejecutar y modificar Ámbar de forma local en tu máquina de desarrollo (Wi
    ```bash
    python kiosk_server.py
    ```
-   *Nota: Por defecto, esto abrirá la ventana nativa de la aplicación de escritorio. Si deseas desarrollar sobre el navegador y omitir la ventana nativa, puedes ejecutar `python kiosk_server.py --no-window` y abrir `http://localhost:5005` en tu navegador.*
+   *Nota: Por defecto, esto abrirá la ventana nativa de la aplicación de escritorio. Si deseas desarrollar sobre el navegador y omitir la ventana nativa, puedes ejecutar `python kiosk_server.py --no-window` y abrir `http://127.0.0.1:5005` en tu navegador (usa la IP, no `localhost`: en Windows puede resolver primero a IPv6 y el servidor solo escucha en IPv4, añadiendo ~2s de retraso a cada petición).*
 
 ---
 

@@ -156,21 +156,40 @@ class MusicBrainzGateway:
             "art": art,
         }
 
-    def find_album_art(self, artist: str, album: str) -> str | None:
+    def find_album_art(self, artist: str, album: str, force: bool = False) -> str | None:
         """Busca la caratula de un album por texto (artista+titulo) cuando
         Kodi no tiene una propia -- misma idea que identify() para CDs, pero
         por busqueda de texto en vez de TOC (no hay tabla de contenidos que
         calcular aqui, solo el nombre). Cacheado en disco igual que
-        identify(), clave = "album:<artista>|<album>" en minusculas."""
+        identify(), clave = "album:<artista>|<album>" en minusculas.
+
+        force=True ignora la cache y repite la busqueda -- para el click en
+        la caratula de "ahora suena" (ver art-frame en index.html): sin
+        esto, un primer intento fallido (p.ej. mala conexion al arrancar)
+        se quedaba cacheado como "sin caratula" para siempre, igual que le
+        pasaba a identify() con los CDs antes de tener su propio force."""
         if not artist or not album:
             return None
         key = f"album:{artist.strip().lower()}|{album.strip().lower()}"
-        if key in self._cache:
+        if not force and key in self._cache:
             return self._cache[key]
         art = self._lookup_album_art(artist, album)
         self._cache[key] = art
         self._save_cache()
         return art
+
+    def get_cached_album_art(self, artist: str, album: str) -> str | None:
+        """Como find_album_art, pero SOLO consulta la cache en disco, sin
+        red -- para el sondeo de "ahora suena" (cada 2s), que no puede
+        esperar a una consulta HTTP. Ver KodiGateway.get_state(): si el
+        album de la pista en curso no tiene caratula propia en Kodi, se
+        usa esto para no dejar el hueco vacio si ya se encontro antes
+        (p.ej. al hacer click en la caratula, ver art-frame en
+        index.html, que si fuerza la busqueda de red via find_album_art)."""
+        if not artist or not album:
+            return None
+        key = f"album:{artist.strip().lower()}|{album.strip().lower()}"
+        return self._cache.get(key)
 
     def _lookup_album_art(self, artist: str, album: str) -> str | None:
         try:

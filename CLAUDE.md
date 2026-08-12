@@ -83,7 +83,17 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
   no reproduce audio real) que representa a Kodi y solo se activa
   mientras Kodi es la fuente que suena, cerrándose el resto del tiempo
   para no competir con la sesión nativa de Spotify. Verificado en vivo
-  simulando las teclas de sistema (no solo con el mando real).
+  simulando las teclas de sistema (no solo con el mando real). Además,
+  como es un mando combo teclado+ratón, el D-pad manda flechas y "OK"
+  manda Enter — el propio `index.html` (final del script) implementa
+  navegación completa de la interfaz con eso: navegación *espacial*
+  (busca el elemento visible más cercano en la dirección pedida, no
+  orden del DOM) sobre una lista de selectores CSS genérica (reutiliza
+  las clases que ya usan `renderGrid`/`renderList`/etc., sin tocarlas ni
+  mantener una lista de foco cacheada), con guardas para no interceptar
+  las flechas dentro de campos de texto y para descartar el "click
+  fantasma" que estos mandos disparan a la vez que Enter en la posición
+  del cursor real (no sobre el elemento con foco del D-pad).
 - **Ventana kiosko**: `frameless=True` en pywebview activa `easy_drag`
   por defecto en el backend EdgeChromium de Windows (arrastra la ventana
   del sistema al primer `mousedown` en cualquier punto de la página,
@@ -106,8 +116,12 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
   - expone `/api/now-playing`, `/api/control`, `/api/art`, `/login`,
     `/callback`;
   - sirve `index.html` en `/`.
-  - El navegador del kiosko debe apuntar a `http://localhost:5005`
-    (no abrir `index.html` como archivo suelto).
+  - El navegador del kiosko debe apuntar a `http://127.0.0.1:5005`
+    (no abrir `index.html` como archivo suelto, y no usar el nombre
+    "localhost" -- ver bootstrap.py: el servidor solo escucha en IPv4,
+    pero "localhost" en Windows resuelve primero a IPv6 y cada petición
+    pagaba ~2s de más esperando el rechazo de esa ruta antes de caer a
+    IPv4, notándose como controles de reproducción "colgados").
 - **Vista de biblioteca**: dentro del propio launcher, navegación nativa
   de artistas/álbumes/canciones/carpetas/CD contra la API JSON-RPC de
   Kodi (`ambar/adapters/kodi/gateway.py`, expuesto vía

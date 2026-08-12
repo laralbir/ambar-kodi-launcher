@@ -36,12 +36,11 @@ de aquí.
 
 ## Pendiente
 
-- **Navegar por Ámbar (la interfaz del launcher, no solo play/pausa/
-  siguiente/anterior) con los botones del mando G20S Pro** — flechas/
-  D-pad para moverse entre tarjetas y botones, OK para seleccionar,
-  atrás para volver. Pendiente de diseñar (gestión de foco por teclado
-  en el frontend, estilos de "elemento enfocado" a propósito para verse
-  bien en la pantalla táctil) y probar en vivo con el mando real.
+- **Salvapantallas de hora/fecha por inactividad**: si pasan 5/10/15
+  minutos (configurable desde Ajustes) sin reproducir nada, mostrar
+  automáticamente la vista de hora y fecha a pantalla completa (la
+  misma que ya existe al tocar el reloj), y volver al home solo al
+  tocar la pantalla o en cuanto empiece a sonar algo.
 - **Reproducir CD de audio nativamente en Windows/macOS en vez de por
   Kodi.** Valorado y desaconsejado por ahora: en Windows 11 no hay un
   reproductor de CD "nativo" moderno (la app "Reproductor multimedia"
@@ -55,9 +54,6 @@ de aquí.
   `cdda://local/`) y la falta de metadatos propios (ya resuelto con
   MusicBrainz) — cambiar de reproductor no arreglaría nada de eso.
   Retomar solo si aparece un motivo concreto que lo justifique.
-- **VU-meter en el mini PC real**: verificado en macOS y en una VM
-  Windows 11 ARM64 (ver `CHANGELOG.md`) — pendiente solo confirmarlo
-  también en el hardware Windows real (Intel N100).
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se
@@ -70,20 +66,6 @@ de aquí.
   `--osx-bundle-identifier` y el nombre del binario (`Ambar`, sin
   versión) para reducir cuánto cambia entre builds — la firma ad-hoc
   en sí sigue siendo la causa raíz que falta arreglar del todo.
-- **Selector de salida de audio del sistema** (HDMI TV, analógico,
-  óptico...). **Deliberadamente no implementado todavía**: aunque
-  `soundcard` (ya usado por el VU-metro) permite *listar* los
-  dispositivos de salida en ambas plataformas
-  (`soundcard.all_speakers()`), *cambiar* el dispositivo de salida por
-  defecto del sistema no tiene una API pública fiable — en Windows
-  requiere la interfaz COM no documentada `IPolicyConfig` (sin
-  soporte oficial de Microsoft, con riesgo real de romper en
-  distintas builds de Windows), y en macOS requiere CoreAudio de bajo
-  nivel (`AudioObjectSetPropertyData` sobre
-  `kAudioHardwarePropertyDefaultOutputDevice`). Implementarlo a
-  ciegas sin poder verificarlo en el mini PC real es más probable que
-  rompa el cambio de salida de audio que lo arregle. Pendiente de
-  abordar cuando se pueda probar en hardware real.
 
 ## Hecho recientemente (ver `CHANGELOG.md` para el detalle completo)
 

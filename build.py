@@ -19,8 +19,13 @@ PRESERVE_DIRS = ["skins"]
 
 
 def _dist_dir() -> str:
+    # Ancla absoluta a la ubicacion de este script (igual que backup_dir en
+    # build(), mas abajo) en vez de relativa al directorio de trabajo
+    # actual -- mas robusto si build.py se invoca alguna vez desde un CWD
+    # distinto a la raiz del proyecto (backup/restore y la ruta real que
+    # usa PyInstaller quedarian desalineados sin esto).
     name = f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME
-    return os.path.join("dist", name)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist", name)
 
 
 def backup_runtime_data(backup_dir: str) -> None:

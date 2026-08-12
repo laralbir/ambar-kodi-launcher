@@ -103,8 +103,26 @@ function Enable-AutoLogin {
 
 # ---------- Paso 2: desactivar salvapantallas / bloqueo por inactividad ----------
 function Disable-ScreenLock {
+    # ScreenSaveActive=0 desactiva el salvapantallas, pero por si solo no
+    # basta -- confirmado en vivo que la pantalla de bloqueo de Windows
+    # seguia saliendo tras un rato de inactividad aun con esto puesto.
+    # Se cubren tambien los otros dos mecanismos independientes que
+    # pueden forzarla: ScreenSaverIsSecure (pedir contraseña "al
+    # reanudar", que en teoria no deberia disparar sin salvapantallas
+    # activo, pero se desactiva igualmente por si acaso) y los tiempos de
+    # apagado de pantalla/suspension del plan de energia (si la pantalla
+    # se apaga o el equipo suspende, Windows puede pedir inicio de sesion
+    # al volver aunque WindowsWakeLock de Ambar ya intente evitar la
+    # suspension mientras el proceso esta vivo -- esto es la red de
+    # seguridad a nivel de sistema, no depende de que Ambar siga
+    # corriendo). "0" en powercfg significa "nunca".
     Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name ScreenSaveActive -Value "0"
-    Write-Result "Salvapantallas/bloqueo por inactividad desactivado" $true
+    Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name ScreenSaverIsSecure -Value "0"
+    powercfg /change monitor-timeout-ac 0
+    powercfg /change monitor-timeout-dc 0
+    powercfg /change standby-timeout-ac 0
+    powercfg /change standby-timeout-dc 0
+    Write-Result "Salvapantallas/bloqueo por inactividad y apagado/suspensión de pantalla desactivados" $true
 }
 
 # ---------- Paso 3: desactivar la reproduccion automatica de CD de audio ----------

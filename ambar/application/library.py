@@ -132,8 +132,8 @@ class LibraryService:
     def kodi_albums(self, artist_id: int | None) -> list:
         return self._kodi.get_albums(artist_id)
 
-    def album_art(self, artist: str, title: str) -> str | None:
-        return self._kodi.find_album_art(artist, title)
+    def album_art(self, artist: str, title: str, force: bool = False) -> str | None:
+        return self._kodi.find_album_art(artist, title, force=force)
 
     def kodi_songs(self, album_id: int | None) -> list:
         return self._kodi.get_songs(album_id)

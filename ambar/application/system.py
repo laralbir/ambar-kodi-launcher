@@ -40,6 +40,68 @@ class SystemService:
     def set_volume_muted(self, muted: bool) -> None:
         self._volume_controller.set_muted(muted)
 
+    def secure_cursor(self) -> None:
+        """Fija el cursor del ratón del sistema en un único punto (esquina
+        superior izquierda de la ventana de Ámbar, con un margen mínimo)
+        y le devuelve el foco de Windows -- pensado para el mando (JZK
+        G20S Pro): en "air mode" mueve el puntero de verdad al mover el
+        mando en el aire, y tanto OK como Atrás, confirmado en vivo, son
+        clics de ratón reales (izquierdo/derecho) en la posición del
+        cursor, no teclas. Sin esto, el aire-ratón podía sacar el cursor a
+        otro monitor (la TV, en un equipo con más de uno) -- lo que le
+        quitaba a Ámbar el foco de Windows por completo, dejando de
+        llegarle hasta el teclado real -- o, dentro de la propia ventana,
+        moverlo (oculto, no se ve dónde queda) encima de cualquier
+        tarjeta/botón real, disparando una acción no deseada.
+
+        `ClipCursor` sobre un rectángulo de un único píxel, no sobre toda
+        la ventana: se probó a confinar solo dentro de los límites de la
+        ventana (dejando moverse con libertad por dentro), y en vivo
+        seguía dando clics falsos -- basta con mover el mando en el aire
+        entre una flecha y la pulsación de OK/Atrás para que el cursor ya
+        se haya desplazado a otro punto de la ventana. Con el rectángulo
+        reducido a un solo píxel, físicamente no puede moverse ni un
+        pixel de ahí, se mueva como se mueva el mando.
+
+        Windows libera el confinamiento él solo si Ámbar pierde el foco
+        (p.ej. si se abre otra ventana por encima), así que no deja el
+        cursor bloqueado para siempre si algo falla -- por eso también se
+        vuelve a aplicar en cada movimiento del D-pad (ver
+        /api/system/secure-cursor), no solo una vez al arrancar.
+
+        Coordenadas ABSOLUTAS ancladas a `webview.windows[0].x/y` (la
+        posición real de la ventana), no un desplazamiento relativo sin
+        límite: una primera versión con desplazamiento relativo enorme
+        (pensando que Windows lo recortaría sola al borde de la pantalla)
+        se probó y se quitó -- confirmado en vivo que cruzaba al otro
+        monitor igualmente. `SetForegroundWindow` en vez de simular un
+        clic para recuperar el foco: un clic sintético en cada movimiento
+        del D-pad activaría el elemento con foco sin querer,
+        confundiéndose con un OK real.
+
+        Solo Windows; best-effort (si `webview` no está disponible o
+        falla, no rompe nada más)."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            import webview
+
+            if not webview.windows:
+                return
+            win = webview.windows[0]
+            x, y = int(win.x) + 2, int(win.y) + 2
+            rect = wintypes.RECT(x, y, x + 1, y + 1)
+            ctypes.windll.user32.ClipCursor(ctypes.byref(rect))
+            ctypes.windll.user32.SetCursorPos(x, y)
+            hwnd = ctypes.windll.user32.FindWindowW(None, "Ámbar")
+            if hwnd:
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+
     def open_spotify_login(self) -> None:
         """Abre /login en el navegador del sistema (no en el propio webview
         del kiosko, que no puede completar el flujo OAuth de forma fiable --
