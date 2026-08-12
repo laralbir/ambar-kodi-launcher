@@ -28,3 +28,10 @@ comtypes; sys_platform == "win32"
 winrt-Windows.Media.Control==3.2.1; sys_platform == "win32"
 winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"
 winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
+
+# Publica una sesion SMTC propia para que las teclas multimedia del mando
+# tambien controlen Kodi, no solo Spotify -- Kodi no se registra como
+# sesion SMTC por si mismo en Windows (ver
+# ambar/adapters/media_session/windows_smtc_publisher.py).
+winrt-Windows.Media==3.2.1; sys_platform == "win32"
+winrt-Windows.Media.Playback==3.2.1; sys_platform == "win32"

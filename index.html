@@ -54,11 +54,8 @@
   .art-frame:active{filter:brightness(0.85);}
   .art-frame.refreshing{opacity:0.6; transition:opacity 0.15s;}
   .art-frame img{width:100%; height:100%; object-fit:cover; display:block;}
-  .art-frame .placeholder{
-    font-family:'JetBrains Mono', monospace; color: var(--text-dim); font-size: 0.8rem;
-    letter-spacing: 0.08em; text-align:center; padding: 1rem;
-  }
-  .art-frame .placeholder svg.vinyl-placeholder{width:52%; margin-bottom:0.8rem;}
+  .art-frame .placeholder{text-align:center; padding: 1rem;}
+  .art-frame .placeholder svg.vinyl-placeholder{width:52%;}
   .vinyl-body{fill:#1a1b1d; stroke:var(--line); stroke-width:1;}
   .vinyl-groove{fill:none; stroke:#2a2c30; stroke-width:1;}
   .vinyl-sheen{fill:none; stroke:rgba(255,255,255,0.06); stroke-width:14; stroke-linecap:round;}
@@ -574,7 +571,6 @@
           <circle cx="100" cy="100" r="34" class="vinyl-label-ring"/>
           <circle cx="100" cy="100" r="4" class="vinyl-spindle"/>
         </svg>
-        SIN REPRODUCCIÓN
       </div>
       <img id="art-img" style="display:none;">
       <div class="art-spinner" id="art-spinner"></div>

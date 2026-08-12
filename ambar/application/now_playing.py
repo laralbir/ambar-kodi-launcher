@@ -1,3 +1,5 @@
+import threading
+
 from ambar.domain.events import PlaybackStateChanged
 from ambar.domain.playback import PlaybackState
 from ambar.ports.playback_source import PlaybackSource
@@ -13,6 +15,18 @@ class NowPlayingService:
         self._spotify = spotify_source
         self._event_bus = event_bus
         self.last_source: str | None = None
+        # Para detectar transiciones "empezo a sonar ahora mismo" en
+        # enforce_single_source -- ver ahi.
+        self._kodi_was_playing = False
+        self._spotify_was_playing = False
+        # Evita que llamadas solapadas a enforce_single_source() (sondeo
+        # periodico cada 3s, ver adapters/spotify/poller.py) se acumulen
+        # si una tarda mas de la cuenta (p. ej. Spotify via SMTC yendo
+        # lento) -- se descarta la nueva en vez de esperar a la anterior,
+        # confirmado en vivo que sin esto la navegacion por Kodi se notaba
+        # lenta al competir varias llamadas a la vez por el mismo hilo de
+        # SMTC (ver WindowsSMTCGateway).
+        self._enforce_lock = threading.Lock()
 
     def get_state(self) -> PlaybackState:
         state = self._kodi.get_state() or self._spotify.get_state()
@@ -40,3 +54,34 @@ class NowPlayingService:
         state = self._spotify.get_state()
         if state:
             self._event_bus.publish(PlaybackStateChanged(state))
+
+    def enforce_single_source(self) -> None:
+        """Si una fuente empieza a sonar mientras la otra ya estaba
+        sonando, pausa la otra -- para que solo suene una a la vez sin
+        importar desde donde se inicio la reproduccion (mando, el propio
+        Kodi, Spotify Connect desde el movil...). kodi_play()/
+        spotify_play() en LibraryService ya paran la otra fuente cuando
+        se arranca reproduccion desde la biblioteca del propio launcher;
+        esto cubre el resto de casos. Se llama periodicamente (ver
+        adapters/spotify/poller.py, cada 3s) -- limitado a esa cadencia a
+        proposito, ver _enforce_lock."""
+        if not self._enforce_lock.acquire(blocking=False):
+            return
+        try:
+            kodi_state = self._kodi.get_state()
+            spotify_state = self._spotify.get_state()
+            kodi_playing = bool(kodi_state and kodi_state.playing)
+            spotify_playing = bool(spotify_state and spotify_state.playing)
+
+            kodi_just_started = kodi_playing and not self._kodi_was_playing
+            spotify_just_started = spotify_playing and not self._spotify_was_playing
+
+            if kodi_just_started and spotify_playing:
+                self._spotify.pause()
+            elif spotify_just_started and kodi_playing:
+                self._kodi.pause()
+
+            self._kodi_was_playing = kodi_playing
+            self._spotify_was_playing = spotify_playing
+        finally:
+            self._enforce_lock.release()

@@ -8,12 +8,16 @@ class FakeSource:
     def __init__(self, state: PlaybackState | None = None, playlist: list | None = None):
         self._state = state
         self._playlist = playlist if playlist is not None else []
+        self.pause_calls = 0
 
     def get_state(self):
         return self._state
 
     def control(self, action):
         pass
+
+    def pause(self):
+        self.pause_calls += 1
 
     def get_playlist(self):
         return self._playlist
@@ -110,3 +114,53 @@ def test_get_playlist_empty_when_nothing_playing():
     service = NowPlayingService(FakeSource(None), FakeSource(None), EventBus())
 
     assert service.get_playlist() == []
+
+
+def test_enforce_single_source_pauses_spotify_when_kodi_starts_while_spotify_playing():
+    kodi = FakeSource(PlaybackState(source="kodi", playing=True))
+    spotify = FakeSource(PlaybackState(source="spotify", playing=True))
+    service = NowPlayingService(kodi, spotify, EventBus())
+
+    service.enforce_single_source()
+
+    assert spotify.pause_calls == 1
+    assert kodi.pause_calls == 0
+
+
+def test_enforce_single_source_pauses_kodi_when_spotify_starts_while_kodi_playing():
+    kodi = FakeSource(PlaybackState(source="kodi", playing=True))
+    spotify = FakeSource(PlaybackState(source="spotify", playing=True))
+    service = NowPlayingService(kodi, spotify, EventBus())
+    # Kodi ya estaba sonando de antes (no es una transicion nueva) --
+    # Spotify es quien acaba de empezar.
+    service._kodi_was_playing = True
+
+    service.enforce_single_source()
+
+    assert kodi.pause_calls == 1
+    assert spotify.pause_calls == 0
+
+
+def test_enforce_single_source_does_nothing_when_only_one_source_playing():
+    kodi = FakeSource(PlaybackState(source="kodi", playing=True))
+    spotify = FakeSource(None)
+    service = NowPlayingService(kodi, spotify, EventBus())
+
+    service.enforce_single_source()
+
+    assert kodi.pause_calls == 0
+    assert spotify.pause_calls == 0
+
+
+def test_enforce_single_source_does_nothing_once_both_already_playing_continuously():
+    kodi = FakeSource(PlaybackState(source="kodi", playing=True))
+    spotify = FakeSource(PlaybackState(source="spotify", playing=True))
+    service = NowPlayingService(kodi, spotify, EventBus())
+
+    service.enforce_single_source()  # primera vez: kodi "empieza", pausa spotify
+    spotify.pause_calls = 0
+    kodi.pause_calls = 0
+    service.enforce_single_source()  # segunda vez: ninguna transicion nueva
+
+    assert kodi.pause_calls == 0
+    assert spotify.pause_calls == 0

@@ -118,6 +118,17 @@ class KodiGateway:
             return
         self.rpc("Player.Stop", {"playerid": players[0]["playerid"]})
 
+    def pause(self) -> None:
+        # "play": False fuerza pausa explicita -- a diferencia de
+        # control("playpause"), que alterna (Player.PlayPause sin ese
+        # parametro), esto no arriesga a REANUDAR a Kodi si ya estaba en
+        # pausa. Usado por NowPlayingService para parar Kodi cuando
+        # Spotify empieza a sonar (ver enforce_single_source).
+        players = self.rpc("Player.GetActivePlayers")
+        if not players:
+            return
+        self.rpc("Player.PlayPause", {"playerid": players[0]["playerid"], "play": False})
+
     # ---------- biblioteca ----------
 
     def get_artists(self) -> list:

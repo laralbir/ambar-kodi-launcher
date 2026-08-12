@@ -70,6 +70,35 @@ lo que Kodi está reproduciendo; la pantalla táctil es el mando central.
   macOS/desarrollo, donde SMTC no existe). No se intenta embeber el
   reproductor web de Spotify (Spotify bloquea el embebido con
   X-Frame-Options).
+- **Mando remoto (JZK G20S Pro)**: sus teclas multimedia (play/pausa/
+  siguiente/anterior) son globales de Windows y el sistema las enruta a
+  la sesión SMTC que considere "actual" — Spotify ya se registra como
+  una y las recibe bien, pero Kodi no se registra como sesión SMTC por
+  sí mismo en Windows (sin soporte nativo ni addon para ello, confirmado
+  buscando: forum.kodi.tv/showthread.php?tid=375121), así que esas
+  teclas no le llegaban nunca reproduciendo desde Kodi. Arreglado
+  publicando una sesión SMTC propia (`ambar/adapters/media_session/
+  windows_smtc_publisher.py`, vía un `MediaPlayer` de WinRT usado solo
+  como vehículo para obtener el objeto `SystemMediaTransportControls` —
+  no reproduce audio real) que representa a Kodi y solo se activa
+  mientras Kodi es la fuente que suena, cerrándose el resto del tiempo
+  para no competir con la sesión nativa de Spotify. Verificado en vivo
+  simulando las teclas de sistema (no solo con el mando real).
+- **Ventana kiosko**: `frameless=True` en pywebview activa `easy_drag`
+  por defecto en el backend EdgeChromium de Windows (arrastra la ventana
+  del sistema al primer `mousedown` en cualquier punto de la página,
+  confirmado que afectaba incluso al slider de volumen) — desactivado
+  explícitamente (`easy_drag=False`) en `bootstrap.py`, no hace falta
+  arrastre nunca en un kiosko fijo a la pantalla táctil. Además, Ámbar
+  se bloquea a una sola instancia a la vez (`_acquire_single_instance_lock`
+  en `bootstrap.py`, reserva un puerto TCP local fijo como mutex).
+- **Exclusión mutua entre fuentes**: además de que `kodi_play()`/
+  `spotify_play()` paren la otra fuente al arrancar reproducción desde
+  la biblioteca del propio launcher, `NowPlayingService.
+  enforce_single_source()` (sondeado cada 3s desde el poller de Spotify)
+  detecta cuándo una fuente empieza a sonar por su cuenta (mando, el
+  propio Kodi, Spotify Connect desde el móvil...) mientras la otra ya
+  estaba sonando, y pausa la otra.
 - **Launcher táctil**: página propia (`index.html`) servida por un
   único servidor local Flask (`kiosk_server.py`) que:
   - unifica el estado de "ahora suena" de Kodi (JSON-RPC) y de Spotify

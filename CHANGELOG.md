@@ -5,6 +5,56 @@ Todos los cambios notables de este proyecto se documentan en este fichero.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.5.0] - 2026-08-12
+
+### Added
+- **El mando (o cualquier teclado) ya puede pausar/cambiar de canción
+  reproduciendo desde Kodi, no solo desde Spotify**. Causa real: en
+  Windows, las teclas multimedia se enrutan a la sesión SMTC que el
+  sistema considere "actual" — Spotify se registra como una sola (y
+  Kodi no se registra como ninguna, confirmado que no tiene soporte
+  nativo ni addon para ello, ver forum.kodi.tv/showthread.php?tid=375121),
+  así que esas teclas siempre iban a Spotify sin importar qué sonara de
+  verdad. Ahora Ámbar publica su propia sesión SMTC (`ambar/adapters/
+  media_session/windows_smtc_publisher.py`) que representa a Kodi y solo
+  se activa mientras Kodi es la fuente que suena (se cierra el resto del
+  tiempo, para no competir con la sesión nativa de Spotify cuando es ella
+  la que realmente está sonando). Verificado en vivo simulando las
+  teclas de sistema Play/Pausa y Siguiente: Kodi reaccionó a las dos.
+- **Solo puede sonar una fuente a la vez, sin importar desde dónde se
+  inicie la reproducción** (mando, el propio Kodi, Spotify Connect desde
+  el móvil...). Antes la exclusión mutua solo cubría el caso de arrancar
+  reproducción *desde la biblioteca del propio launcher*
+  (`kodi_play`/`spotify_play`); ahora `NowPlayingService.
+  enforce_single_source()` detecta cuándo una fuente empieza a sonar
+  mientras la otra ya estaba sonando y pausa la otra — sondeado cada 3s
+  (`adapters/spotify/poller.py`).
+- **Ámbar ya no permite arrancar una segunda instancia a la vez**: reserva
+  un puerto TCP local fijo como mutex al arrancar (`_acquire_single_instance_lock`
+  en `bootstrap.py`); si ya hay una instancia corriendo, la nueva se cierra
+  sola con un aviso en el log. Verificado en vivo lanzando una segunda
+  instancia con la primera ya corriendo.
+
+### Fixed
+- **Quitado el texto "SIN REPRODUCCIÓN" bajo el disco de la carátula
+  vacía** en el home — ahora solo se muestra el icono de vinilo.
+- **La ventana se podía arrastrar sin querer** (incluida la barra de
+  volumen, y también en pantalla completa). Causa: pywebview activa
+  `easy_drag` por defecto en ventanas sin bordes (`frameless=True`) en el
+  backend EdgeChromium de Windows — engancha un listener de `mousedown`
+  en toda la página que arrastra la ventana del sistema al primer
+  movimiento, sea cual sea el elemento pulsado. Es un kiosko fijo en la
+  pantalla táctil, no hace falta arrastre nunca — desactivado del todo
+  (`easy_drag=False`).
+- **La navegación por Kodi se notaba lenta**, causado sin querer por el
+  propio arreglo de "solo una fuente a la vez" de arriba: la primera
+  versión también reaccionaba al vuelo en cada evento `Player.OnPlay` de
+  Kodi lanzando una consulta a Spotify (vía SMTC) justo cuando Kodi está
+  más ocupado arrancando una pista. Quitada esa reacción inmediata (el
+  sondeo periódico de 3s ya cubre el caso igual) y añadido un candado
+  para que varias comprobaciones solapadas no se acumulen si una tarda
+  de más.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

@@ -34,6 +34,15 @@ def listen(gateway: KodiGateway, now_playing_service: NowPlayingService) -> None
                         # sondeo de respaldo del frontend.
                         _publish_async(now_playing_service)
                         _publish_delayed(now_playing_service, 1.0)
+                        # NOTA: enforce_single_source() (pausar Spotify si
+                        # tambien estaba sonando) se probo aqui tambien,
+                        # en reaccion inmediata a este evento -- pero
+                        # lanzaba una consulta a Spotify (SMTC) mas justo
+                        # cuando Kodi esta mas ocupado arrancando una
+                        # pista, y se noto como lentitud navegando por
+                        # Kodi. Se quito: el sondeo periodico (cada 3s,
+                        # ver adapters/spotify/poller.py) ya cubre esto
+                        # sin competir por recursos en el peor momento.
                     elif method.startswith("Player.On") or method == "Playlist.OnAdd":
                         _publish_async(now_playing_service)
         except Exception:

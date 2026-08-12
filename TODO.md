@@ -36,6 +36,25 @@ de aquí.
 
 ## Pendiente
 
+- **Navegar por Ámbar (la interfaz del launcher, no solo play/pausa/
+  siguiente/anterior) con los botones del mando G20S Pro** — flechas/
+  D-pad para moverse entre tarjetas y botones, OK para seleccionar,
+  atrás para volver. Pendiente de diseñar (gestión de foco por teclado
+  en el frontend, estilos de "elemento enfocado" a propósito para verse
+  bien en la pantalla táctil) y probar en vivo con el mando real.
+- **Reproducir CD de audio nativamente en Windows/macOS en vez de por
+  Kodi.** Valorado y desaconsejado por ahora: en Windows 11 no hay un
+  reproductor de CD "nativo" moderno (la app "Reproductor multimedia"
+  no soporta unidades ópticas; solo el Windows Media Player *clásico*
+  heredado sabe leer CDDA, lo que significaría lanzarlo por fuera o
+  reimplementar la lectura de pistas a bajo nivel). En macOS está peor:
+  desde Catalina, Music.app quitó el soporte de audio CD por completo,
+  sin API moderna limpia para sustituirlo. Además, el problema real que
+  ha dado esta app con el CD no era que Kodi fallara reproduciéndolo
+  (lo hace bien) sino su detección poco fiable (ya resuelto con
+  `cdda://local/`) y la falta de metadatos propios (ya resuelto con
+  MusicBrainz) — cambiar de reproductor no arreglaría nada de eso.
+  Retomar solo si aparece un motivo concreto que lo justifique.
 - **VU-meter en el mini PC real**: verificado en macOS y en una VM
   Windows 11 ARM64 (ver `CHANGELOG.md`) — pendiente solo confirmarlo
   también en el hardware Windows real (Intel N100).

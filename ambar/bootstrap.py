@@ -45,6 +45,33 @@ from ambar.domain.events import AudioLevelChanged, PlaybackStateChanged
 # correcto (un navegador normal en este mismo equipo, no el movil).
 DEFAULT_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:5005/callback"
 
+# Puerto interno arbitrario que solo sirve de mutex de instancia unica (ver
+# _acquire_single_instance_lock) -- nunca se acepta ninguna conexion en el,
+# solo se reserva. Elegido en el rango dinamico/privado, sin relacion con
+# el 5005 del servidor Flask.
+_SINGLE_INSTANCE_LOCK_PORT = 47563
+_single_instance_socket = None  # referencia viva mientras dure el proceso
+
+
+def _acquire_single_instance_lock() -> bool:
+    """True si esta es la unica instancia de Ambar corriendo; False si ya
+    hay otra. Reserva un puerto TCP local fijo en vez de un fichero .pid a
+    proposito: el SO libera el puerto solo en cuanto el proceso termina,
+    sea como sea (incluido un cierre en frio/crash), sin el riesgo de un
+    fichero de lock "atascado" que sobreviva a un cierre anomalo y de
+    falsos positivos en el siguiente arranque."""
+    global _single_instance_socket
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", _SINGLE_INSTANCE_LOCK_PORT))
+    except OSError:
+        sock.close()
+        return False
+    _single_instance_socket = sock
+    return True
+
 
 @dataclass
 class AppContainer:
@@ -115,6 +142,29 @@ def _build_smtc_gateway():
         return WindowsSMTCGateway()
     except Exception as e:
         print(f"SMTC no disponible ({e}); Spotify seguira usando solo la Web API.")
+        return None
+
+
+def _build_smtc_publisher(kodi_gateway: KodiGateway):
+    """Publica una sesion SMTC propia para que las teclas multimedia del
+    mando (play/pausa/siguiente/anterior) tambien controlen Kodi -- ver
+    WindowsSMTCPublisher para el porque (Kodi no se registra como sesion
+    SMTC por si mismo en Windows, confirmado sin soporte nativo ni addon
+    para ello). Solo tiene sentido en Windows. None en cualquier otro
+    caso: sin esto el mando simplemente no controla Kodi (Spotify sigue
+    funcionando igual, no depende de esto)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        from ambar.adapters.media_session.windows_smtc_publisher import WindowsSMTCPublisher
+
+        return WindowsSMTCPublisher(
+            on_playpause=lambda: kodi_gateway.control("playpause"),
+            on_next=lambda: kodi_gateway.control("next"),
+            on_previous=lambda: kodi_gateway.control("previous"),
+        )
+    except Exception as e:
+        print(f"SMTC (control remoto para Kodi) no disponible ({e}); el mando seguira sin controlar Kodi.")
         return None
 
 
@@ -218,6 +268,19 @@ def _build_container(app_dir: str) -> tuple[AppContainer, EventBus]:
 
     event_bus = EventBus()
     now_playing_service = NowPlayingService(kodi_gateway, spotify_gateway, event_bus)
+
+    smtc_publisher = _build_smtc_publisher(kodi_gateway)
+    if smtc_publisher:
+        event_bus.subscribe(
+            PlaybackStateChanged,
+            lambda event: smtc_publisher.update(
+                active=event.state.source == "kodi",
+                playing=event.state.playing,
+                title=event.state.title,
+                artist=event.state.artist,
+                album=event.state.album,
+            ),
+        )
     playback_control_service = PlaybackControlService(kodi_gateway, spotify_gateway)
     library_service = LibraryService(kodi_gateway, spotify_gateway, DeezerGateway())
     smoothing_preset = VU_SMOOTHING_PRESETS.get(
@@ -283,6 +346,10 @@ def _start_server(app: Flask, socketio: SocketIO, container: AppContainer, event
 
 
 def run(app_dir: str) -> None:
+    if not _acquire_single_instance_lock():
+        print("Ámbar ya está en marcha en otra instancia -- cerrando esta.")
+        return
+
     container, event_bus = _build_container(app_dir)
 
     app = create_app(container)
@@ -333,6 +400,17 @@ def run(app_dir: str) -> None:
             frameless=True,
             fullscreen=True,
             background_color="#17181a",
+            # pywebview activa "easy_drag" por defecto en ventanas sin
+            # bordes en el backend EdgeChromium (Windows): engancha un
+            # listener de mousedown en TODA la pagina que arrastra la
+            # ventana del SO al primer movimiento, sea cual sea el
+            # elemento pulsado -- confirmado en vivo que arrastrar el
+            # slider de volumen (o cualquier punto de la pantalla, en
+            # pantalla completa incluida) movia la ventana entera en vez
+            # de solo interactuar con el control. Es un kiosko fijo en la
+            # pantalla tactil -- no hace falta poder arrastrar la ventana
+            # nunca, desactivado del todo.
+            easy_drag=False,
             **screen_kwargs,
         )
         webview.start()
