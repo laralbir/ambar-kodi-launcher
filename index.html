@@ -1623,7 +1623,18 @@
 
   // ---------- NATIVE LIBRARY ----------
   let libHistory = []; // Stack for navigation
-  
+  // Guarda de carrera para loadView: si se navega otra vez (adelante,
+  // atrás, u otra pestaña) antes de que termine la petición anterior, esa
+  // respuesta ya no debe pintarse -- confirmado en vivo que se podía
+  // quedar "enganchado" en el spinner de Cargando, o pintar una vista
+  // vieja encima de la nueva, según en qué orden llegaran las respuestas.
+  // libLoadAbort corta la petición HTTP en marcha (evita trabajo de
+  // fondo inútil); libLoadToken es la comprobación real de "sigo siendo
+  // la navegación vigente" que decide si se pinta el resultado o se
+  // descarta en silencio.
+  let libLoadToken = 0;
+  let libLoadAbort = null;
+
   function openLibrary(source, tab){
     el("view-library").classList.add("visible");
     // Al entrar desde el acceso de Kodi solo tiene sentido ver pestañas de
@@ -1746,15 +1757,39 @@
   });
 
   async function loadView(viewNode) {
+    // Corta cualquier peticion de una navegacion anterior todavia en
+    // vuelo (abort real, no solo ignorar la respuesta) y marca esta
+    // llamada como la vigente -- ver comentario junto a libLoadToken.
+    if(libLoadAbort) libLoadAbort.abort();
+    const controller = new AbortController();
+    libLoadAbort = controller;
+    const myToken = ++libLoadToken;
+    const isStale = () => myToken !== libLoadToken;
+    // Techo duro de 25s: solo de ultimo recurso, para que un Kodi que de
+    // verdad no responde nunca (o un backend colgado) no deje el spinner
+    // de Cargando para siempre -- 8s se probo primero y resulto
+    // demasiado ajustado: el mini PC real (Intel N100) puede tardar mas
+    // de eso en responder mientras la vista de Artistas tiene decenas de
+    // peticiones de foto en vuelo a la vez (fetchArtistImage, una por
+    // artista, todas disparadas de golpe -- ver mas abajo), y ese
+    // trabajo de fondo legitimo estaba disparando el timeout como si
+    // fuera un cuelgue real. La guarda de carrera (isStale) de arriba ya
+    // resuelve el caso que de verdad importaba (respuestas
+    // desordenadas), este timeout es solo la red de seguridad para un
+    // Kodi realmente caido.
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const opts = {signal: controller.signal};
+
     const content = el("lib-content");
     content.innerHTML = `<div class="loader">Cargando...</div>`;
-    
+
     try {
       if(viewNode.tab === "artists") {
         if(viewNode.type === 'root') {
           el("lib-title").textContent = "Artistas (Kodi)";
-          const res = await fetch("/api/library/kodi/artists");
+          const res = await fetch("/api/library/kodi/artists", opts);
           const items = await res.json();
+          if(isStale()) return;
           renderGrid(items, "artist", "artistid", (item) => {
             libHistory.push({type: 'albums', tab: 'artists', id: item.artistid, title: item.artist});
             loadView(libHistory[libHistory.length-1]);
@@ -1762,8 +1797,9 @@
         }
         else if (viewNode.type === 'albums') {
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/kodi/albums?artist_id=" + viewNode.id);
+          const res = await fetch("/api/library/kodi/albums?artist_id=" + viewNode.id, opts);
           const items = await res.json();
+          if(isStale()) return;
           renderGrid(items, "label", "albumid", (item) => {
             libHistory.push({type: 'songs', tab: 'artists', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
@@ -1771,17 +1807,19 @@
         }
         else if (viewNode.type === 'songs') {
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id);
+          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id, opts);
           const items = await res.json();
+          if(isStale()) return;
           renderList(items, "label", (item) => playKodi({songid: item.songid}), "Reproducir álbum completo", () => playKodi({albumid: viewNode.id}));
         }
       }
-      
+
       else if(viewNode.tab === "albums") {
         if(!viewNode.type || viewNode.type === 'root') {
           el("lib-title").textContent = "Álbumes";
-          const res = await fetch("/api/library/kodi/albums");
+          const res = await fetch("/api/library/kodi/albums", opts);
           const items = await res.json();
+          if(isStale()) return;
           renderGrid(items, "label", "albumid", (item) => {
             libHistory.push({type: 'songs', tab: 'albums', id: item.albumid, title: item.label});
             loadView(libHistory[libHistory.length-1]);
@@ -1789,8 +1827,9 @@
         }
         else if(viewNode.type === 'songs') {
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id);
+          const res = await fetch("/api/library/kodi/songs?album_id=" + viewNode.id, opts);
           const items = await res.json();
+          if(isStale()) return;
           renderList(items, "label", (item) => playKodi({songid: item.songid}), "Reproducir álbum completo", () => playKodi({albumid: viewNode.id}));
         }
       }
@@ -1798,19 +1837,33 @@
       else if(viewNode.tab === "folders") {
         const path = viewNode.path || "sources://music/";
         el("lib-title").textContent = path === "sources://music/" ? "Carpetas" : path;
-        const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent(path));
+        const res = await fetch("/api/library/kodi/directory?path=" + encodeURIComponent(path), opts);
         const items = await res.json();
+        if(isStale()) return;
         renderDirectoryList(items, path === "sources://music/" ? null : path, "folders", "Reproducir Carpeta entera");
       }
 
       else if(viewNode.tab === "cd") {
         el("lib-title").textContent = "CD de audio";
         const [dirRes, metaRes] = await Promise.all([
-          fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/")),
-          fetch("/api/library/kodi/cd-metadata"),
+          fetch("/api/library/kodi/directory?path=" + encodeURIComponent("cdda://local/"), opts),
+          fetch("/api/library/kodi/cd-metadata", opts),
         ]);
         const items = await dirRes.json();
         const meta = await metaRes.json().catch(() => ({available: false}));
+        if(isStale()) return;
+        // El lector fisico puede seguir "despertando" (motor girando,
+        // TOC leyendose) mas alla de lo que _wake_cd_drive espera en el
+        // backend (2s, acotado a proposito para no colgar la peticion --
+        // ver CHANGELOG) -- si la primera consulta viene vacia, se
+        // reintenta sola una vez a los 3s en vez de obligar a pulsar el
+        // boton de actualizar a mano, dandole al lector tiempo real de
+        // sobra sin bloquear la interfaz mientras tanto. viewNode._cdRetried
+        // evita reintentar en bucle si de verdad no hay CD puesto.
+        if(items.length === 0 && !viewNode._cdRetried){
+          viewNode._cdRetried = true;
+          setTimeout(() => { if(!isStale()) loadView(viewNode); }, 3000);
+        }
         const warning = cdDetectionReliable ? "" : `<div class="cd-warning">⚠ En este sistema, Kodi no siempre detecta correctamente los CD de audio. Si no ves pistas aquí, puede que el CD no se esté leyendo bien — no significa necesariamente que no haya un CD puesto.</div>`;
         renderDirectoryList(items, "cdda://local/", "cd", "Reproducir CD entero", renderCdHeader(meta) + warning);
         el("cd-refresh-btn")?.addEventListener("click", async (e) => {
@@ -1824,8 +1877,9 @@
       else if(viewNode.tab === "spotify-pl") {
         if(!viewNode.type || viewNode.type === 'root'){
           el("lib-title").textContent = "Playlists (Spotify)";
-          const res = await fetch("/api/library/spotify/playlists");
+          const res = await fetch("/api/library/spotify/playlists", opts);
           const items = await res.json();
+          if(isStale()) return;
           if(items.length === 0){
             content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay listas o falta autorizar Spotify en Ajustes.</div>`;
             return;
@@ -1837,8 +1891,9 @@
         }
         else if(viewNode.type === 'tracks'){
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/spotify/playlist-tracks?playlist_id=" + encodeURIComponent(viewNode.id));
+          const res = await fetch("/api/library/spotify/playlist-tracks?playlist_id=" + encodeURIComponent(viewNode.id), opts);
           const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          if(isStale()) return;
           renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir lista completa", () => playSpotify(viewNode.context_uri));
         }
       }
@@ -1846,8 +1901,9 @@
       else if(viewNode.tab === "spotify-artists") {
         if(!viewNode.type || viewNode.type === 'root'){
           el("lib-title").textContent = "Artistas (Spotify)";
-          const res = await fetch("/api/library/spotify/artists");
+          const res = await fetch("/api/library/spotify/artists", opts);
           const items = await res.json();
+          if(isStale()) return;
           if(items.length === 0){
             content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay artistas seguidos o falta autorizar Spotify en Ajustes.</div>`;
             return;
@@ -1859,8 +1915,9 @@
         }
         else if(viewNode.type === 'albums'){
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/spotify/artist-albums?artist_id=" + encodeURIComponent(viewNode.id));
+          const res = await fetch("/api/library/spotify/artist-albums?artist_id=" + encodeURIComponent(viewNode.id), opts);
           const items = await res.json();
+          if(isStale()) return;
           renderGridSpotify(items, (item) => {
             libHistory.push({type: 'tracks', tab: 'spotify-artists', id: item.id, title: item.name, context_uri: item.uri});
             loadView(libHistory[libHistory.length-1]);
@@ -1868,8 +1925,9 @@
         }
         else if(viewNode.type === 'tracks'){
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id));
+          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id), opts);
           const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          if(isStale()) return;
           renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir álbum completo", () => playSpotify(viewNode.context_uri));
         }
       }
@@ -1877,8 +1935,9 @@
       else if(viewNode.tab === "spotify-albums") {
         if(!viewNode.type || viewNode.type === 'root'){
           el("lib-title").textContent = "Álbumes (Spotify)";
-          const res = await fetch("/api/library/spotify/albums");
+          const res = await fetch("/api/library/spotify/albums", opts);
           const items = await res.json();
+          if(isStale()) return;
           if(items.length === 0){
             content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-dim);">No hay álbumes guardados o falta autorizar Spotify en Ajustes.</div>`;
             return;
@@ -1890,14 +1949,28 @@
         }
         else if(viewNode.type === 'tracks'){
           el("lib-title").textContent = viewNode.title;
-          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id));
+          const res = await fetch("/api/library/spotify/album-tracks?album_id=" + encodeURIComponent(viewNode.id), opts);
           const items = (await res.json()).map(it => ({...it, label: it.artist ? `${it.title} — ${it.artist}` : it.title}));
+          if(isStale()) return;
           renderList(items, "label", (item) => playSpotifyTrack(item.uri), "Reproducir álbum completo", () => playSpotify(viewNode.context_uri));
         }
       }
 
     } catch(err) {
-      content.innerHTML = `<div class="loader" style="color:var(--danger)">Error al cargar</div>`;
+      // AbortError: o bien una navegacion mas reciente corto esta
+      // peticion a proposito (nada que mostrar, ya hay otra en marcha),
+      // o salto el timeout de arriba -- en ambos casos, solo pintar el
+      // error si esta sigue siendo la navegacion vigente.
+      if(isStale()) return;
+      // Detalle del error visible (antes solo decia "Error al cargar",
+      // sin forma de distinguir en vivo un timeout de un JSON invalido
+      // de un fallo de red) -- confirmado que hacia falta para poder
+      // diagnosticar bugs reportados desde el equipo real sin acceso a
+      // la consola del navegador.
+      const detail = err && err.name === 'AbortError' ? 'tiempo de espera agotado' : (err && err.message) || 'desconocido';
+      content.innerHTML = `<div class="loader" style="color:var(--danger)">Error al cargar (${detail})</div>`;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -2115,7 +2188,7 @@
     });
     const data = await res.json().catch(() => ({ok: false}));
     if(!data.ok){
-      alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.");
+      await showModal("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.", {mode:'alert'});
       return;
     }
     el("view-library").classList.remove("visible");
@@ -2127,7 +2200,7 @@
     });
     const data = await res.json().catch(() => ({ok: false}));
     if(!data.ok){
-      alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.");
+      await showModal("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo (por ejemplo, reproduce algo un momento desde el móvil) y que la autorización siga vigente en Ajustes.", {mode:'alert'});
       return;
     }
     el("view-library").classList.remove("visible");
@@ -2231,7 +2304,7 @@
       });
       const data = await res.json().catch(() => ({ok: false}));
       if(!data.ok){
-        alert("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo y que la autorización siga vigente en Ajustes.");
+        await showModal("No se pudo reproducir en Spotify. Comprueba que haya un dispositivo Spotify Connect activo y que la autorización siga vigente en Ajustes.", {mode:'alert'});
         return;
       }
     }

@@ -7,166 +7,117 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-12
+
 ### Added
-- **Búsqueda de carátula (MusicBrainz) también para pistas normales, no
-  solo CD**: al tocar la carátula de "ahora suena" con una pista de Kodi
-  sin imagen propia (MP3/FLAC sueltos sin tag embebido), se fuerza además
-  una búsqueda por texto artista+álbum (`find_album_art`, mismo servicio
-  que ya se usaba para identificar CDs, con un nuevo parámetro `force`
-  que ignora la caché de "no encontrado" de un intento anterior — igual
-  que ya tenía `identify()` para CDs). El resultado se cachea en disco y
-  `KodiGateway.get_state()` lo reutiliza en el sondeo de "ahora suena"
-  (cada 2s) vía `get_cached_album_art` (solo lectura de caché, sin red,
-  para no bloquear el sondeo).
-- **Icono de vinilo (placeholder sin carátula) más grande y centrado**.
-- **Modal de confirmación/aviso propio, en vez de `confirm()`/`alert()`
-  nativos del navegador**, para guardar Ajustes y para apagar/reiniciar/
-  salir del launcher — motivado por el mando (JZK G20S Pro): en air mode
-  OK/Atrás son clics reales sobre el DOM de la página (ver
-  `SystemService.secure_cursor`), y un diálogo nativo del navegador no
-  vive en el DOM, así que el mando no podía aceptar ni cancelar ninguno.
-  El nuevo modal (`#view-confirm`) se integra en la navegación por mando/
-  teclado existente (foco espacial, `.btn`) y se le da máxima prioridad
-  en `navActiveRoot`/`navBack`, para que Atrás lo cierre a él primero en
-  vez de colarse a lo que haya debajo (p. ej. Ajustes).
-- **Navegación de toda la interfaz con el mando (D-pad + OK + atrás)**:
-  flechas para moverse entre tarjetas/botones/pestañas (navegación
-  espacial, no orden del DOM — imprescindible en grids), Enter para
-  activar el elemento con foco, Escape/Retroceso para volver atrás en
-  cualquier vista superpuesta (biblioteca, artista, ajustes, pantalla
-  completa de reloj/VU-metro). Reutiliza las clases CSS que ya usan
-  todos los listados existentes, sin tocar `renderGrid`/`renderList`/etc.
-  Protegido contra el "click fantasma" que disparan los mandos combo
-  teclado+ratón (como el G20S Pro) al pulsar OK, en la posición donde
-  estuviera el cursor en vez de sobre el elemento con foco del D-pad —
-  se descarta si no coincide con el elemento realmente enfocado. Los
-  campos de texto de Ajustes conservan el comportamiento nativo de
-  flechas/Retroceso para editar. **Dos bugs encontrados probando con el
-  mando real y arreglados**: (1) OK/Atrás no respondían — no todos los
-  mandos combo reportan `Enter`/`Escape` con el nombre estándar en
-  `event.key` (confirmado con el G20S Pro); ahora se admite también el
-  `keyCode` clásico y variantes habituales (Espacio, `NumpadEnter`,
-  `BrowserBack`...) en vez de depender solo del nombre. (2) al subir/
-  bajar por un listado (artistas, álbumes...) el foco podía "saltar" a
-  un elemento oculto y hacía falta pulsar otra vez — `#view-home` nunca
-  se oculta de verdad (las demás vistas se dibujan encima, no lo
-  reemplazan), así que sus botones seguían contando como "visibles" para
-  la navegación aunque estuvieran tapados por el overlay. Ahora se busca
-  solo dentro de la vista realmente abierta en cada momento.
-- **Botón "Home" del mando** (keyCode 172, `VK_BROWSER_HOME`): cierra
-  todas las vistas superpuestas de golpe (a diferencia de Atrás, que
-  solo cierra la de más arriba) y vuelve al home.
-- **Atrás en air mode es un CLIC DERECHO del ratón, no una tecla**
-  (confirmado en vivo con un panel de diagnóstico temporal: `button=2` /
-  evento `contextmenu`) — mismo patrón que OK siendo clic izquierdo.
-  Interceptado por `contextmenu` (`preventDefault()` ahí evita el menú
-  contextual nativo, cosa que `mousedown` solo no hace) llamando a
-  `navBack()`. Con esto, D-pad + OK + Atrás + Home funcionan los cuatro
-  con el air mode activado (necesario para que OK funcione en absoluto,
-  ver más abajo).
+- **Navegación de toda la interfaz con el mando (D-pad + OK + atrás +
+  home)**: flechas para moverse entre tarjetas/botones/pestañas
+  (navegación espacial, no orden del DOM — imprescindible en grids),
+  Enter para activar el elemento con foco, Escape/Retroceso para volver
+  atrás en cualquier vista superpuesta (biblioteca, artista, ajustes,
+  pantalla completa de reloj/VU-metro). Reutiliza las clases CSS que ya
+  usan todos los listados existentes, sin tocar `renderGrid`/
+  `renderList`/etc. Los campos de texto de Ajustes conservan el
+  comportamiento nativo de flechas/Retroceso para editar.
+  **Investigación completa del botón OK, confirmada en vivo con el
+  mando real (JZK G20S Pro)**: con el "air mode" del mando desactivado,
+  OK no mandaba nada detectable por ningún camino (ni teclado/click/
+  pointer a nivel de página, ni un gancho de teclado global de Windows
+  de bajo nivel, ni bytes en crudo leyendo las 3 interfaces HID no
+  estándar del receptor) — en ese modo, el firmware simplemente no manda
+  nada para ese botón, en ningún nivel. Con el air mode activado, tanto
+  OK como Atrás sí llegan, pero como clics de ratón reales (izquierdo y
+  derecho) en la posición del cursor — no como teclas — interceptados
+  por un "click fantasma" (si un click no llega a ningún elemento
+  navegable y ha habido uso reciente del D-pad, se reinterpreta como
+  Enter sobre el elemento con foco) y por `contextmenu`
+  (`preventDefault()` evita el menú contextual nativo). Con esto,
+  D-pad + OK + Atrás + Home funcionan los cuatro con el air mode
+  activado (necesario para que OK funcione en absoluto).
 - **Cursor del ratón confinado a la ventana de Ámbar** (`ClipCursor` de
-  Windows) y aparcado en una esquina vacía tras cada movimiento del
-  D-pad (`SystemService.secure_cursor`). El mando en air mode mueve el
-  puntero de verdad al moverlo en el aire; sin esto podía salirse a otro
-  monitor (la TV, en un equipo con más de uno) — lo que le quitaba a
-  Ámbar el foco de Windows por completo, dejando de llegarle hasta el
-  teclado real — o, dentro de la ventana, quedar (oculto) encima de
-  cualquier tarjeta/botón real y disparar una acción no deseada con el
-  clic fantasma de OK. `ClipCursor` no afecta a los toques reales de la
-  pantalla táctil. **Iteración con dos versiones descartadas en el
-  camino**: la primera usaba un desplazamiento relativo enorme
-  ("Windows lo recorta sola al borde") pensando que bastaría para llegar
-  siempre a una esquina segura, pero confirmado en vivo que cruzaba al
-  otro monitor igual; la segunda simulaba un clic para recuperar el foco
-  de Windows, pero eso activaría el elemento con foco del D-pad sin
-  querer en cada movimiento — sustituido por `SetForegroundWindow`.
-- **Cursor del ratón oculto de verdad** (antes solo se ocultaba en
-  `body`, pero casi todos los botones/tarjetas declaran su propio
-  `cursor:pointer` más específico, así que seguía viéndose encima de
-  ellos — regla universal con `!important` en su lugar).
-- **Confirmado en vivo con el mando real, investigación completa del
-  botón OK**: no mandaba nada detectable por ningún camino (ni teclado/
-  click/pointer a nivel de página, ni un gancho de teclado global de
-  Windows de bajo nivel, ni bytes en crudo leyendo las 3 interfaces HID
-  no estándar del receptor) mientras el mando tenía el "air mode"
-  (puntero en el aire) desactivado — en ese modo, el firmware
-  simplemente no manda nada para ese botón, en ningún nivel. Con el air
-  mode activado, OK sí llega, pero como un clic de ratón normal en la
-  posición del cursor -- no como tecla -- y ese clic no coincidía con el
-  elemento enfocado por el D-pad. El mecanismo de "click fantasma" de
-  más arriba ya lo resuelve, junto con el confinado/aparcado del cursor.
-  Acotado a que solo actúe si se ha usado el D-pad en los últimos 8s,
-  para no interferir con un toque accidental en un hueco vacío de la
-  pantalla táctil si nadie ha tocado el mando.
-- **Se probó una pulsación larga de Atrás en el home para cerrar el
-  launcher, y se descartó** — el intento de distinguir pulsación corta/
-  larga al soltar la tecla (`keyup`) dependía de un evento que este mando
-  no manda de forma fiable, y llegó a romper también el caso simple
-  (Atrás dejaba de responder del todo). Atrás vuelve a actuar al instante
-  en cuanto se pulsa, sin ninguna lógica añadida.
-
-### Fixed
-- **Cada petición al servidor tardaba ~2s de más, notándose como
-  controles de reproducción "colgados"** (más perceptible cuanta más
-  carga había, p. ej. cargando carátulas de un grid, pero **ocurría
-  siempre, incluso sin ninguna carga concurrente** — confirmado
-  midiéndolo aislado). Causa real: el servidor solo escucha en IPv4
-  (`host="0.0.0.0"` en `socketio.run`), pero la ventana del kiosko carga
-  la página por el nombre `localhost`, que en este Windows resuelve
-  primero a IPv6 (`::1`) — cada peticion probaba esa ruta primero, y el
-  rechazo de esa conexión (nadie escuchando ahí) tardaba ~2 segundos en
-  llegar antes de caer a IPv4 y funcionar. Medido en vivo: petición por
-  `127.0.0.1` ~10ms, la misma por `[::1]` ~2.06s antes de fallar. La
-  ventana ahora carga la página por `127.0.0.1` explícito (con eso
-  basta: el resto de peticiones del frontend son rutas relativas, heredan
-  el mismo origen) — confirmado sin la demora ni con 20 carátulas
-  cargando a la vez (22ms).
-- **Límite de peticiones de imagen simultáneas al webserver de Kodi**
-  (`art_proxy`, máx. 2 a la vez): no era la causa real del problema de
-  arriba, pero sigue siendo una protección razonable — un grid con
-  muchas carátulas propias puede disparar bastantes peticiones de golpe.
-
-### Added
+  Windows, reducido a un solo píxel) y oculto de verdad (`cursor:none`
+  universal, no solo en `body`) — el mando en air mode mueve el puntero
+  de verdad al moverlo en el aire; sin esto podía salirse a otro monitor
+  (quitándole a Ámbar el foco de Windows por completo) o quedar oculto
+  encima de un botón real y disparar una acción no deseada.
+- **Modal de confirmación/aviso HTML propio, navegable con el mando, en
+  vez de `confirm()`/`alert()` nativos del navegador**: para guardar
+  Ajustes, apagar/reiniciar/salir del launcher, y los avisos de error al
+  reproducir en Spotify — un diálogo nativo del navegador no vive en el
+  DOM de la página, así que el mando (que en air mode manda clics reales
+  sobre el DOM, ver arriba) no podía aceptar ni cancelar ninguno. El
+  nuevo modal (`#view-confirm`) se integra en la navegación existente
+  (foco espacial, clase `.btn`) con máxima prioridad, para que Atrás lo
+  cierre a él primero en vez de colarse a lo que haya debajo.
 - **Kodi reproduce el CD de audio automáticamente en cuanto se inserta**,
   en vez de detectarlo y quedarse esperando: activa el propio ajuste
   nativo de Kodi para esto (`audiocds.autoaction`, ver `Autorun.cpp`/
   `Autorun.h` del código de Kodi) al arrancar Ámbar, reintentando hasta
-  que Kodi responda (puede arrancar después). Verificado en vivo contra
-  el Kodi real: `Settings.GetSettingValue` confirma el ajuste aplicado.
+  que Kodi responda (puede arrancar después).
 - **El lector de CD se "despierta" al entrar en la pestaña CD**: Kodi
-  podía seguir diciendo "sin CD" con el disco físicamente puesto, tanto
-  en Windows como en macOS, si el lector había entrado en reposo por
-  ahorro de energía tras un rato sin usarse — ni el sistema operativo ni
-  Kodi lo vuelven a comprobar solos. Ahora, justo al navegar a la
-  pestaña CD (no en el sondeo de fondo, para no despertar el lector sin
-  que nadie esté mirando), se fuerza una comprobación de bajo nivel real
-  al hardware: `IOCTL_STORAGE_CHECK_VERIFY2` en Windows, `drutil status`
-  en macOS.
+  podía seguir diciendo "sin CD" con el disco físicamente puesto si el
+  lector había entrado en reposo por ahorro de energía — se fuerza una
+  comprobación de bajo nivel real al hardware al navegar a la pestaña
+  (`IOCTL_STORAGE_CHECK_VERIFY2` en Windows, `drutil status` en macOS),
+  acotada a 2s en un hilo aparte para no bloquear la petición, con un
+  reintento automático a los 3s si la primera consulta viene vacía.
+- **Búsqueda de carátula (MusicBrainz) también para pistas normales, no
+  solo CD**: al tocar la carátula de "ahora suena" con una pista de Kodi
+  sin imagen propia, se fuerza además una búsqueda por texto artista+
+  álbum (mismo servicio que ya se usaba para identificar CDs). El
+  resultado se cachea y se reutiliza en el sondeo de "ahora suena" sin
+  bloquear (solo lectura de caché, sin red).
+- **Icono de vinilo (placeholder sin carátula) más grande y centrado**.
 
 ### Fixed
+- **Cada petición al servidor tardaba ~2s de más, notándose como
+  controles de reproducción "colgados"** (ocurría siempre, incluso sin
+  ninguna carga concurrente). Causa real: el servidor solo escucha en
+  IPv4 (`host="0.0.0.0"` en `socketio.run`), pero la ventana del kiosko
+  cargaba la página por `localhost`, que en este Windows resuelve
+  primero a IPv6 (`::1`) — cada petición probaba esa ruta primero, y el
+  rechazo de esa conexión tardaba ~2 segundos en llegar antes de caer a
+  IPv4. Medido en vivo: petición por `127.0.0.1` ~10ms, la misma por
+  `[::1]` ~2.06s antes de fallar. La ventana ahora carga la página por
+  `127.0.0.1` explícito. También añadido un límite de 2 peticiones de
+  imagen simultáneas al webserver de Kodi (`art_proxy`) como protección
+  adicional razonable, aunque no era la causa real de este problema.
+- **La biblioteca podía quedarse "enganchada" en Cargando al volver
+  atrás y navegar de nuevo**: `loadView()` no cancelaba ni ignoraba una
+  petición anterior todavía en vuelo al lanzar una nueva navegación —
+  si la respuesta vieja llegaba después de la nueva, podía pintar
+  contenido o el propio spinner de "Cargando" por encima de la vista
+  actual, según en qué orden llegaran. Ahora cada llamada corta
+  (`AbortController`) la anterior y comprueba, antes de pintar nada, si
+  sigue siendo la navegación vigente (`libLoadToken`) — si no lo es, se
+  descarta en silencio. Además, un techo de 25s por petición (antes no
+  había ninguno; se probó primero con 8s y resultó demasiado ajustado
+  para el mini PC real —Intel N100— con la ráfaga de peticiones de foto
+  por artista que dispara la vista Artistas, y llegó a mostrar "Error al
+  cargar" en una navegación que en realidad solo iba lenta, no
+  colgada): si Kodi/Spotify no responden nunca, se pinta "Error al
+  cargar (motivo)" con el detalle del fallo en vez de quedarse esperando
+  para siempre.
+- **Despertar el lector de CD no era fiable, y podía dejar la petición
+  colgada**: `_wake_cd_drive` (Windows) no tenía ningún límite de
+  tiempo — un lector físico lento en girar podía bloquear la petición
+  HTTP entera el tiempo que hiciera falta, notándose como la pestaña
+  CD/Carpetas atascada en "Cargando". Ahora se lanza en un hilo aparte y
+  solo se esperan 2s antes de seguir adelante (ver también el reintento
+  automático a los 3s, arriba en "Added").
 - **La pantalla de bloqueo de Windows seguía saliendo tras un rato de
   inactividad** incluso con el salvapantallas desactivado — mecanismo
   independiente: los tiempos de apagado de pantalla/suspensión del plan
   de energía. `scripts/setup_kiosk_windows.ps1` ahora también los pone a
-  "nunca" (`powercfg`) y desactiva `ScreenSaverIsSecure`. Aplicado en
-  vivo en el mini PC real.
+  "nunca" (`powercfg`) y desactiva `ScreenSaverIsSecure`.
 - **`build.py` podía perder `config.json`/`.spotify-cache` en la
   recompilación por una ruta relativa** (`_dist_dir()` usaba
   `os.path.join("dist", name)`, relativo al directorio de trabajo actual
-  en vez de anclado a la ubicación del propio script, a diferencia de
-  `backup_dir` que sí iba anclado) — confirmado en vivo que la
-  configuración (credenciales de Spotify incluidas) se perdió otra vez
-  durante esta sesión. Ahora `_dist_dir()` también usa una ruta absoluta
-  anclada al script. **Nota:** no se pudo confirmar con certeza que esta
-  fuera la causa exacta de la pérdida concreta de esta sesión (los
-  comandos de build se ejecutaron siempre desde la raíz del proyecto) —
-  se corrige de todas formas por ser estrictamente más robusto, pero si
-  se pierde la configuración otra vez tras esto, hay que seguir
-  investigando.
+  en vez de anclado a la ubicación del propio script) — ahora usa una
+  ruta absoluta anclada al script, igual que `backup_dir`.
 - **VU-metro con nivel de audio real confirmado en el mini PC real**
   (Intel N100, Windows 11) — quedaba pendiente de verificar solo en ese
-  hardware exacto (ya se había probado en macOS y en una VM Windows 11
-  ARM64); confirmado que funciona desde hace varias versiones.
+  hardware exacto; confirmado que funciona desde hace varias versiones.
 
 ## [0.5.0] - 2026-08-12
 
@@ -1078,6 +1029,10 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   nativa sin bordes.
 - Manual de usuario en `docs/`.
 
-[Unreleased]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.2.0-beta.1...HEAD
+[Unreleased]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.2.0-beta.1...v0.3.0
 [0.2.0-beta.1]: https://github.com/laralbir/ambar-kodi-launcher/compare/v0.1.0...v0.2.0-beta.1
 [0.1.0]: https://github.com/laralbir/ambar-kodi-launcher/releases/tag/v0.1.0

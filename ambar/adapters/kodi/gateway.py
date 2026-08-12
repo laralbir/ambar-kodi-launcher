@@ -267,14 +267,37 @@ class KodiGateway:
         peticion real de bajo nivel al hardware. Best-effort: si falla (no
         hay lector, permisos, plataforma sin soporte...) no pasa nada --
         Files.GetDirectory de todas formas seguira dando la respuesta que
-        de, igual que antes de este cambio."""
-        try:
-            if sys.platform == "win32":
-                self._wake_cd_drive_windows()
-            elif sys.platform == "darwin":
-                self._wake_cd_drive_macos()
-        except Exception:
-            pass
+        de, igual que antes de este cambio.
+
+        Acotado a un maximo de 2s de ESPERA, no de ejecucion: un lector
+        fisico real puede tardar bastante mas que eso en girar y
+        responder (confirmado en vivo, "no funciona muy bien" == a veces
+        tardaba tanto que la peticion HTTP entera se quedaba colgada, lo
+        que en el frontend se ve como el listado atascado en "Cargando"
+        para siempre, incluso navegando a otra vista despues). Se lanza
+        en un hilo aparte y solo se espera 2s: si para entonces no ha
+        terminado, se deja continuar sola en segundo plano (hilo daemon)
+        y esta peticion sigue adelante sin ella -- Kodi dara la respuesta
+        que tenga en ese momento (puede que "sin CD" todavia), pero el
+        propio intento de despertarlo ya quedo disparado para cuando se
+        vuelva a preguntar (siguiente navegacion, o el sondeo de fondo)."""
+        target = None
+        if sys.platform == "win32":
+            target = self._wake_cd_drive_windows
+        elif sys.platform == "darwin":
+            target = self._wake_cd_drive_macos
+        if not target:
+            return
+
+        def _run():
+            try:
+                target()
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=2.0)
 
     @staticmethod
     def _wake_cd_drive_windows() -> None:
