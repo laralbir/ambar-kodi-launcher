@@ -10,12 +10,15 @@
   :root {
     --bg: #17181a;
     --panel: #1f2124;
+    --panel-raised: #26282c;
     --line: #34363a;
     --text: #f2ede4;
     --text-dim: #9a9a9e;
     --amber: #ffb020;
+    --amber-dim: #7a5a1c;
     --kodi: #5aa9e6;
     --spotify: #1DB954;
+    --danger: #e65a5a;
   }
   
   body {
@@ -120,6 +123,131 @@
   .note strong {
     color: var(--amber);
   }
+
+  /* ---------- Fragmentos de la interfaz real ----------
+     Copiado literal del <style> de index.html (mismas clases, mismas
+     reglas) para las piezas que se muestran mas abajo -- no son
+     capturas de pantalla, es la propia hoja de estilos del launcher
+     renderizando HTML real dentro de esta guia, asi que nunca se
+     queda desactualizado respecto al diseño actual. Solo se sobreescribe
+     el tamaño (index.html usa vh/vw pensados para 1920x720 a pantalla
+     completa, aqui hace falta un tamaño fijo razonable para un documento
+     normal) -- el resto (colores, tipografia, bordes, sombras) es
+     identico al original. */
+  .device-frame{
+    display:flex; align-items:center; gap:1.4rem;
+    background: var(--bg); border:1px solid var(--line); border-radius:12px;
+    padding:1.6rem; margin:1.5rem 0; overflow:hidden; user-select:none;
+  }
+  .device-caption{
+    font-family:'JetBrains Mono', monospace; font-size:0.78rem; color:var(--text-dim);
+    text-align:center; margin:-1rem 0 1.5rem;
+  }
+
+  .art-frame{
+    flex:0 0 auto; width:220px; height:260px; border-radius:10px;
+    background:var(--panel-raised); border:1px solid var(--line);
+    box-shadow:inset 0 0 0 5px #141517, 0 6px 18px rgba(0,0,0,0.4);
+    overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .art-frame .placeholder{width:100%; height:100%; display:flex; align-items:center; justify-content:center; box-sizing:border-box; padding:1rem;}
+  .art-frame .placeholder svg.vinyl-placeholder{width:82%; height:82%;}
+  .vinyl-body{fill:#1a1b1d; stroke:var(--line); stroke-width:1;}
+  .vinyl-groove{fill:none; stroke:#2a2c30; stroke-width:1;}
+  .vinyl-sheen{fill:none; stroke:rgba(255,255,255,0.06); stroke-width:14; stroke-linecap:round;}
+  .vinyl-label{fill:var(--amber); opacity:0.14;}
+  .vinyl-label-ring{fill:none; stroke:var(--amber); stroke-width:1.5; opacity:0.7;}
+  .vinyl-spindle{fill:var(--line);}
+
+  .now-playing{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:0.7rem;}
+  .source-row{display:flex; align-items:center; gap:0.6rem; justify-content:space-between;}
+  .header-actions{display:flex; gap:0.5rem;}
+  .source-badge{
+    display:inline-flex; align-items:center; gap:0.5rem;
+    font-family:'JetBrains Mono', monospace; font-size:0.85rem; letter-spacing:0.12em;
+    text-transform:uppercase; padding:0.4rem 0.85rem; border-radius:999px;
+    border:1px solid var(--line); color:var(--text-dim);
+  }
+  .source-badge .dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim);}
+  .source-badge.active.spotify{color:var(--spotify); border-color:var(--spotify);}
+  .source-badge.active.spotify .dot{background:var(--spotify); box-shadow:0 0 8px var(--spotify);}
+  .source-badge.active.kodi{color:var(--kodi); border-color:var(--kodi);}
+  .source-badge.active.kodi .dot{background:var(--kodi); box-shadow:0 0 8px var(--kodi);}
+  .playlist-toggle-btn{
+    width:40px; height:40px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem; flex:0 0 auto;
+  }
+  .track-title{
+    font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
+    font-size:1.7rem; letter-spacing:0.01em; line-height:1.1; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0;
+  }
+  .track-meta{font-size:1rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0;}
+  .spotify-badges{display:flex; flex-wrap:wrap; gap:0.5rem;}
+  .spotify-badge{
+    display:inline-flex; align-items:center; gap:0.4rem;
+    font-size:0.8rem; padding:0.3rem 0.7rem; border-radius:999px;
+    border:1px solid var(--line); color:var(--text-dim); background:var(--panel-raised);
+  }
+  .spotify-badge.on{color:var(--spotify); border-color:var(--spotify);}
+  .vu-bar{height:12px; border-radius:4px; background:#101113; border:1px solid var(--line); overflow:hidden; position:relative;}
+  .vu-fill{
+    height:100%; background-image:repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 7px, #0000 7px, #0000 10px);
+    box-shadow:0 0 12px rgba(255,176,32,0.35);
+  }
+  .time-row{display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:var(--text-dim);}
+  .transport{display:flex; align-items:center; justify-content:center; gap:0.9rem;}
+  .tbtn{
+    width:48px; height:48px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text); display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem;
+  }
+  .tbtn.play{width:60px; height:60px; font-size:1.4rem; background:var(--amber); color:#241a06; border-color:var(--amber);}
+  .tbtn.tbtn-mode{width:36px; height:36px; font-size:0.9rem; color:var(--text-dim);}
+  .tbtn.tbtn-mode.active{color:var(--amber); border-color:var(--amber); background:var(--amber-dim);}
+  .vu-meter{position:relative;}
+  .vu-meter-expand-btn{
+    position:absolute; top:-2.1rem; right:0; width:32px; height:32px; border-radius:8px;
+    border:1px solid var(--line); background:var(--panel-raised); color:var(--text-dim);
+    display:flex; align-items:center; justify-content:center; font-size:0.95rem;
+  }
+  .vu-meter-leds{display:flex; flex-direction:column; gap:5px;}
+  .vu-channel-leds{display:flex; align-items:center; gap:0.6rem;}
+  .vu-channel-leds .vu-ch-label{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim); width:12px; flex:0 0 auto;}
+  .vu-led-row{display:flex; gap:3px; height:14px; flex:1 1 auto; align-items:flex-end;}
+  .vu-led-row .led{flex:1; height:100%; border-radius:2px; background:#1a1b1d; border:1px solid var(--line); opacity:0.4;}
+  .vu-led-row .led.on{opacity:1;}
+  .vu-led-row .led.zone-amber{background:rgba(255,176,32,0.16); border-color:rgba(255,176,32,0.3);}
+  .vu-led-row .led.zone-red{background:rgba(230,90,90,0.16); border-color:rgba(230,90,90,0.3);}
+  .vu-led-row .led.zone-green.on{background:#3ddc73; box-shadow:0 0 6px rgba(61,220,115,0.55);}
+  .vu-led-row .led.zone-amber.on{background:var(--amber); box-shadow:0 0 6px rgba(255,176,32,0.55);}
+  .vu-led-row .led.zone-red.on{background:var(--danger); box-shadow:0 0 6px rgba(230,90,90,0.55);}
+  .vu-db-label{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim); width:40px; flex:0 0 auto; text-align:right;}
+  .volume-inline-row{display:flex; align-items:center; gap:0.5rem;}
+  .volume-inline-btn{
+    width:36px; height:36px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text-dim); display:flex; align-items:center;
+    justify-content:center; font-size:1rem; flex:0 0 auto;
+  }
+  #demo-volume-slider{flex:1; accent-color:var(--amber);}
+  .volume-inline-value{font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:var(--text-dim); width:3rem; text-align:right; flex:0 0 auto;}
+
+  .side-actions{flex:0 0 auto; width:160px; height:260px; display:flex; flex-direction:column; gap:0.6rem;}
+  .clock-widget{cursor:pointer; text-align:right; padding:0 0.1rem 0.3rem; display:flex; flex-direction:column; gap:0.1rem;}
+  .clock-time{font-family:'JetBrains Mono', monospace; font-weight:600; color:var(--amber); font-size:1.3rem; line-height:1.05;}
+  .clock-date{font-family:'JetBrains Mono', monospace; color:var(--text-dim); font-size:0.7rem;}
+  .action-card{
+    flex:1 1 0; border-radius:10px; border:1px solid var(--line); background:var(--panel);
+    display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+    padding:0 0.9rem; gap:0.2rem; position:relative; min-height:0;
+  }
+  .action-card .eyebrow{font-family:'JetBrains Mono', monospace; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim);}
+  .action-card .label{font-family:'Oswald', sans-serif; font-weight:600; font-size:1.05rem; text-transform:uppercase;}
+  .action-card .hint{font-size:0.7rem; color:var(--text-dim);}
+  .action-card.kodi{border-left:4px solid var(--kodi);}
+  .action-card.spotify{border-left:4px solid var(--spotify); opacity:0.85;}
+  .action-card.settings{flex:0 0 auto; height:44px; border-left:4px solid var(--line);}
 </style>
 </head>
 <body>
@@ -222,6 +350,103 @@
 
   <section>
     <h2>Uso en el Día a Día</h2>
+
+    <div class="device-frame">
+      <div class="art-frame">
+        <div class="placeholder">
+          <svg viewBox="0 0 200 200" class="vinyl-placeholder">
+            <circle cx="100" cy="100" r="95" class="vinyl-body"/>
+            <circle cx="100" cy="100" r="80" class="vinyl-groove"/>
+            <circle cx="100" cy="100" r="65" class="vinyl-groove"/>
+            <circle cx="100" cy="100" r="50" class="vinyl-groove"/>
+            <path d="M35,35 A92,92 0 0,1 100,8" class="vinyl-sheen"/>
+            <circle cx="100" cy="100" r="34" class="vinyl-label"/>
+            <circle cx="100" cy="100" r="34" class="vinyl-label-ring"/>
+            <circle cx="100" cy="100" r="4" class="vinyl-spindle"/>
+          </svg>
+        </div>
+      </div>
+      <div class="now-playing">
+        <div class="source-row">
+          <span class="source-badge active spotify"><span class="dot"></span><span>Spotify</span></span>
+          <div class="header-actions">
+            <div class="playlist-toggle-btn" title="Expulsar CD">⏏</div>
+            <div class="playlist-toggle-btn" title="Lista de reproducción">☰</div>
+          </div>
+        </div>
+        <p class="track-title">Carcaj</p>
+        <p class="track-meta">Puño Dragón · Puño Dragón</p>
+        <div class="spotify-badges">
+          <div class="spotify-badge on">❤️ En Me gusta</div>
+          <div class="spotify-badge on">📻 Semanal</div>
+        </div>
+        <div class="vu-bar"><div class="vu-fill" style="width:38%;"></div></div>
+        <div class="time-row"><span>1:41 / 4:25</span><span>Reproduciendo</span><span>-2:44</span></div>
+        <div class="transport">
+          <div class="tbtn tbtn-mode active" title="Aleatorio">🔀</div>
+          <div class="tbtn">⏮</div>
+          <div class="tbtn play">⏯</div>
+          <div class="tbtn">⏭</div>
+          <div class="tbtn tbtn-mode" title="Repetir">🔁</div>
+        </div>
+        <div class="vu-meter">
+          <div class="vu-meter-expand-btn" title="VU-metro en pantalla completa">⛶</div>
+          <div class="vu-meter-leds">
+            <div class="vu-channel-leds">
+              <span class="vu-ch-label">L</span>
+              <div class="vu-led-row">
+                <div class="led zone-green on"></div><div class="led zone-green on"></div>
+                <div class="led zone-green on"></div><div class="led zone-green on"></div>
+                <div class="led zone-green on"></div><div class="led zone-green"></div>
+                <div class="led zone-green"></div><div class="led zone-green"></div>
+                <div class="led zone-amber on"></div><div class="led zone-amber"></div>
+                <div class="led zone-amber"></div><div class="led zone-red"></div>
+              </div>
+              <span class="vu-db-label">-6 dB</span>
+            </div>
+            <div class="vu-channel-leds">
+              <span class="vu-ch-label">R</span>
+              <div class="vu-led-row">
+                <div class="led zone-green on"></div><div class="led zone-green on"></div>
+                <div class="led zone-green on"></div><div class="led zone-green on"></div>
+                <div class="led zone-green"></div><div class="led zone-green"></div>
+                <div class="led zone-green"></div><div class="led zone-green"></div>
+                <div class="led zone-amber"></div><div class="led zone-amber"></div>
+                <div class="led zone-amber"></div><div class="led zone-red"></div>
+              </div>
+              <span class="vu-db-label">-8 dB</span>
+            </div>
+          </div>
+        </div>
+        <div class="volume-inline-row">
+          <div class="volume-inline-btn" title="Silenciar">🔈</div>
+          <div class="volume-inline-btn" title="Bajar 5">🔉</div>
+          <input type="range" id="demo-volume-slider" min="0" max="100" value="62" disabled>
+          <div class="volume-inline-btn" title="Subir 5">🔊</div>
+          <span class="volume-inline-value">62%</span>
+        </div>
+      </div>
+      <div class="side-actions">
+        <div class="clock-widget">
+          <div class="clock-time">21:43:07</div>
+          <div class="clock-date">domingo, 16 de agosto</div>
+        </div>
+        <div class="action-card kodi">
+          <div class="eyebrow">FLAC · MP3 · CD</div>
+          <div class="label">Biblioteca</div>
+          <div class="hint">Explorar Local / Red</div>
+        </div>
+        <div class="action-card spotify">
+          <div class="eyebrow">Spotify Connect</div>
+          <div class="label">Spotify</div>
+          <div class="hint">Tus Listas y Álbumes</div>
+        </div>
+        <div class="action-card settings">
+          <div class="label" style="font-size:0.9rem;">⚙ Ajustes</div>
+        </div>
+      </div>
+    </div>
+    <div class="device-caption">↑ Pantalla principal (Home) — HTML/CSS real de Ámbar, la misma hoja de estilos que usa el launcher, no una captura fija.</div>
 
     <div class="block">
       <h3>Control con mando a distancia (air mouse tipo JZK G20S Pro)</h3>

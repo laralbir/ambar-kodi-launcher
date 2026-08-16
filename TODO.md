@@ -59,16 +59,6 @@ de aquí.
 
 ## Pendiente
 
-- **Refactorizar la guía de usuario (`docs/index.html`) con contenido
-  visual de la app**, no solo texto. Explícitamente NO capturas de
-  pantalla estáticas (`.png`/`.jpg` que habría que regenerar cada vez
-  que cambie el diseño): al ser el frontend de Ámbar HTML/CSS puro, la
-  guía debe reutilizar ese mismo HTML/CSS para "pintar" en vivo la parte
-  de la interfaz que esté explicando en cada sección (p. ej. un
-  fragmento real de `.action-card`, `.tbtn`, `.vu-meter-leds`... con las
-  mismas variables de color/tipografía que `index.html`), en vez de
-  describir el aspecto solo con palabras o con una imagen que se queda
-  desactualizada en el primer rediseño.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se

@@ -7,6 +7,19 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Changed
+- **Guía de usuario (`docs/index.html`) con contenido visual real** en
+  la sección "Uso en el Día a Día": la pantalla principal (Home) se
+  muestra ahora con las mismas clases/CSS que `index.html`
+  (`.art-frame`, `.action-card`, `.tbtn`, `.vu-meter-leds`,
+  `.source-badge`, `.spotify-badge`, `.clock-widget`...), copiadas
+  literalmente y solo con el tamaño ajustado (el original usa vh/vw
+  pensados para 1920x720 a pantalla completa; aquí un tamaño fijo para
+  documento normal) — no es una captura de pantalla estática, así que
+  no se queda desactualizada en el primer rediseño. Verificado
+  visualmente con Edge en modo headless contra el propio fichero
+  (`file://`, sin necesidad del servidor).
+
 ### Fixed
 - **La tecla física Play/Pausa del mando a veces no hacía nada tras un
   rato sin reproducir nada** (confirmado con Spotify). Causa: esa tecla
