@@ -325,15 +325,31 @@ class SpotifyGateway:
 
     # ---------- biblioteca / auth ----------
 
+    def _get_all_playlists(self, sp) -> list[dict]:
+        """Trae TODAS las playlists del usuario, paginando -- a diferencia
+        de un solo current_user_playlists() suelto (que sin parametros
+        solo trae la primera pagina, 20 por defecto en la propia API de
+        Spotify), esto sigue el "next" hasta agotarlo. Confirmado en vivo
+        que sin paginar, tanto el listado de Playlists de la biblioteca
+        como la busqueda de Descubrimiento Semanal (ver
+        _get_weekly_playlist_id) podian dejar fuera playlists reales --
+        incluida Descubrimiento Semanal ya seguida de verdad -- por
+        estar mas alla de esa primera pagina."""
+        items: list[dict] = []
+        try:
+            results = sp.current_user_playlists(limit=50)
+            while results:
+                items.extend(results.get("items", []))
+                results = sp.next(results) if results.get("next") else None
+        except Exception:
+            pass
+        return items
+
     def get_playlists(self) -> list:
         sp = self._client()
         if not sp:
             return []
-        try:
-            res = sp.current_user_playlists()
-        except Exception:
-            return []
-        items = res.get("items", []) if res else []
+        items = self._get_all_playlists(sp)
         for item in items:
             images = item.get("images") or []
             item["thumbnail"] = images[0]["url"] if images else None
@@ -617,6 +633,66 @@ class SpotifyGateway:
         self._liked_track_ids_fetched_at = now
         return ids
 
+    def get_saved_tracks(self) -> list[dict]:
+        """Lista completa de "Me gusta" (GET /me/tracks, paginado) --
+        distinto de _get_liked_track_ids (que solo guarda los IDs para el
+        indicador ❤️, cacheados 10 min): aqui se trae la info completa de
+        cada pista para poder navegarla/reproducirla como una lista mas
+        de la biblioteca. Sin cachear -- se pide solo al abrir esta
+        pestaña, no en cada sondeo."""
+        sp = self._client()
+        if not sp:
+            return []
+        tracks = []
+        try:
+            results = sp.current_user_saved_tracks(limit=50)
+            while results:
+                for item in results.get("items", []):
+                    track = item.get("track") or {}
+                    if not track.get("uri"):
+                        continue
+                    tracks.append({
+                        "title": track.get("name", ""),
+                        "artist": ", ".join(a["name"] for a in track.get("artists", [])),
+                        "uri": track.get("uri", ""),
+                        "duration": (track.get("duration_ms") or 0) // 1000,
+                    })
+                results = sp.next(results) if results.get("next") else None
+        except Exception:
+            pass
+        return tracks
+
+    def play_saved_tracks(self) -> bool:
+        """"Reproducir todo" para Me gusta -- a diferencia de una
+        playlist normal, Me gusta no tiene un context_uri que se le
+        pueda pasar a start_playback (no es una playlist real, es la
+        coleccion "Your Library" del usuario), asi que se le pasa la
+        lista de URIs directamente. Tope de 200 pistas: start_playback
+        acepta una lista de uris pero no esta pensado para colecciones
+        enormes -- con "Me gusta" pudiendo tener miles de canciones,
+        pedirlas todas de golpe seria lento y probablemente rechazado
+        por la propia API: 200 ya cubre de sobra un "reproducir ahora y
+        que seguir sonando" razonable."""
+        sp = self._client()
+        if not sp:
+            return False
+        uris = []
+        try:
+            results = sp.current_user_saved_tracks(limit=50)
+            while results and len(uris) < 200:
+                for item in results.get("items", []):
+                    track = item.get("track") or {}
+                    if track.get("uri"):
+                        uris.append(track["uri"])
+                    if len(uris) >= 200:
+                        break
+                results = sp.next(results) if results.get("next") else None
+        except Exception:
+            return False
+        if not uris:
+            return False
+        return self._start_playback_with_fallback(sp, uris=uris)
+
     def is_track_liked(self, track_id: str) -> bool:
         sp = self._client()
         if not sp or not track_id:
@@ -626,15 +702,10 @@ class SpotifyGateway:
     def _get_weekly_playlist_id(self, sp) -> str | None:
         if self._weekly_playlist_id:
             return self._weekly_playlist_id
-        try:
-            res = sp.current_user_playlists(limit=50)
-            items = res.get("items", []) if res else []
-            for p in items:
-                if (p.get("name") or "").strip().lower() in WEEKLY_PLAYLIST_NAMES:
-                    self._weekly_playlist_id = p.get("id")
-                    break
-        except Exception:
-            pass
+        for p in self._get_all_playlists(sp):
+            if (p.get("name") or "").strip().lower() in WEEKLY_PLAYLIST_NAMES:
+                self._weekly_playlist_id = p.get("id")
+                break
         return self._weekly_playlist_id
 
     def is_track_in_weekly(self, track_id: str) -> bool:

@@ -1,5 +1,6 @@
 import sys
 import threading
+import time
 from urllib.parse import quote
 
 import requests
@@ -26,6 +27,18 @@ class KodiGateway:
         # responder a los controles con normalidad mientras las demas
         # imagenes siguen llegando, solo que un poco escalonadas.
         self._art_proxy_semaphore = threading.Semaphore(2)
+        # Ultimo TOC calculado con exito (ver get_audio_cd_toc) y cuando --
+        # respaldo de corta duracion para cuando Files.GetDirectory de
+        # cdda://local/ falla de forma transitoria. Confirmado en vivo que
+        # la pestaña CD "parpadeaba" (se habilitaba unos segundos y volvia
+        # a deshabilitarse) con un CD puesto y sonando de verdad: Kodi
+        # parece contender consigo mismo entre leer audio del CD y listar
+        # su directorio a la vez, asi que esa llamada puede devolver vacio
+        # un momento aunque el disco siga ahi -- lo mismo dejaba sin
+        # disparar nunca la identificacion de "ahora suena" en reproduccion
+        # automatica (ver _enrich_cd_now_playing).
+        self._last_cd_toc: list[int] | None = None
+        self._last_cd_toc_at: float = 0.0
 
     @property
     def rpc_url(self) -> str:
@@ -69,7 +82,7 @@ class KodiGateway:
         artist = ", ".join(info.get("artist", [])) or "CD / biblioteca local"
         album = info.get("album", "")
         file_path = info.get("file", "")
-        title, artist, album, art = self._enrich_cd_now_playing(
+        title, artist, album, art, art_pending = self._enrich_cd_now_playing(
             file_path, title, artist, album, art
         )
         # Kodi no siempre trae caratula propia para pistas normales (MP3/FLAC
@@ -95,6 +108,8 @@ class KodiGateway:
             total_seconds=self._time_to_seconds((props or {}).get("totaltime")),
             shuffle=bool((props or {}).get("shuffled")),
             repeat=(props or {}).get("repeat") or "off",
+            is_cd=file_path.startswith("cdda://"),
+            art_pending=art_pending,
         )
 
     def _enrich_cd_now_playing(self, file_path: str, title: str, artist: str, album: str, art: str | None):
@@ -119,17 +134,32 @@ class KodiGateway:
         sondeo, pero lanza una identificacion de fondo (identify_async,
         no bloqueante) para que se autorrecupere sola en un sondeo
         siguiente -- sin necesidad de que alguien pulse el boton de
-        actualizar a mano."""
+        actualizar a mano.
+
+        Devuelve tambien un quinto valor, art_pending: True mientras la
+        identificacion de fondo sigue en marcha y aun no hay resultado
+        (ver PlaybackState.art_pending) -- para que el frontend pueda
+        mostrar un spinner real sobre la caratula en vez del disco de
+        vinilo generico mientras dura la busqueda de verdad, no solo
+        mientras se descarga la imagen ya encontrada."""
         if not file_path.startswith("cdda://") or not self._cd_identifier:
-            return title, artist, album, art
+            return title, artist, album, art, False
         toc = self.get_audio_cd_toc()
         cd_meta = self._cd_identifier.get_last_for(toc) if toc else None
         if not cd_meta:
+            art_pending = False
             if toc:
                 self._cd_identifier.identify_async(toc)
-            return title, artist, album, art
+                art_pending = True
+            return title, artist, album, art, art_pending
         title = self._track_title_at(file_path, cd_meta.get("tracks") or []) or title
-        return title, cd_meta.get("artist") or artist, cd_meta.get("title") or album, cd_meta.get("art") or art
+        return (
+            title,
+            cd_meta.get("artist") or artist,
+            cd_meta.get("title") or album,
+            cd_meta.get("art") or art,
+            False,
+        )
 
     @staticmethod
     def _time_to_seconds(time_obj: dict | None) -> int:
@@ -378,6 +408,95 @@ class KodiGateway:
         # puesto pero el lector dormido y el volumen aun sin montar).
         subprocess.run(["drutil", "status"], capture_output=True, timeout=5)
 
+    def eject_cd(self) -> bool:
+        """Expulsa el CD de audio insertado -- para el boton de expulsar
+        del home. Para primero la reproduccion en Kodi si es un CD lo que
+        esta sonando (dejar a Kodi "reproduciendo" un disco que ya no
+        esta fisicamente puesto no lleva a nada bueno); si suena otra
+        cosa (Kodi con musica local, o ni siquiera es la fuente activa),
+        no se toca. Best-effort: True solo si se pudo mandar la orden de
+        bajo nivel al hardware, no garantiza que la bandeja haya abierto
+        de verdad (lector sin motor de expulsion electrico, atascado...)."""
+        players = self.rpc("Player.GetActivePlayers")
+        if players:
+            item = self.rpc("Player.GetItem", {
+                "playerid": players[0]["playerid"], "properties": ["file"],
+            })
+            file_path = ((item or {}).get("item") or {}).get("file", "")
+            if file_path.startswith("cdda://"):
+                self.rpc("Player.Stop", {"playerid": players[0]["playerid"]})
+        try:
+            if sys.platform == "win32":
+                return self._eject_cd_windows()
+            elif sys.platform == "darwin":
+                return self._eject_cd_macos()
+        except Exception:
+            pass
+        return False
+
+    @staticmethod
+    def _eject_cd_windows() -> bool:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+            wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        kernel32.DeviceIoControl.restype = wintypes.BOOL
+        kernel32.DeviceIoControl.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+            wintypes.LPVOID, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID,
+        ]
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        GENERIC_READ = 0x80000000
+        GENERIC_WRITE = 0x40000000
+        FILE_SHARE_READ = 0x1
+        FILE_SHARE_WRITE = 0x2
+        OPEN_EXISTING = 3
+        DRIVE_CDROM = 5
+        # IOCTL_STORAGE_EJECT_MEDIA (winioctl.h): abre la bandeja del
+        # lector a nivel de driver -- mismo mecanismo de bajo nivel que
+        # _wake_cd_drive_windows, IOCTL distinto.
+        IOCTL_STORAGE_EJECT_MEDIA = 0x2D4808
+        INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+        ejected = False
+        for code in range(ord("A"), ord("Z") + 1):
+            letter = chr(code)
+            root = f"{letter}:\\"
+            if kernel32.GetDriveTypeW(root) != DRIVE_CDROM:
+                continue
+            handle = kernel32.CreateFileW(
+                f"\\\\.\\{letter}:", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                None, OPEN_EXISTING, 0, None,
+            )
+            if not handle or handle == INVALID_HANDLE_VALUE:
+                continue
+            try:
+                returned = wintypes.DWORD(0)
+                ok = kernel32.DeviceIoControl(
+                    handle, IOCTL_STORAGE_EJECT_MEDIA, None, 0, None, 0,
+                    ctypes.byref(returned), None,
+                )
+                ejected = ejected or bool(ok)
+            finally:
+                kernel32.CloseHandle(handle)
+        return ejected
+
+    @staticmethod
+    def _eject_cd_macos() -> bool:
+        import subprocess
+
+        try:
+            result = subprocess.run(["drutil", "eject"], capture_output=True, timeout=10)
+            return result.returncode == 0
+        except Exception:
+            return False
+
     def _enrich_cd_track_labels(self, files: list) -> None:
         """Sustituye las etiquetas genericas "Track NN" de Kodi por los
         titulos reales cuando MusicBrainz identifica el CD (bloqueante:
@@ -486,12 +605,20 @@ class KodiGateway:
         bytes de cada pista de cdda://local/ (2352 bytes = 1 sector CD-DA
         de audio, 176400 bytes/s = 44100Hz * 2 canales * 2 bytes; probado
         en vivo que los tamaños que da Kodi son multiplos exactos de
-        2352). None si no hay CD insertado/legible."""
+        2352). None si no hay CD insertado/legible ni un respaldo reciente
+        en cache (ver _last_cd_toc en __init__): Files.GetDirectory de
+        cdda://local/ puede devolver vacio de forma transitoria mientras
+        el CD esta sonando de verdad (Kodi parece contender consigo mismo
+        entre leer el audio y listar el directorio a la vez), y sin este
+        respaldo de corta duracion eso "apagaba" la deteccion del CD unos
+        segundos de forma intermitente -- confirmado en vivo."""
         res = self.rpc("Files.GetDirectory", {
             "directory": "cdda://local/", "media": "music", "properties": ["size"],
         })
         files = (res or {}).get("files") or []
         if not files:
+            if self._last_cd_toc and (time.monotonic() - self._last_cd_toc_at) < 10:
+                return self._last_cd_toc
             return None
         FRAME_BYTES = 2352
         offset = 150  # pregap estandar de 2s (00:02:00 en MSF)
@@ -499,7 +626,10 @@ class KodiGateway:
         for f in files:
             track_offsets.append(offset)
             offset += f.get("size", 0) // FRAME_BYTES
-        return [1, len(files), offset] + track_offsets
+        toc = [1, len(files), offset] + track_offsets
+        self._last_cd_toc = toc
+        self._last_cd_toc_at = time.monotonic()
+        return toc
 
     def get_audio_cd_metadata(self, force: bool = False) -> dict | None:
         """Identifica el CD insertado contra MusicBrainz (titulo, artista,

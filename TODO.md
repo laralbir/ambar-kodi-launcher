@@ -34,25 +34,39 @@ de aquí.
   problema) — arreglado usando `cdda://local/` directamente en vez de
   esos booleanos, ver `CHANGELOG.md`.
 - **La playlist "Descubrimiento semanal" de Spotify no aparece** en el
-  listado de Playlists de la biblioteca. `SpotifyGateway.get_playlists()`
-  simplemente devuelve `sp.current_user_playlists()` tal cual llega de
-  Spotify — a confirmar si Discover Weekly no está en esa respuesta en
-  absoluto (posible: es una playlist "algorítmica" del sistema, no
-  siempre aparece junto a las del propio usuario en ese endpoint) o si
-  llega pero se pierde en el camino. `_get_weekly_playlist_id`
-  (usada para el indicador 📻 de "ahora suena") ya la busca por nombre
-  dentro de esa misma respuesta paginada — si tampoco la encuentra ahí,
-  confirmaría que el endpoint no la trae y haría falta otra vía (p. ej.
-  buscarla por nombre con `sp.search`, o pedirla por su ID de forma
-  aparte).
+  listado de Playlists de la biblioteca (ni la usa el indicador 📻 de
+  "ahora suena", que depende del mismo listado). **Investigado y acotado
+  en vivo con una cuenta real que la tiene seguida en su biblioteca de
+  Spotify**: `current_user_playlists()` sin paginar solo traía la
+  primera página (20 playlists, límite por defecto de la propia API) —
+  arreglado para traerlas todas (ver `CHANGELOG.md`, `_get_all_playlists`,
+  confirmado en vivo pasando de 20 a 44 playlists reales), pero
+  Descubrimiento Semanal **seguía sin aparecer ni siquiera entre esas
+  44**, ya seguida y todo. Conclusión: no es un problema de paginación
+  ni de "no seguida" — casi con toda seguridad una limitación real de la
+  API pública de Spotify (las playlists algorítmicas del sistema —
+  Discover Weekly, Daily Mix, Release Radar... — no las devuelve
+  `GET /me/playlists` aunque el usuario las tenga en su biblioteca desde
+  la propia app; es un límite reportado por bastantes desarrolladores
+  terceros, no algo documentado oficialmente por Spotify). **No hay
+  arreglo limpio conocido**: `sp.search(q="Discover Weekly", ...)`
+  devolvería resultados públicos de otros usuarios/curadores, no la
+  versión personalizada de cada cuenta — no fiable. Mismo tipo de
+  limitación de la API que ya obligó a quitar el botón de añadir a "Me
+  gusta" (ver más abajo, "Hecho recientemente"). Se deja documentado
+  como límite conocido; retomar solo si aparece alguna vía oficial
+  nueva.
 
 ## Pendiente
 
-- **Seleccionar pista de CD con los números del mando a distancia**:
-  que las teclas numéricas del mando (si las manda como teclado, a
-  confirmar con el mando real) salten directamente a esa pista del CD
-  en curso, sin tener que navegar a la pestaña CD y tocarla en la
-  pantalla.
+- **Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
+  como estilos adicionales del VU-metro**: junto a los ya existentes
+  (barras LED, aguja simple, aguja realista). El pipeline de audio ya
+  captura el nivel real por canal (`ambar/adapters/audio/`, ver
+  `AudioLevelService`); haría falta añadir un análisis en frecuencia
+  (FFT) para las barras del espectómetro, o exponer directamente la
+  forma de onda cruda del buffer para el osciloscopio, y un nuevo
+  `VU_METER_STYLE` en el frontend para cada uno.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se

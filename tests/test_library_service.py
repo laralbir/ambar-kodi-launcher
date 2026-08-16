@@ -15,6 +15,10 @@ class FakeKodiGateway:
     def is_reachable(self):
         return self._reachable
 
+    def eject_cd(self):
+        self.calls.append("eject_cd")
+        return True
+
 
 class FakeSpotifyGateway:
     def __init__(self, configured=True):
@@ -35,6 +39,18 @@ class FakeSpotifyGateway:
     def get_playlist_tracks(self, playlist_id):
         self.calls.append(("get_playlist_tracks", playlist_id))
         return [{"title": "T", "artist": "A", "uri": "spotify:track:x", "duration": 120}]
+
+    def get_playlists(self):
+        self.calls.append("get_playlists")
+        return [{"id": "2", "name": "zeta"}, {"id": "1", "name": "Alfa"}]
+
+    def get_saved_tracks(self):
+        self.calls.append("get_saved_tracks")
+        return [{"title": "Liked", "artist": "B", "uri": "spotify:track:y", "duration": 90}]
+
+    def play_saved_tracks(self):
+        self.calls.append("play_saved_tracks")
+        return True
 
     def is_configured(self):
         return self._configured
@@ -154,3 +170,44 @@ def test_spotify_play_track_stops_kodi_before_playing():
     assert ok is True
     assert kodi.calls == ["stop"]
     assert spotify.calls == [("play_track", "spotify:track:x")]
+
+
+def test_spotify_playlists_puts_liked_songs_first_then_alphabetical():
+    service = LibraryService(FakeKodiGateway(), FakeSpotifyGateway())
+
+    playlists = service.spotify_playlists()
+
+    assert [p["name"] for p in playlists] == ["Canciones que te gustan", "Alfa", "zeta"]
+    assert playlists[0]["id"] == LibraryService.LIKED_SONGS_ID
+
+
+def test_spotify_playlist_tracks_liked_songs_uses_saved_tracks():
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(FakeKodiGateway(), spotify)
+
+    tracks = service.spotify_playlist_tracks(LibraryService.LIKED_SONGS_ID)
+
+    assert tracks == [{"title": "Liked", "artist": "B", "uri": "spotify:track:y", "duration": 90}]
+    assert spotify.calls == ["get_saved_tracks"]
+
+
+def test_kodi_eject_cd_delegates_to_gateway():
+    kodi = FakeKodiGateway()
+    service = LibraryService(kodi, FakeSpotifyGateway())
+
+    ok = service.kodi_eject_cd()
+
+    assert ok is True
+    assert kodi.calls == ["eject_cd"]
+
+
+def test_spotify_play_liked_songs_uses_play_saved_tracks():
+    kodi = FakeKodiGateway()
+    spotify = FakeSpotifyGateway()
+    service = LibraryService(kodi, spotify)
+
+    ok = service.spotify_play(LibraryService.LIKED_SONGS_ID)
+
+    assert ok is True
+    assert kodi.calls == ["stop"]
+    assert spotify.calls == ["play_saved_tracks"]

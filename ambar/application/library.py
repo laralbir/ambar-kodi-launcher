@@ -1,8 +1,34 @@
+import base64
 import sys
 
 from ambar.adapters.deezer.gateway import DeezerGateway
 from ambar.adapters.kodi.gateway import KodiGateway
 from ambar.adapters.spotify.gateway import SpotifyGateway
+
+# Carátula de "Canciones que te gustan" (fondo azul + corazón rosa, mismo
+# estilo que usa la propia Spotify para esta lista) -- no es una imagen
+# real de Spotify (esta "playlist" es sintética, ver LIKED_SONGS_ID, sin
+# caratula propia que pedirle a la API), asi que se genera un SVG propio
+# en vez de anadir un fichero de imagen aparte al repo. Codificado en
+# base64 (no URL-encoded) para poder ir directo en un atributo HTML
+# `<img src="...">` sin escapar comillas/ángulos: el frontend inserta
+# `thumbnail` tal cual en una plantilla de texto (ver renderGridSpotify
+# en index.html), no hay ningun escapado de por medio.
+_LIKED_SONGS_ART_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+    '<stop offset="0%" stop-color="#4f5cdb"/>'
+    '<stop offset="100%" stop-color="#141b4d"/>'
+    '</linearGradient></defs>'
+    '<rect width="24" height="24" fill="url(#g)"/>'
+    '<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 '
+    '7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 '
+    '5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" '
+    'fill="#ff2f92"/></svg>'
+)
+LIKED_SONGS_ART = "data:image/svg+xml;base64," + base64.b64encode(
+    _LIKED_SONGS_ART_SVG.encode("utf-8")
+).decode("ascii")
 
 
 class LibraryService:
@@ -165,6 +191,9 @@ class LibraryService:
             return {"available": False}
         return {"available": True, **metadata}
 
+    def kodi_eject_cd(self) -> bool:
+        return self._kodi.eject_cd()
+
     def kodi_play(self, body: dict) -> None:
         self._spotify.pause()
         item = {}
@@ -186,10 +215,27 @@ class LibraryService:
             item["file"] = body["file"]
         self._kodi.play(item)
 
+    # ID/context_uri sintetico para "Canciones que te gustan" -- no es una
+    # playlist real de Spotify (no tiene id/context_uri propios, "Me
+    # gusta" es la coleccion "Your Library" del usuario, otro endpoint
+    # por completo, ver SpotifyGateway.get_saved_tracks), pero se la
+    # trata como una playlist mas de cara al frontend (mismo flujo de
+    # listar/reproducir que cualquier otra) para no duplicar toda la
+    # navegacion de dos niveles solo para este caso.
+    LIKED_SONGS_ID = "liked"
+
     def spotify_playlists(self) -> list:
-        return self._spotify.get_playlists()
+        # "Me gusta" siempre primero (fijado, igual que en la propia app
+        # de Spotify), el resto alfabeticamente -- antes se mostraban en
+        # el orden que diera la API (el de la barra lateral de Spotify
+        # del usuario, no alfabetico ni predecible).
+        playlists = sorted(self._spotify.get_playlists(), key=lambda p: (p.get("name") or "").strip().lower())
+        liked = {"id": self.LIKED_SONGS_ID, "name": "Canciones que te gustan", "thumbnail": LIKED_SONGS_ART, "uri": self.LIKED_SONGS_ID}
+        return [liked] + playlists
 
     def spotify_playlist_tracks(self, playlist_id: str | None) -> list:
+        if playlist_id == self.LIKED_SONGS_ID:
+            return self._spotify.get_saved_tracks()
         return self._spotify.get_playlist_tracks(playlist_id) if playlist_id else []
 
     def spotify_artists(self) -> list:
@@ -206,6 +252,11 @@ class LibraryService:
 
     def spotify_play(self, context_uri: str | None) -> bool:
         self._kodi.stop()
+        if context_uri == self.LIKED_SONGS_ID:
+            # "Me gusta" no tiene context_uri real que pasarle a
+            # start_playback (no es una playlist) -- se le pasan las
+            # URIs de las pistas directamente, ver play_saved_tracks.
+            return self._spotify.play_saved_tracks()
         return self._spotify.play_context(context_uri)
 
     def spotify_play_track(self, uri: str | None) -> bool:

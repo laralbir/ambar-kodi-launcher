@@ -23,3 +23,16 @@ class PlaybackState:
     # vuelta al suyo propio al escribirlo).
     shuffle: bool = False
     repeat: str = "off"
+    # True si la fuente activa es un CD de audio (Kodi, ruta cdda://) --
+    # para el salto directo de pista por numero con el mando (ver
+    # index.html, handleCdTrackDigit): solo debe interceptar teclas
+    # numericas mientras suena de verdad un CD, no en cualquier otra
+    # pantalla/reproduccion.
+    is_cd: bool = False
+    # True mientras se esta identificando de verdad el CD contra
+    # MusicBrainz en segundo plano (ver KodiGateway._enrich_cd_now_playing,
+    # MusicBrainzGateway.identify_async) y todavia no hay resultado --
+    # para que el frontend muestre un spinner sobre la caratula en vez
+    # del disco de vinilo generico mientras dura la busqueda real, no solo
+    # mientras se descarga la imagen ya encontrada.
+    art_pending: bool = False

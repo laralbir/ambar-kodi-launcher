@@ -204,6 +204,11 @@ def create_app(container) -> Flask:
         force = request.args.get("force", "").lower() == "true"
         return jsonify(container.library_service.kodi_cd_metadata(force=force))
 
+    @app.route("/api/library/kodi/eject-cd", methods=["POST"])
+    def kodi_eject_cd():
+        ok = container.library_service.kodi_eject_cd()
+        return jsonify({"ok": ok})
+
     @app.route("/api/library/kodi/play", methods=["POST"])
     def kodi_play():
         body = request.get_json(force=True) or {}

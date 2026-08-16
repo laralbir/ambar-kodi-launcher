@@ -8,6 +8,54 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Botón de expulsar CD en el home** (⏏, junto al de la lista de
+  reproducción — se deshabilita solo si no hay CD insertado, mismo
+  criterio que la pestaña CD de la biblioteca). Para primero la
+  reproducción en Kodi si es un CD lo que suena, y expulsa a nivel de
+  driver: `IOCTL_STORAGE_EJECT_MEDIA` en Windows (mismo mecanismo que
+  `_wake_cd_drive_windows`, IOCTL distinto), `drutil eject` en macOS.
+- **Spinner real sobre la carátula mientras se identifica un CD**, en vez
+  del disco de vinilo genérico: nuevo campo `PlaybackState.art_pending`
+  (true mientras `identify_async` sigue en marcha y aún no hay
+  resultado) — distingue "todavía buscando" de "no se ha encontrado
+  nada", que antes se veían exactamente igual.
+- **Carátula propia para "Canciones que te gustan"** (fondo azul +
+  corazón rosa, mismo estilo que usa la propia Spotify) en vez del
+  icono genérico de nota musical — generada como SVG propio en base64
+  (`LibraryService.LIKED_SONGS_ART`), no es una imagen real de Spotify
+  (esta "playlist" es sintética, sin carátula que pedirle a la API).
+  **Corregido el trazo del corazón** (la punta inferior se dibujaba mal
+  y no quedaba centrado): sustituido el path a mano por el glifo
+  estándar de Material Icons (verificado, simétrico, cierra exactamente
+  en el punto de partida) en vez de uno editado a mano con un punto de
+  unión mal calculado.
+- **Seleccionar pista de CD por número con el mando**: pulsar una o dos
+  cifras (acumuladas con un margen de 600ms entre pulsaciones, como un
+  mando de TV/ascensor) salta directamente a esa pista mientras suena
+  un CD, sin tener que navegar a la pestaña CD. Reutiliza la ruta ya
+  existente de reproducir un fichero suelto (`kodi_play({file:...})`,
+  `cdda://local/NN.cdda`) — sin ruta ni lógica nueva en el backend, solo
+  un nuevo campo `PlaybackState.is_cd` para que el frontend sepa cuándo
+  interceptar los números. **Sin confirmar aún con el mando real** qué
+  tecla(s) manda su teclado numérico (a diferencia de D-pad/OK/Atrás/
+  Home/Pg+/Pg-, sí verificados en vivo esta sesión) — cubre los dos
+  rangos estándar de teclado (fila numérica y numérico) por si acaso.
+- **"Canciones que te gustan" navegable como una lista más de la
+  biblioteca de Spotify** (827 pistas verificadas en vivo con una cuenta
+  real): antes solo se usaba internamente para el indicador ❤️ en
+  "ahora suena". `SpotifyGateway.get_saved_tracks()` (`GET /me/tracks`,
+  paginado por completo) trae la lista igual que `get_playlist_tracks`;
+  como "Me gusta" no es una playlist real (no tiene `context_uri` propio
+  para reproducirla entera vía `start_playback`, es la colección "Your
+  Library" del usuario), `play_saved_tracks()` le pasa las URIs de las
+  pistas directamente en vez de un contexto (tope de 200 pistas). Se
+  integra en el flujo existente de Playlists como una entrada sintética
+  más (`LibraryService.LIKED_SONGS_ID = "liked"`) — mismo listado,
+  mismo "reproducir lista completa", sin frontend nuevo.
+- **Playlists (biblioteca de Spotify) ordenadas**: "Canciones que te
+  gustan" siempre primero, el resto por orden alfabético — antes salían
+  en el orden que diera la API de Spotify (el de la barra lateral del
+  propio usuario, no predecible).
 - **Los `<select>` de Ajustes (skin, pantalla de arranque, salvapantallas)
   no se podían abrir con el mando**: un `<select>` nativo se abre con un
   picker propio del sistema operativo/navegador, y ni un click ni un
@@ -49,6 +97,46 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   SMTC traducen el suyo propio al leerlo y escribirlo.
 
 ### Fixed
+- **CD identificado correctamente (título/artista/pistas) pero sin
+  carátula**: confirmado en vivo con un disco real (La Polla Records,
+  "Toda la puta vida igual") que `art` venía `null` aunque la
+  identificación por TOC acertara de lleno — la búsqueda por TOC elige
+  la edición/prensado concreto más parecido en offsets de pista, sin
+  tener en cuenta si ESA edición en concreto tiene carátula subida a
+  Cover Art Archive; el mismo álbum podía tener carátula en otra edición
+  sin que se usara. Si la edición identificada no trae carátula propia,
+  ahora se reintenta por texto (artista+título, `_lookup_album_art` —
+  el mismo mecanismo ya usado para álbumes normales de Kodi) probando
+  otros candidatos hasta encontrar uno con carátula de verdad. Verificado
+  en vivo: pasó de `"art":null` a una URL real de Cover Art Archive para
+  el mismo disco.
+- **La carátula/título/artista de "ahora suena" seguían sin cargar al
+  insertar un CD con reproducción automática, incluso tras el arreglo
+  anterior de `get_last_for`**: causa real, distinta — confirmado en
+  vivo que la propia pestaña CD "parpadeaba" (se habilitaba unos
+  segundos con el disco puesto y sonando, y volvía a deshabilitarse
+  sola). `Files.GetDirectory` de `cdda://local/` (de donde sale el TOC
+  que identifica el disco) puede devolver vacío de forma transitoria
+  mientras el CD está sonando de verdad — Kodi parece contender consigo
+  mismo entre leer el audio y listar el directorio a la vez. Sin TOC no
+  se disparaba nunca `identify_async`, así que la identificación jamás
+  llegaba a arrancar. `KodiGateway.get_audio_cd_toc()` ahora guarda el
+  último TOC calculado con éxito y lo devuelve como respaldo si la
+  consulta falla dentro de los 10s siguientes, en vez de tratarlo como
+  "no hay CD" — cubre el parpadeo sin enmascarar una expulsión real del
+  disco (pasados esos 10s, si de verdad no hay CD, vuelve a fallar como
+  antes).
+- **El listado de Playlists de Spotify (biblioteca) se quedaba corto si
+  se seguían más de 20**: `SpotifyGateway.get_playlists()` (y también
+  `_get_weekly_playlist_id`, usada por el indicador 📻 de "ahora suena")
+  llamaban a `current_user_playlists()` sin paginar — la API de Spotify
+  solo da la primera página (20 por defecto) si no se le pide seguir.
+  Confirmado en vivo con una cuenta real: pasó de traer 20 playlists a
+  traer las 44 reales. Investigando esto se confirmó también que
+  "Descubrimiento semanal" sigue sin aparecer NI SIQUIERA con la
+  paginación arreglada, ya seguida en la biblioteca de Spotify — no es
+  un bug de esta app, ver `TODO.md` para el detalle (limitación conocida
+  de la API pública de Spotify con las playlists algorítmicas).
 - **Al cambiar/insertar un CD nuevo con reproducción automática
   (`audiocds.autoaction`), "ahora suena" se quedaba con el título,
   artista, carátula y nombres de pista del CD ANTERIOR indefinidamente**,

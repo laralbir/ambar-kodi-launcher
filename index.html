@@ -107,6 +107,7 @@
   }
   .playlist-toggle-btn:active{background:var(--amber-dim); color:var(--amber);}
   .playlist-toggle-btn.active{color:var(--amber); border-color:var(--amber);}
+  .playlist-toggle-btn.disabled{opacity:0.35; cursor:default; pointer-events:none;}
 
   .track-title{
     font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
@@ -656,6 +657,7 @@
       <div class="source-row">
         <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
         <div class="header-actions">
+          <div class="playlist-toggle-btn disabled" id="cd-eject-btn" title="Expulsar CD">⏏</div>
           <div class="playlist-toggle-btn" id="playlist-toggle-btn" title="Lista de reproducción">☰</div>
         </div>
       </div>
@@ -920,6 +922,7 @@
   let currentSource = null;
   let currentArtist = "";
   let currentAlbum = "";
+  let currentIsCd = false;
   let lastArtSrc = null;
   let lastKnownTotalSeconds = 0;
   let lastCheckedTrackId = null;
@@ -1474,6 +1477,7 @@
     currentSource = data.source;
     currentArtist = data.artist || "";
     currentAlbum = data.album || "";
+    currentIsCd = !!data.is_cd;
     if(data.playing){
       lastPlayingAt = Date.now();
       if(screensaverActive) toggleClockFullscreen(false);
@@ -1516,9 +1520,18 @@
       }
     }else{
       lastArtSrc = null;
-      spinner.classList.remove("visible");
       img.style.display = "none";
-      ph.style.display = "flex";
+      if(data.art_pending){
+        // Busqueda real en marcha (identificando el CD contra
+        // MusicBrainz en segundo plano, ver PlaybackState.art_pending) --
+        // spinner en vez del disco de vinilo generico, para distinguir
+        // "todavia buscando" de "no se ha encontrado nada".
+        spinner.classList.add("visible");
+        ph.style.display = "none";
+      }else{
+        spinner.classList.remove("visible");
+        ph.style.display = "flex";
+      }
     }
 
     if(showPlaylist) refreshPlaylist();
@@ -1792,11 +1805,18 @@
       cdDetectionReliable = data.detection_reliable;
       // Si la deteccion no es fiable en este SO (macOS, ver backend), no se
       // deshabilita nunca la pestaña -- se avisa al entrar en vez de ocultar
-      // una funcion que podria funcionar igualmente.
+      // una funcion que podria funcionar igualmente. El boton de expulsar
+      // CD del home sigue el mismo criterio.
       const disable = !kodiAvailable || (data.detection_reliable && !data.available);
       el("lib-tab-cd").classList.toggle("disabled", disable);
+      el("cd-eject-btn")?.classList.toggle("disabled", disable);
     }).catch(() => {});
   }
+
+  el("cd-eject-btn").addEventListener("click", () => {
+    if(el("cd-eject-btn").classList.contains("disabled")) return;
+    fetch(API_BASE + "/api/library/kodi/eject-cd", {method: "POST"}).catch(() => {});
+  });
 
   // Deshabilita el acceso a Kodi/Spotify si no estan disponibles (Kodi no
   // responde al JSON-RPC, o Spotify no tiene credenciales/autorizacion
@@ -2820,6 +2840,44 @@
     target.scrollBy({top: direction * target.clientHeight * 0.8, behavior: 'smooth'});
   }
 
+  // Salto directo de pista de CD con los números del mando -- sin
+  // confirmar aún con el mando real qué keyCode manda cada tecla (a
+  // diferencia de D-pad/OK/Atrás/Home/Pg+/Pg-, ya verificados en vivo
+  // esta sesión), así que se cubren los dos rangos estándar de teclado
+  // (fila numérica y teclado numérico) por si acaso.
+  function digitFromKey(ev){
+    if(ev.key && ev.key.length === 1 && ev.key >= '0' && ev.key <= '9') return ev.key;
+    if(ev.keyCode >= 48 && ev.keyCode <= 57) return String(ev.keyCode - 48);
+    if(ev.keyCode >= 96 && ev.keyCode <= 105) return String(ev.keyCode - 96);
+    return null;
+  }
+  // Acumula dígitos como un mando de TV/ascensor: cada pulsación reinicia
+  // el plazo de 600ms, y al segundo dígito (o al agotarse el plazo) se
+  // confirma el número y se salta a esa pista -- así se puede llegar a
+  // pistas de dos cifras (la mayoría de CDs tienen más de 9) sin tener
+  // que esperar entre pulsaciones si se teclean seguidas.
+  let cdTrackDigits = "";
+  let cdTrackTimer = null;
+  function commitCdTrackJump(){
+    const n = parseInt(cdTrackDigits, 10);
+    cdTrackDigits = "";
+    if(!n || n < 1) return;
+    const file = "cdda://local/" + String(n).padStart(2, "0") + ".cdda";
+    fetch(API_BASE + "/api/library/kodi/play", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({file})
+    }).catch(() => {});
+  }
+  function handleCdTrackDigit(digit){
+    clearTimeout(cdTrackTimer);
+    cdTrackDigits += digit;
+    if(cdTrackDigits.length >= 2){
+      commitCdTrackJump();
+      return;
+    }
+    cdTrackTimer = setTimeout(commitCdTrackJump, 600);
+  }
+
   document.addEventListener('keydown', (ev) => {
     // Dentro de un campo de texto (Ajustes: host/puerto/credenciales) las
     // flechas mueven el cursor y Backspace borra -- comportamiento nativo
@@ -2841,6 +2899,14 @@
     if(isHomeKey(ev)){ ev.preventDefault(); navGoHome(); return; }
     if(isPageUpKey(ev)){ ev.preventDefault(); navScrollPage(-1); return; }
     if(isPageDownKey(ev)){ ev.preventDefault(); navScrollPage(1); return; }
+    // Salto de pista de CD por número -- solo mientras suena de verdad
+    // un CD (ver PlaybackState.is_cd), para no robarle los números al
+    // resto de la interfaz (Ajustes ya los deja pasar por texto vía el
+    // guard de inTextField de arriba).
+    if(currentSource === 'kodi' && currentIsCd){
+      const digit = digitFromKey(ev);
+      if(digit !== null){ ev.preventDefault(); handleCdTrackDigit(digit); return; }
+    }
     switch(ev.key){
       case 'ArrowUp': ev.preventDefault(); navMove(0, -1); break;
       case 'ArrowDown': ev.preventDefault(); navMove(0, 1); break;

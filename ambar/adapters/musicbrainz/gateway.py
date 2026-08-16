@@ -176,11 +176,25 @@ class MusicBrainzGateway:
             t.get("title", "")
             for t in sorted(medium.get("tracks", []), key=lambda t: t.get("position", 0))
         ]
+        title = release.get("title") or ""
         art = None
         if release.get("cover-art-archive", {}).get("front"):
             art = COVER_ART_URL.format(mbid=release["id"])
+        if not art and artist and title:
+            # La busqueda por TOC elige el "release" (edicion/prensado)
+            # concreto mas parecido en offsets de pista, sin tener en
+            # cuenta si esa edicion en concreto tiene caratula subida a
+            # Cover Art Archive -- confirmado en vivo que un disco real
+            # se identificaba bien (titulo/artista/pistas correctos) pero
+            # se quedaba sin caratula porque la edicion exacta encontrada
+            # no la tenia, aunque el mismo album SI la tuviera en otra
+            # edicion. _lookup_album_art busca por texto en vez de TOC y
+            # prueba varios candidatos hasta encontrar uno con caratula
+            # de verdad -- no importa que sea de una edicion distinta a
+            # la identificada, es la misma portada de todas formas.
+            art = self._lookup_album_art(artist, title)
         return {
-            "title": release.get("title") or "",
+            "title": title,
             "artist": artist,
             "tracks": tracks,
             "art": art,
