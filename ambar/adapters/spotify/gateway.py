@@ -28,6 +28,13 @@ class SpotifyGateway:
     """Adapter hacia la Web API de Spotify (Spotipy). Se reconfigura en caliente
     cuando cambian las credenciales en Ajustes."""
 
+    # Spotify usa "off"/"track"/"context" para repetir; el resto de la app
+    # (Kodi, PlaybackState) usa "off"/"one"/"all" -- Kodi lo hace de forma
+    # nativa, asi que ese es el vocabulario comun elegido, y aqui se
+    # traduce en los dos sentidos.
+    _REPEAT_FROM_SPOTIFY = {"off": "off", "track": "one", "context": "all"}
+    _REPEAT_CYCLE = {"off": "context", "context": "track", "track": "off"}
+
     def __init__(self, cache_path: str, smtc_gateway=None):
         self._cache_path = cache_path
         self._oauth: "SpotifyOAuth | None" = None
@@ -250,6 +257,8 @@ class SpotifyGateway:
             progress=int(100 * current.get("progress_ms", 0) / duration),
             elapsed_seconds=current.get("progress_ms", 0) // 1000,
             total_seconds=duration // 1000,
+            shuffle=bool(current.get("shuffle_state")),
+            repeat=self._REPEAT_FROM_SPOTIFY.get(current.get("repeat_state"), "off"),
         )
 
     def smtc_art(self) -> tuple[bytes, str] | None:
@@ -276,6 +285,14 @@ class SpotifyGateway:
                 sp.next_track()
             elif action == "previous":
                 sp.previous_track()
+            elif action == "shuffle_toggle":
+                playback = sp.current_playback()
+                shuffled = bool(playback.get("shuffle_state")) if playback else False
+                sp.shuffle(not shuffled)
+            elif action == "repeat_cycle":
+                playback = sp.current_playback()
+                current_repeat = (playback or {}).get("repeat_state", "off")
+                sp.repeat(self._REPEAT_CYCLE.get(current_repeat, "off"))
         except Exception as e:
             # Registrar el 429 aqui tambien (no solo en get_state) --
             # confirmado en vivo que si Kodi es la fuente activa,

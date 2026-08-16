@@ -56,7 +56,7 @@ class KodiGateway:
         })
         props = self.rpc("Player.GetProperties", {
             "playerid": player_id,
-            "properties": ["percentage", "speed", "time", "totaltime"],
+            "properties": ["percentage", "speed", "time", "totaltime", "shuffled", "repeat"],
         })
         if not item or "item" not in item:
             return None
@@ -93,27 +93,38 @@ class KodiGateway:
             progress=(props or {}).get("percentage", 0),
             elapsed_seconds=self._time_to_seconds((props or {}).get("time")),
             total_seconds=self._time_to_seconds((props or {}).get("totaltime")),
+            shuffle=bool((props or {}).get("shuffled")),
+            repeat=(props or {}).get("repeat") or "off",
         )
 
     def _enrich_cd_now_playing(self, file_path: str, title: str, artist: str, album: str, art: str | None):
         """Sustituye titulo/artista/album/caratula genericos de Kodi para
         una pista de CD por los datos reales de MusicBrainz, si ya se
-        identifico el disco (ver get_audio_cd_metadata). Solo usa lo que
-        ya este en cache -- get_last() no hace ninguna llamada de red ni a
-        Kodi, para no bloquear el sondeo de "ahora suena" (cada 2s).
+        identifico el disco QUE ESTA SONANDO AHORA (ver get_audio_cd_metadata).
 
-        Si el disco aun no se ha identificado (p. ej. el CD se puso a
-        reproducir desde el propio Kodi sin pasar antes por la pestaña CD
-        de Ambar, o la identificacion anterior fallo por una conexion
-        lenta), se queda con lo generico de Kodi para ESTE sondeo, pero
-        lanza una identificacion de fondo (identify_async, no bloqueante)
-        para que se autorrecupere sola en un sondeo siguiente -- sin
-        necesidad de que alguien pulse el boton de actualizar a mano."""
+        Comprueba el TOC actual (get_audio_cd_toc, una llamada JSON-RPC
+        local mas a Kodi -- barata, no hace red) y solo usa el resultado
+        cacheado si corresponde a ESE disco (get_last_for) -- confirmado
+        en vivo que sin esto, al cambiar de CD (sobre todo con
+        reproduccion automatica, audiocds.autoaction, sin pasar nunca por
+        la pestaña CD de Ambar) se seguian mostrando indefinidamente el
+        titulo/artista/caratula/pistas del disco ANTERIOR: get_last() sin
+        mas devolvia igualmente el ultimo resultado con exito aunque
+        fuera de otro disco, y por tanto nunca se disparaba una nueva
+        identificacion para el nuevo.
+
+        Si el disco aun no se ha identificado para este TOC concreto (CD
+        recien puesto, o la identificacion anterior fallo por una
+        conexion lenta), se queda con lo generico de Kodi para ESTE
+        sondeo, pero lanza una identificacion de fondo (identify_async,
+        no bloqueante) para que se autorrecupere sola en un sondeo
+        siguiente -- sin necesidad de que alguien pulse el boton de
+        actualizar a mano."""
         if not file_path.startswith("cdda://") or not self._cd_identifier:
             return title, artist, album, art
-        cd_meta = self._cd_identifier.get_last()
+        toc = self.get_audio_cd_toc()
+        cd_meta = self._cd_identifier.get_last_for(toc) if toc else None
         if not cd_meta:
-            toc = self.get_audio_cd_toc()
             if toc:
                 self._cd_identifier.identify_async(toc)
             return title, artist, album, art
@@ -137,6 +148,13 @@ class KodiGateway:
             self.rpc("Player.GoTo", {"playerid": pid, "to": "next"})
         elif action == "previous":
             self.rpc("Player.GoTo", {"playerid": pid, "to": "previous"})
+        elif action == "shuffle_toggle":
+            self.rpc("Player.SetShuffle", {"playerid": pid, "shuffle": "toggle"})
+        elif action == "repeat_cycle":
+            # "cycle" (Player.Repeat.Extended) le pide a Kodi que avance el
+            # solo al siguiente modo (off -> all -> one -> off) -- no hace
+            # falta que nosotros llevemos la cuenta del modo actual aqui.
+            self.rpc("Player.SetRepeat", {"playerid": pid, "repeat": "cycle"})
 
     def stop(self) -> None:
         players = self.rpc("Player.GetActivePlayers")

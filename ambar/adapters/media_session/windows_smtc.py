@@ -5,6 +5,7 @@ import threading
 from ambar.domain.playback import PlaybackState
 
 try:
+    from winrt.windows.media import MediaPlaybackAutoRepeatMode
     from winrt.windows.media.control import (
         GlobalSystemMediaTransportControlsSessionManager as SessionManager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus,
@@ -49,6 +50,10 @@ class WindowsSMTCGateway:
     # (Spotify.exe) -- comprobado en vivo. Sirve tambien para la version de
     # Microsoft Store, cuyo AUMID largo tambien contiene "spotify".
     _AUMID_NEEDLE = "spotify"
+    # Orden de ciclo para "repeat_cycle", en el vocabulario comun de la
+    # app ("off"/"one"/"all", ver domain/playback.py) -- igual que el
+    # "cycle" nativo de Kodi (Player.Repeat.Extended).
+    _REPEAT_CYCLE = {"off": "one", "one": "all", "all": "off"}
 
     def __init__(self):
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -130,7 +135,28 @@ class WindowsSMTCGateway:
             progress=int(100 * position / duration) if duration > 0 else 0,
             elapsed_seconds=int(position),
             total_seconds=int(duration),
+            shuffle=bool(info.is_shuffle_active),
+            repeat=self._repeat_from_winrt(info.auto_repeat_mode),
         )
+
+    @staticmethod
+    def _repeat_from_winrt(mode) -> str:
+        """MediaPlaybackAutoRepeatMode (WinRT) -> vocabulario comun de la
+        app ("off"/"one"/"all", ver domain/playback.py). None (no
+        reportado por la sesion) se trata como "off"."""
+        if mode == MediaPlaybackAutoRepeatMode.TRACK:
+            return "one"
+        if mode == MediaPlaybackAutoRepeatMode.LIST:
+            return "all"
+        return "off"
+
+    @staticmethod
+    def _repeat_to_winrt(value: str):
+        if value == "one":
+            return MediaPlaybackAutoRepeatMode.TRACK
+        if value == "all":
+            return MediaPlaybackAutoRepeatMode.LIST
+        return MediaPlaybackAutoRepeatMode.NONE
 
     async def _load_thumbnail(self, thumbnail_ref) -> None:
         try:
@@ -175,6 +201,13 @@ class WindowsSMTCGateway:
                 return await session.try_skip_next_async()
             if action == "previous":
                 return await session.try_skip_previous_async()
+            if action == "shuffle_toggle":
+                current = session.get_playback_info().is_shuffle_active
+                return await session.try_change_shuffle_active_async(not bool(current))
+            if action == "repeat_cycle":
+                current = self._repeat_from_winrt(session.get_playback_info().auto_repeat_mode)
+                next_mode = self._repeat_to_winrt(self._REPEAT_CYCLE.get(current, "off"))
+                return await session.try_change_auto_repeat_mode_async(next_mode)
         except Exception:
             return False
         return False

@@ -38,6 +38,16 @@ class MusicBrainzGateway:
         self._cache_path = cache_path
         self._cache: dict[str, dict | None] = self._load_cache()
         self._last: dict | None = None
+        # TOC (clave, ver _key) del disco al que corresponde _last -- sin
+        # esto, get_last() seguia devolviendo los metadatos del CD
+        # ANTERIOR indefinidamente tras cambiar de disco (confirmado en
+        # vivo: titulo/artista/caratula/pistas se quedaban pegados al CD
+        # que sonara justo antes al reproducirse uno nuevo de forma
+        # automatica, ver KodiGateway._enrich_cd_now_playing y
+        # CHANGELOG.md). _last en si no se limpia al cambiar de disco (no
+        # hay forma de detectar la expulsion desde aqui), se compara
+        # contra este TOC cada vez para saber si sigue siendo valido.
+        self._last_toc_key: str | None = None
         # TOCs con una identificacion de fondo ya en marcha (ver
         # identify_async) -- evita lanzar un hilo nuevo en cada sondeo de
         # "ahora suena" (cada 2s) mientras la consulta anterior sigue en
@@ -69,8 +79,27 @@ class MusicBrainzGateway:
     def get_last(self) -> dict | None:
         """Ultimo resultado identificado con exito, sin tocar la cache ni
         la red -- para el estado de "ahora suena" (sondeado cada 2s), que
-        no puede permitirse esperar a una consulta HTTP en cada vuelta."""
+        no puede permitirse esperar a una consulta HTTP en cada vuelta.
+
+        OJO: no valida que corresponda al disco insertado ahora mismo --
+        usar get_last_for(toc) en su lugar salvo que ya se sepa por otro
+        lado que el TOC no ha podido cambiar."""
         return self._last
+
+    def get_last_for(self, toc: list[int]) -> dict | None:
+        """Como get_last(), pero solo si el ultimo resultado corresponde
+        al TOC indicado -- el del disco que esta sonando ahora mismo. Sin
+        esto, tras cambiar de CD (o al arrancar una reproduccion
+        automatica de uno nuevo, ver audiocds.autoaction) se seguian
+        mostrando indefinidamente el titulo/artista/caratula/pistas del
+        CD anterior en "ahora suena": _last no se limpiaba solo al sacar
+        un disco y meter otro, y el sondeo de "ahora suena" solo dispara
+        una nueva identificacion (identify_async) cuando get_last()
+        viene vacio -- cosa que nunca pasaba si ya habia CUALQUIER disco
+        identificado con exito antes en esta misma ejecucion."""
+        if self._last is not None and self._last_toc_key == self._key(toc):
+            return self._last
+        return None
 
     def identify(self, toc: list[int], force: bool = False) -> dict | None:
         """force=True ignora la cache (en disco y en memoria) y repite la
@@ -95,6 +124,7 @@ class MusicBrainzGateway:
                 self._save_cache()
         if result:
             self._last = result
+            self._last_toc_key = key
         return result
 
     def identify_async(self, toc: list[int]) -> None:

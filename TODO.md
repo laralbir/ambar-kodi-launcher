@@ -33,27 +33,26 @@ de aquí.
   (mismo síntoma que macOS, aunque Kodi sí reproduce el CD sin
   problema) — arreglado usando `cdda://local/` directamente en vez de
   esos booleanos, ver `CHANGELOG.md`.
+- **La playlist "Descubrimiento semanal" de Spotify no aparece** en el
+  listado de Playlists de la biblioteca. `SpotifyGateway.get_playlists()`
+  simplemente devuelve `sp.current_user_playlists()` tal cual llega de
+  Spotify — a confirmar si Discover Weekly no está en esa respuesta en
+  absoluto (posible: es una playlist "algorítmica" del sistema, no
+  siempre aparece junto a las del propio usuario en ese endpoint) o si
+  llega pero se pierde en el camino. `_get_weekly_playlist_id`
+  (usada para el indicador 📻 de "ahora suena") ya la busca por nombre
+  dentro de esa misma respuesta paginada — si tampoco la encuentra ahí,
+  confirmaría que el endpoint no la trae y haría falta otra vía (p. ej.
+  buscarla por nombre con `sp.search`, o pedirla por su ID de forma
+  aparte).
 
 ## Pendiente
 
-- **Salvapantallas de hora/fecha por inactividad**: si pasan 5/10/15
-  minutos (configurable desde Ajustes) sin reproducir nada, mostrar
-  automáticamente la vista de hora y fecha a pantalla completa (la
-  misma que ya existe al tocar el reloj), y volver al home solo al
-  tocar la pantalla o en cuanto empiece a sonar algo.
-- **Reproducir CD de audio nativamente en Windows/macOS en vez de por
-  Kodi.** Valorado y desaconsejado por ahora: en Windows 11 no hay un
-  reproductor de CD "nativo" moderno (la app "Reproductor multimedia"
-  no soporta unidades ópticas; solo el Windows Media Player *clásico*
-  heredado sabe leer CDDA, lo que significaría lanzarlo por fuera o
-  reimplementar la lectura de pistas a bajo nivel). En macOS está peor:
-  desde Catalina, Music.app quitó el soporte de audio CD por completo,
-  sin API moderna limpia para sustituirlo. Además, el problema real que
-  ha dado esta app con el CD no era que Kodi fallara reproduciéndolo
-  (lo hace bien) sino su detección poco fiable (ya resuelto con
-  `cdda://local/`) y la falta de metadatos propios (ya resuelto con
-  MusicBrainz) — cambiar de reproductor no arreglaría nada de eso.
-  Retomar solo si aparece un motivo concreto que lo justifique.
+- **Seleccionar pista de CD con los números del mando a distancia**:
+  que las teclas numéricas del mando (si las manda como teclado, a
+  confirmar con el mando real) salten directamente a esa pista del CD
+  en curso, sin tener que navegar a la pestaña CD y tocarla en la
+  pantalla.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se

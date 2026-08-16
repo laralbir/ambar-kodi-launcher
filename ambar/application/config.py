@@ -35,6 +35,10 @@ class ConfigService:
             "SKIN": self._config.get("SKIN", ""),
             "IS_FIRST_RUN": self._is_first_run,
             "DEFAULT_SCREEN": self._config.get("DEFAULT_SCREEN", 0),
+            # Minutos sin reproducir nada antes de mostrar el reloj a pantalla
+            # completa solo (0 = desactivado) -- ver checkScreensaver en
+            # index.html, la logica de disparo vive entera en el frontend.
+            "SCREENSAVER_MINUTES": self._config.get("SCREENSAVER_MINUTES", 0),
         }
 
     def update(self, data: dict) -> None:

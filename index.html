@@ -268,6 +268,8 @@
   .tbtn:active{background: var(--amber-dim);}
   .tbtn.play{width:80px; height:80px; font-size:1.7rem; background: var(--amber); color:#241a06; border-color:var(--amber);}
   .tbtn.play:active{filter:brightness(0.85);}
+  .tbtn.tbtn-mode{width:44px; height:44px; font-size:1.05rem; color:var(--text-dim);}
+  .tbtn.tbtn-mode.active{color:var(--amber); border-color:var(--amber); background:var(--amber-dim);}
 
   .side-actions{
     flex: 0 0 auto; width: 15.5vw; max-width:300px; min-width:210px;
@@ -515,6 +517,25 @@
   .confirm-message{color:var(--text); font-size:1.05rem; line-height:1.5; margin-bottom:1.6rem; white-space:pre-line;}
   .confirm-actions{display:flex; gap:1rem; justify-content:center;}
   .confirm-actions .btn{flex:1;}
+
+  /* ---------- PICKER MODAL (sustituye a <select> nativo) ---------- */
+  #view-picker{
+    display:none; position:absolute; inset:0; z-index:205;
+    background:rgba(10,10,11,0.72); align-items:center; justify-content:center;
+  }
+  #view-picker.visible{display:flex;}
+  .picker-box{
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:10px;
+    width:min(480px, 88vw); max-height:70vh; display:flex; flex-direction:column;
+    overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,0.55);
+  }
+  .picker-header{
+    padding:1.2rem 1.5rem; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center; flex:0 0 auto;
+  }
+  .picker-header h2{margin:0; font-family:'Oswald', sans-serif; font-size:1.2rem; color:var(--amber); text-transform:uppercase;}
+  .picker-list{flex:1 1 auto; overflow-y:auto; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem;}
+  .picker-list .list-item.selected{border-color:var(--amber); color:var(--amber);}
   .settings-box{
     background:var(--bg); width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden;
   }
@@ -555,11 +576,11 @@
 
   .form-group{display:flex; flex-direction:column; gap:0.4rem;}
   .form-group label{font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:var(--text-dim);}
-  .form-group input, .form-group select{
+  .form-group input{
     background:var(--panel); border:1px solid var(--line); color:var(--text);
     padding:0.8rem; border-radius:6px; font-family:'Inter', sans-serif; font-size:1rem;
   }
-  .form-group input:focus, .form-group select:focus{outline:none; border-color:var(--amber);}
+  .form-group input:focus{outline:none; border-color:var(--amber);}
   
   .btn{
     padding:0.8rem 1.2rem; background:var(--panel-raised); border:1px solid var(--line);
@@ -571,6 +592,17 @@
   .btn-primary:active{filter:brightness(0.85);}
   .btn-danger{background:transparent; color:var(--danger); border-color:var(--danger);}
   .btn-danger:active{background:rgba(230,90,90,0.15);}
+
+  /* Sustituye a <select> nativo en Ajustes: un <select> se abre con un
+     picker nativo del sistema operativo/navegador que un click o Enter
+     SINTETICOS no pueden disparar (confirmado en vivo con el mando:
+     select.click() no abre nada, y el propio Enter real del mando se
+     intercepta antes de llegar al navegador -- ver navActivate). Este
+     botón abre en su lugar el modal #view-picker (mismo patrón que
+     #view-confirm), una lista de opciones normal y navegable con el
+     mando igual que cualquier otra vista. */
+  .picker-field{display:flex; align-items:center; justify-content:space-between; gap:0.6rem;}
+  .picker-field::after{content:"▾"; color:var(--text-dim); font-size:0.8rem;}
 
   .system-controls{
     display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:auto;
@@ -643,9 +675,11 @@
       </div>
 
       <div class="transport">
+        <div class="tbtn tbtn-mode" id="btn-shuffle" title="Aleatorio">🔀</div>
         <div class="tbtn" id="btn-prev">⏮</div>
         <div class="tbtn play" id="btn-play">⏯</div>
         <div class="tbtn" id="btn-next">⏭</div>
+        <div class="tbtn tbtn-mode" id="btn-repeat" title="Repetir">🔁</div>
       </div>
 
       <div class="vu-meter" id="vu-meter-home">
@@ -816,7 +850,7 @@
           </div>
           <div class="form-group">
             <label>Skin personalizada</label>
-            <select id="inp-skin"><option value="">Por defecto</option></select>
+            <div class="btn picker-field" id="inp-skin-field">Por defecto</div>
           </div>
           <div style="margin-top:1rem;">
             <div class="btn" id="btn-show-wizard" style="display:inline-block; font-size:0.85rem; padding:0.5rem 0.9rem;">Mostrar guía inicial</div>
@@ -829,8 +863,14 @@
 
           <div class="form-group" style="margin-bottom:2rem;">
             <label>Pantalla de arranque</label>
-            <select id="inp-screen"><option value="0">Principal</option></select>
+            <div class="btn picker-field" id="inp-screen-field">Principal</div>
             <p style="color:var(--text-dim); font-size:0.8rem; margin:0.3rem 0 0;">Relevante si el equipo saca imagen a la vez a la pantalla táctil y a la TV. El cambio se aplica al reiniciar el launcher.</p>
+          </div>
+
+          <div class="form-group" style="margin-bottom:2rem;">
+            <label>Salvapantallas de hora/fecha</label>
+            <div class="btn picker-field" id="inp-screensaver-field">Desactivado</div>
+            <p style="color:var(--text-dim); font-size:0.8rem; margin:0.3rem 0 0;">Muestra el reloj a pantalla completa si pasa ese tiempo sin reproducir nada. Vuelve al home solo, en cuanto empiece a sonar algo, o al tocar la pantalla.</p>
           </div>
 
           <div class="system-controls">
@@ -857,6 +897,17 @@
         <div class="btn" id="confirm-cancel-btn">Cancelar</div>
         <div class="btn btn-primary" id="confirm-accept-btn">Aceptar</div>
       </div>
+    </div>
+  </div>
+
+  <!-- PICKER MODAL (sustituye a <select> nativo, ver comentario CSS) -->
+  <div id="view-picker">
+    <div class="picker-box">
+      <div class="picker-header">
+        <h2 id="picker-title"></h2>
+        <div class="close-settings" id="picker-close-btn">✕</div>
+      </div>
+      <div class="picker-list" id="picker-list"></div>
     </div>
   </div>
 
@@ -896,6 +947,15 @@
   }
   let vuMeterStyle = "leds";
   const el = (id) => document.getElementById(id);
+  // Salvapantallas de hora/fecha por inactividad (ver checkScreensaver
+  // mas abajo) -- 0 = desactivado. lastPlayingAt se resetea tanto al ver
+  // algo reproduciendose como al cerrar la vista de reloj a pantalla
+  // completa (por cualquier motivo: el propio salvapantallas
+  // descartandose solo, o simplemente el usuario mirando la hora a
+  // proposito), asi que un vistazo manual tambien retrasa el disparo.
+  let screensaverMinutes = 0;
+  let lastPlayingAt = Date.now();
+  let screensaverActive = false;
 
   // ---------- WEBSOCKETS REAL-TIME ----------
   const socket = io();
@@ -908,6 +968,7 @@
       applyVuMeterSmoothing(cfg.VU_METER_SMOOTHING);
       applyPlaylistVisibility(!!cfg.SHOW_PLAYLIST);
       applySkin(cfg.SKIN);
+      screensaverMinutes = Number(cfg.SCREENSAVER_MINUTES) || 0;
       // Guia inicial automatica solo la primera vez que arranca sin
       // config.json previo, y solo una vez por carga de pagina (evita
       // reabrirse en cada reconexion del WebSocket).
@@ -1208,10 +1269,36 @@
     target.appendChild(time);
     target.appendChild(date);
     el("view-clock-fullscreen").classList.toggle("visible", active);
+    if(!active){
+      // Cualquier cierre cuenta como actividad -- retrasa el proximo
+      // disparo del salvapantallas tanto si lo cerro el propio
+      // mecanismo automatico (toque en pantalla) como si el usuario
+      // solo estaba mirando la hora a proposito.
+      screensaverActive = false;
+      lastPlayingAt = Date.now();
+    }
   }
   el("clock-widget").addEventListener("click", () => toggleClockFullscreen(true));
   el("clock-fullscreen-back").addEventListener("click", () => toggleClockFullscreen(false));
   el("clock-fullscreen-container").addEventListener("click", () => toggleClockFullscreen(false));
+
+  // Salvapantallas de hora/fecha: si pasan SCREENSAVER_MINUTES sin nada
+  // reproduciendose, muestra el reloj a pantalla completa solo -- misma
+  // vista que al tocar el reloj a proposito (ver toggleClockFullscreen).
+  // No interrumpe si hay una vista superpuesta abierta (biblioteca,
+  // ajustes, artista...): solo tiene sentido si el launcher esta
+  // realmente inactivo en el home, no en medio de que alguien elija que
+  // reproducir.
+  function checkScreensaver(){
+    if(!screensaverMinutes || screensaverActive) return;
+    if(Date.now() - lastPlayingAt < screensaverMinutes * 60000) return;
+    const overlayIds = ['view-confirm', 'view-vumeter-fullscreen', 'view-clock-fullscreen',
+      'view-settings', 'view-artist', 'view-playlist', 'view-library'];
+    if(overlayIds.some(id => el(id)?.classList.contains('visible'))) return;
+    screensaverActive = true;
+    toggleClockFullscreen(true);
+  }
+  setInterval(checkScreensaver, 15000);
 
   function formatDb(db){
     return (db <= VU_DB_MIN ? "-Inf" : Math.round(db)) + " dB";
@@ -1387,6 +1474,10 @@
     currentSource = data.source;
     currentArtist = data.artist || "";
     currentAlbum = data.album || "";
+    if(data.playing){
+      lastPlayingAt = Date.now();
+      if(screensaverActive) toggleClockFullscreen(false);
+    }
     const badge = el("source-badge");
     badge.className = "source-badge" + (data.source ? " active " + data.source : "");
     el("source-label").textContent = data.source === "kodi" ? "Kodi"
@@ -1401,6 +1492,7 @@
     }
 
     updateSpotifyBadges(data.source === "spotify" ? data.track_id : null);
+    updatePlaybackModeButtons(data);
     updateNowPlayingInfo("clock-nowplaying", "clock-nowplaying-title", "clock-nowplaying-artist", data);
     updateNowPlayingInfo("vumeter-nowplaying", "vumeter-nowplaying-title", "vumeter-nowplaying-artist", data);
 
@@ -1595,6 +1687,22 @@
   el("btn-play").addEventListener("click", () => control("playpause"));
   el("btn-next").addEventListener("click", () => control("next"));
   el("btn-prev").addEventListener("click", () => control("previous"));
+  el("btn-shuffle").addEventListener("click", () => control("shuffle_toggle"));
+  el("btn-repeat").addEventListener("click", () => control("repeat_cycle"));
+
+  // Refleja el estado de aleatorio/repetir que ya viene en cada
+  // now-playing (ver PlaybackState.shuffle/repeat) -- repeat usa el
+  // mismo vocabulario "off"/"one"/"all" tanto para Kodi como Spotify
+  // (traducido en el backend, ver SpotifyGateway/WindowsSMTCGateway).
+  // "one" cambia el propio icono a 🔂 (repetir 1) en vez de un badge
+  // aparte, para no complicar el CSS de un boton tan pequeño.
+  function updatePlaybackModeButtons(data){
+    el("btn-shuffle").classList.toggle("active", !!data.shuffle);
+    const repeat = data.repeat || "off";
+    const repeatBtn = el("btn-repeat");
+    repeatBtn.classList.toggle("active", repeat !== "off");
+    repeatBtn.textContent = repeat === "one" ? "🔂" : "🔁";
+  }
 
   async function seek(percentage){
     if(!currentSource) return;
@@ -2316,6 +2424,26 @@
   // los mismos campos), en vez de duplicar un asistente aparte: se muestra
   // sola la primera vez que arranca la app sin config.json previo, y se
   // puede volver a mostrar en cualquier momento con "Mostrar guía inicial".
+  // Estado de los tres "selects" de Ajustes (ahora picker-field, ver
+  // showPicker) -- se necesita guardar el value elegido aparte porque ya
+  // no vive en un <select> nativo. *Options se repueblan cada vez que se
+  // abre Ajustes (skins/pantallas pueden cambiar entre una apertura y
+  // otra); screensaverOptions es fija.
+  let skinOptions = [{value: "", label: "Por defecto"}];
+  let selectedSkin = "";
+  let screenOptions = [{value: 0, label: "Principal"}];
+  let selectedScreen = 0;
+  const screensaverOptions = [
+    {value: 0, label: "Desactivado"}, {value: 5, label: "A los 5 minutos"},
+    {value: 10, label: "A los 10 minutos"}, {value: 15, label: "A los 15 minutos"},
+  ];
+  let selectedScreensaverMinutes = 0;
+
+  function pickerLabel(options, value){
+    const match = options.find(o => o.value === value);
+    return match ? match.label : options[0].label;
+  }
+
   async function openSettings(showWizard){
     el("view-settings").classList.add("visible");
     el("wizard-banner").classList.toggle("visible", !!showWizard);
@@ -2328,19 +2456,18 @@
       el("inp-spotify-secret").value = cfg.SPOTIFY_CLIENT_SECRET || "";
       applyVuMeterStyle(cfg.VU_METER_STYLE);
       applyVuMeterSmoothing(cfg.VU_METER_SMOOTHING);
-      const skinSelect = el("inp-skin");
       const skins = await (await fetch("/api/skins")).json().catch(() => []);
-      skinSelect.innerHTML = `<option value="">Por defecto</option>` +
-        skins.map(s => `<option value="${s}">${s}</option>`).join('');
-      skinSelect.value = cfg.SKIN || "";
-      const screenSelect = el("inp-screen");
+      skinOptions = [{value: "", label: "Por defecto"}, ...skins.map(s => ({value: s, label: s}))];
+      selectedSkin = cfg.SKIN || "";
+      el("inp-skin-field").textContent = pickerLabel(skinOptions, selectedSkin);
       const screens = await (await fetch("/api/system/screens")).json().catch(() => []);
-      if(screens.length > 0){
-        screenSelect.innerHTML = screens.map(s =>
-          `<option value="${s.index}">Pantalla ${s.index + 1} (${s.width}x${s.height})</option>`
-        ).join('');
-      }
-      screenSelect.value = cfg.DEFAULT_SCREEN ?? 0;
+      screenOptions = screens.length > 0
+        ? screens.map(s => ({value: s.index, label: `Pantalla ${s.index + 1} (${s.width}x${s.height})`}))
+        : [{value: 0, label: "Principal"}];
+      selectedScreen = Number(cfg.DEFAULT_SCREEN ?? 0);
+      el("inp-screen-field").textContent = pickerLabel(screenOptions, selectedScreen);
+      selectedScreensaverMinutes = Number(cfg.SCREENSAVER_MINUTES ?? 0);
+      el("inp-screensaver-field").textContent = pickerLabel(screensaverOptions, selectedScreensaverMinutes);
     } catch(e){}
     refreshSpotifyAuthStatus();
     if(spotifyAuthPollInterval) clearInterval(spotifyAuthPollInterval);
@@ -2349,6 +2476,28 @@
     // despues de autorizar en el navegador de este equipo.
     spotifyAuthPollInterval = setInterval(refreshSpotifyAuthStatus, 3000);
   }
+
+  el("inp-skin-field").addEventListener("click", async () => {
+    const value = await showPicker("Skin personalizada", skinOptions, selectedSkin);
+    if(value !== undefined){
+      selectedSkin = value;
+      el("inp-skin-field").textContent = pickerLabel(skinOptions, selectedSkin);
+    }
+  });
+  el("inp-screen-field").addEventListener("click", async () => {
+    const value = await showPicker("Pantalla de arranque", screenOptions, selectedScreen);
+    if(value !== undefined){
+      selectedScreen = value;
+      el("inp-screen-field").textContent = pickerLabel(screenOptions, selectedScreen);
+    }
+  });
+  el("inp-screensaver-field").addEventListener("click", async () => {
+    const value = await showPicker("Salvapantallas de hora/fecha", screensaverOptions, selectedScreensaverMinutes);
+    if(value !== undefined){
+      selectedScreensaverMinutes = value;
+      el("inp-screensaver-field").textContent = pickerLabel(screensaverOptions, selectedScreensaverMinutes);
+    }
+  });
 
   let spotifyAuthPollInterval = null;
 
@@ -2385,12 +2534,15 @@
       KODI_PORT: el("inp-kodi-port").value,
       SPOTIFY_CLIENT_ID: el("inp-spotify-id").value,
       SPOTIFY_CLIENT_SECRET: el("inp-spotify-secret").value,
-      SKIN: el("inp-skin").value,
-      DEFAULT_SCREEN: Number(el("inp-screen").value)
+      SKIN: selectedSkin,
+      DEFAULT_SCREEN: Number(selectedScreen),
+      SCREENSAVER_MINUTES: Number(selectedScreensaverMinutes)
     };
     try {
       await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       applySkin(payload.SKIN);
+      screensaverMinutes = payload.SCREENSAVER_MINUTES;
+      lastPlayingAt = Date.now();
       closeSettings();
       await showModal("Guardado. El servidor se ha reconfigurado.", {mode:'alert'});
     } catch(e) { await showModal("Error guardando la configuración.", {mode:'alert'}); }
@@ -2432,6 +2584,34 @@
   el('confirm-accept-btn').addEventListener('click', () => closeModal(true));
   el('confirm-cancel-btn').addEventListener('click', () => closeModal(false));
 
+  // Sustituye a <select> nativo -- ver comentario CSS de #view-picker
+  // para el motivo (un <select> no se puede abrir con un click/Enter
+  // sintéticos). options: [{value, label}, ...]. Devuelve el value
+  // elegido, o undefined si se cierra sin elegir (✕ o Atrás).
+  let pickerResolve = null;
+  function showPicker(title, options, currentValue){
+    return new Promise((resolve) => {
+      pickerResolve = resolve;
+      el('picker-title').textContent = title;
+      const list = el('picker-list');
+      list.innerHTML = options.map((opt) =>
+        `<div class="list-item${opt.value === currentValue ? ' selected' : ''}">${opt.label}${opt.value === currentValue ? ' ✓' : ''}</div>`
+      ).join('');
+      Array.from(list.children).forEach((node, i) => {
+        node.addEventListener('click', () => closePicker(options[i].value));
+      });
+      el('view-picker').classList.add('visible');
+      navSetFocus(null);
+      navEnsureFocus();
+    });
+  }
+  function closePicker(value){
+    el('view-picker').classList.remove('visible');
+    navSetFocus(null);
+    if(pickerResolve){ const resolve = pickerResolve; pickerResolve = null; resolve(value); }
+  }
+  el('picker-close-btn').addEventListener('click', () => closePicker(undefined));
+
   // ===================== Navegación con mando/teclado (D-pad) =====================
   // El mando (JZK G20S Pro) funciona como teclado/ratón HID estándar: las
   // flechas del D-pad mandan ArrowUp/Down/Left/Right, y el círculo
@@ -2448,7 +2628,7 @@
   function navSelector(){
     return '.grid-card, .list-item, .tbtn, .action-card, .lib-tab, .back-btn, ' +
       '.btn:not(.disabled), .playlist-toggle-btn, .volume-inline-btn, ' +
-      '.art-frame, .clock-widget, .cd-header-refresh, [data-nav-item]';
+      '.art-frame, .clock-widget, .vu-meter-expand-btn, .cd-header-refresh, [data-nav-item]';
   }
 
   function navIsVisible(el){
@@ -2470,7 +2650,7 @@
   // prioridad), o en #view-home si no hay ninguna abierta.
   function navActiveRoot(){
     const overlayIds = [
-      'view-confirm',
+      'view-picker', 'view-confirm',
       'view-vumeter-fullscreen', 'view-clock-fullscreen',
       'view-settings', 'view-artist', 'view-playlist', 'view-library',
     ];
@@ -2522,6 +2702,17 @@
     const cur = navCurrentEl.getBoundingClientRect();
     const curCenter = {x: cur.left + cur.width/2, y: cur.top + cur.height/2};
     let best = null, bestScore = Infinity;
+    // Candidato "alineado" (desvio lateral no mayor que el propio avance
+    // en la direccion pedida, ~45°): se prefiere sobre el mejor global
+    // si existe alguno. Sin esto, un botón suelto sin nada más a su
+    // altura/columna (p. ej. el de la lista de reproducción, arriba a
+    // la derecha del todo) podía quedar inalcanzable desde cualquier
+    // punto de partida: el peso del desvío lateral (perp*2.5) en el
+    // score ya penaliza estar desalineado, pero seguía permitiendo que
+    // un candidato bien alineado y algo más lejos perdiera contra otro
+    // más cercano en línea recta pero muy desviado -- confirmado en
+    // vivo navegando el home con el mando.
+    let bestAligned = null, bestAlignedScore = Infinity;
     for(const el of items){
       if(el === navCurrentEl) continue;
       const r = el.getBoundingClientRect();
@@ -2532,8 +2723,10 @@
       const perp = Math.abs(vx*dy - vy*dx); // desvio lateral respecto al eje pedido
       const score = dot + perp*2.5;
       if(score < bestScore){ bestScore = score; best = el; }
+      if(perp <= dot && score < bestAlignedScore){ bestAlignedScore = score; bestAligned = el; }
     }
-    if(best) navSetFocus(best);
+    const winner = bestAligned || best;
+    if(winner) navSetFocus(winner);
   }
 
   function navActivate(){
@@ -2543,6 +2736,14 @@
   }
 
   function navBack(){
+    // El picker de opciones (sustituye a <select>), si está abierto, se
+    // lleva Atrás entero -- se cierra sin elegir nada nuevo, igual que
+    // el botón ✕.
+    const pickerView = el('view-picker');
+    if(pickerView && pickerView.classList.contains('visible')){
+      closePicker(undefined);
+      return;
+    }
     // El modal de confirmación/aviso, si está abierto, se lleva Atrás
     // entero -- equivale a "Cancelar" (o a "Aceptar" si es un aviso sin
     // opción de cancelar, ver showModal) en vez de dejar pasar el Atrás a
@@ -2590,15 +2791,44 @@
   // Boton "Home" del mando -- confirmado en vivo: keyCode=172
   // (VK_BROWSER_HOME / event.key "BrowserHome").
   function isHomeKey(ev){ return ev.key === 'BrowserHome' || ev.keyCode === 172; }
+  // Botones Pg+/Pg- del mando -- mandan PageUp/PageDown estandar
+  // (confirmado en vivo), reutilizados aqui para subir/bajar el scroll
+  // de listados largos (biblioteca, picker de opciones...) sin depender
+  // de que el mando tenga una rueda de scroll de verdad.
+  function isPageUpKey(ev){ return ev.key === 'PageUp' || ev.keyCode === 33; }
+  function isPageDownKey(ev){ return ev.key === 'PageDown' || ev.keyCode === 34; }
+
+  // Contenedor scrollable mas cercano a partir de un elemento -- sube por
+  // los ancestros hasta encontrar uno con overflow-y real (auto/scroll)
+  // y contenido que de verdad desborda. Generico a proposito: sirve
+  // igual para la biblioteca, el picker de opciones, Ajustes, etc. sin
+  // tener que enumerar cada contenedor a mano.
+  function findScrollableAncestor(node){
+    while(node && node !== document.body && node !== document.documentElement){
+      const style = getComputedStyle(node);
+      if((style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight){
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function navScrollPage(direction){
+    const target = findScrollableAncestor(navCurrentEl) || findScrollableAncestor(navActiveRoot());
+    if(!target) return;
+    target.scrollBy({top: direction * target.clientHeight * 0.8, behavior: 'smooth'});
+  }
 
   document.addEventListener('keydown', (ev) => {
     // Dentro de un campo de texto (Ajustes: host/puerto/credenciales) las
     // flechas mueven el cursor y Backspace borra -- comportamiento nativo
-    // del navegador, no hay que interceptarlo. Solo Escape sigue
-    // funcionando ahi (para poder salir del campo con el mando).
+    // del navegador, no hay que interceptarlo. Escape y Pg+/Pg- siguen
+    // funcionando ahi (para poder salir del campo o hacer scroll con el
+    // mando sin que se interponga el campo de texto enfocado).
     const tag = document.activeElement && document.activeElement.tagName;
     const inTextField = tag === 'INPUT' || tag === 'TEXTAREA';
-    if(inTextField && !isBackKey(ev)) return;
+    if(inTextField && !isBackKey(ev) && !isPageUpKey(ev) && !isPageDownKey(ev)) return;
     if(isOkKey(ev)){ ev.preventDefault(); navActivate(); return; }
     // Atras actua al instante en keydown, sin mas logica -- se probo a
     // distinguir pulsacion corta/larga (cerrar Ambar con una pulsacion
@@ -2609,6 +2839,8 @@
     // llama de mas.
     if(isBackKey(ev)){ ev.preventDefault(); navBack(); return; }
     if(isHomeKey(ev)){ ev.preventDefault(); navGoHome(); return; }
+    if(isPageUpKey(ev)){ ev.preventDefault(); navScrollPage(-1); return; }
+    if(isPageDownKey(ev)){ ev.preventDefault(); navScrollPage(1); return; }
     switch(ev.key){
       case 'ArrowUp': ev.preventDefault(); navMove(0, -1); break;
       case 'ArrowDown': ev.preventDefault(); navMove(0, 1); break;

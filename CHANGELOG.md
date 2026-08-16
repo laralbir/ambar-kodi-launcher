@@ -7,6 +7,80 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- **Los `<select>` de Ajustes (skin, pantalla de arranque, salvapantallas)
+  no se podían abrir con el mando**: un `<select>` nativo se abre con un
+  picker propio del sistema operativo/navegador, y ni un click ni un
+  Enter *sintéticos* (que es justo lo que generaba `navActivate()`) lo
+  disparan — confirmado que ni siquiera un Enter real del mando llegaba
+  a abrirlo, porque el propio `keydown` handler le hacía `preventDefault()`
+  antes. Sustituidos los tres por un botón que abre un modal propio
+  (`#view-picker`, mismo patrón que `#view-confirm`): una lista de
+  opciones normal, navegable con el mando exactamente igual que
+  cualquier otra vista (D-pad + OK + Atrás), sin depender de ningún
+  picker nativo.
+- **Botones Pg+/Pg- del mando mapeados a subir/bajar el scroll**
+  (mandan `PageUp`/`PageDown` estándar) — útil en listados largos de la
+  biblioteca o en el nuevo picker de opciones. Hace scroll sobre el
+  contenedor scrollable más cercano al elemento con foco (genérico,
+  sirve para cualquier vista sin tener que enumerar cada contenedor a
+  mano).
+- **Salvapantallas de hora/fecha por inactividad**: configurable desde
+  Ajustes (desactivado/5/10/15 minutos). Si pasa ese tiempo sin nada
+  reproduciéndose, muestra el reloj a pantalla completa solo (la misma
+  vista que ya existía al tocar el reloj a propósito) — no interrumpe si
+  hay alguna vista superpuesta abierta (biblioteca, ajustes, artista...),
+  solo actúa si el launcher está realmente inactivo en el home. Vuelve
+  al home solo, en cuanto empiece a sonar algo o al tocar la pantalla
+  (cualquier cierre de la vista de reloj, sea automático o manual,
+  reinicia también la cuenta atrás).
+- **Modos de reproducción: aleatorio y repetir (off/uno/todo)**, para
+  Kodi y Spotify por igual, con dos botones nuevos junto al transporte
+  (🔀/🔁, este último cambia a 🔂 en modo "repetir una"). Kodi usa
+  `Player.SetShuffle`/`Player.SetRepeat` (con `"cycle"`, que ya avanza
+  el solo al siguiente modo); Spotify usa `sp.shuffle`/`sp.repeat` de la
+  Web API, o los métodos equivalentes de SMTC
+  (`try_change_shuffle_active_async`/`try_change_auto_repeat_mode_async`)
+  con preferencia cuando el Spotify de escritorio está sonando en local
+  (mismo criterio que el resto de controles de transporte, ver SMTC en
+  `CHANGELOG.md`/`CLAUDE.md`). `PlaybackState` gana dos campos
+  (`shuffle`, `repeat`) con el mismo vocabulario para las tres fuentes
+  ("off"/"one"/"all", el que ya usa Kodi de forma nativa) — Spotify y
+  SMTC traducen el suyo propio al leerlo y escribirlo.
+
+### Fixed
+- **Al cambiar/insertar un CD nuevo con reproducción automática
+  (`audiocds.autoaction`), "ahora suena" se quedaba con el título,
+  artista, carátula y nombres de pista del CD ANTERIOR indefinidamente**,
+  en vez de identificar el disco nuevo. Causa: `MusicBrainzGateway.
+  get_last()` devolvía el último resultado identificado con éxito sin
+  comprobar que correspondiera al disco que está sonando ahora — una vez
+  identificado CUALQUIER CD con éxito en la misma ejecución, el sondeo de
+  "ahora suena" nunca volvía a disparar una nueva identificación (solo lo
+  hace cuando `get_last()` viene vacío). Ahora se valida contra el TOC
+  del disco actual (`get_last_for`, comparado con `get_audio_cd_toc()` en
+  cada sondeo) — si no coincide, se trata como "aún sin identificar" para
+  ESE disco y se dispara una identificación nueva en segundo plano, igual
+  que la primera vez.
+- **La navegación por el home con el mando no llegaba a todos los
+  botones** (p. ej. el de mostrar la lista de reproducción, suelto arriba
+  a la derecha del todo sin nada más a su altura): el algoritmo de
+  navegación espacial podía dejar botones sueltos inalcanzables desde
+  cualquier punto de partida, si otro candidato peor alineado pero más
+  cercano en línea recta siempre ganaba. Ahora se prefiere, cuando
+  existe, un candidato razonablemente alineado con la dirección pedida
+  (desvío lateral no mayor que el propio avance, ~45°) sobre el mejor
+  candidato global — cae al comportamiento anterior si no hay ninguno
+  así de alineado, por lo que no debería quitar ningún salto que ya
+  funcionara.
+- **El botón ⛶ para ampliar el VU-metro a pantalla completa seguía sin
+  ser alcanzable con el mando incluso después del cambio de arriba**:
+  causa distinta y más simple — `.vu-meter-expand-btn` sencillamente
+  nunca se había incluido en la lista de selectores de `navSelector()`
+  (a diferencia del resto de botones del home), así que ni entraba en la
+  búsqueda espacial en absoluto, no era un problema de alineación.
+  Añadido a la lista.
+
 ## [0.6.0] - 2026-08-12
 
 ### Added
