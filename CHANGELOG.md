@@ -18,7 +18,11 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   documento normal) — no es una captura de pantalla estática, así que
   no se queda desactualizada en el primer rediseño. Verificado
   visualmente con Edge en modo headless contra el propio fichero
-  (`file://`, sin necesidad del servidor).
+  (`file://`, sin necesidad del servidor). Ampliado con tres pantallas
+  más bajo "Otras pantallas": Ajustes (rejilla de 3 columnas del estilo
+  del VU-metro, campos tipo `picker-field`), Reloj a pantalla completa,
+  y Navegación de biblioteca (`.lib-topbar`/`.grid-card`, artistas y
+  álbumes comparten la misma rejilla que carpetas y CD).
 
 ### Fixed
 - **La tecla física Play/Pausa del mando a veces no hacía nada tras un

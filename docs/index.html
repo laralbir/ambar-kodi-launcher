@@ -248,6 +248,75 @@
   .action-card.kodi{border-left:4px solid var(--kodi);}
   .action-card.spotify{border-left:4px solid var(--spotify); opacity:0.85;}
   .action-card.settings{flex:0 0 auto; height:44px; border-left:4px solid var(--line);}
+
+  /* ---------- Ajustes, reloj a pantalla completa, biblioteca ----------
+     Mismo principio que arriba: clases/reglas copiadas literales de
+     index.html, contenedor con tamaño fijo en vez de las unidades
+     vh/vw/inset:0 del original (ahí piensan en ocupar toda la pantalla
+     del kiosko, aquí hace falta un tamaño de documento normal). */
+  .device-frame-col{
+    background:var(--bg); border:1px solid var(--line); border-radius:12px;
+    margin:1.5rem 0; overflow:hidden; user-select:none;
+  }
+  .settings-header{
+    padding:1rem 1.4rem; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .settings-header h2{margin:0; font-family:'Oswald', sans-serif; font-size:1.3rem; color:var(--amber); text-transform:uppercase;}
+  .close-settings{font-size:1.2rem; color:var(--text-dim);}
+  .settings-body{padding:1.4rem; display:flex; gap:2rem;}
+  .settings-col{flex:1; min-width:0; display:flex; flex-direction:column; gap:1.1rem;}
+  .form-group{display:flex; flex-direction:column; gap:0.35rem;}
+  .form-group label{font-family:'JetBrains Mono', monospace; font-size:0.78rem; color:var(--text-dim);}
+  .form-group input{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    padding:0.6rem 0.7rem; border-radius:6px; font-family:'Inter', sans-serif; font-size:0.9rem;
+  }
+  .btn{
+    padding:0.6rem 0.9rem; background:var(--panel-raised); border:1px solid var(--line);
+    color:var(--text); border-radius:6px; font-size:0.85rem; text-align:center; font-weight:500;
+  }
+  .btn-primary{background:var(--amber); color:#000; border-color:var(--amber);}
+  .picker-field{display:flex; align-items:center; justify-content:space-between; gap:0.6rem;}
+  .picker-field::after{content:"▾"; color:var(--text-dim); font-size:0.8rem;}
+
+  .clock-fullscreen-demo{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3rem 1.5rem; text-align:center;
+  }
+  .clock-fullscreen-demo .clock-time{font-size:3.6rem; letter-spacing:0.01em;}
+  .clock-fullscreen-demo .clock-date{font-size:1.1rem; margin-top:0.4rem;}
+  .clock-nowplaying{margin-top:1.6rem;}
+  .clock-nowplaying-title{
+    font-family:'Oswald', sans-serif; font-weight:600; text-transform:uppercase;
+    font-size:1.1rem; color:var(--amber); letter-spacing:0.02em;
+  }
+  .clock-nowplaying-artist{font-size:0.9rem; color:var(--text-dim); margin-top:0.2rem;}
+
+  .lib-topbar{
+    padding:0 1.2rem; height:56px; display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--line); background:var(--panel); gap:1rem;
+  }
+  .lib-topbar-left{display:flex; align-items:center; gap:0.8rem;}
+  .lib-topbar-right{display:flex; gap:0.4rem; overflow-x:auto;}
+  .back-btn{
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--text); display:flex; align-items:center; justify-content:center;
+    font-size:1rem; flex:0 0 auto;
+  }
+  .lib-title{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.04em; font-size:1rem; color:var(--text);}
+  .lib-tab{
+    padding:0.4rem 0.8rem; border:1px solid var(--line); border-radius:6px; background:var(--panel-raised);
+    color:var(--text-dim); font-size:0.78rem; font-weight:500; white-space:nowrap; flex:0 0 auto;
+  }
+  .lib-tab.active{background:var(--text); color:#000; border-color:var(--text);}
+  .lib-content{padding:1.4rem;}
+  .grid-view{display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:1rem;}
+  .grid-card{background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .grid-card-img{width:100%; aspect-ratio:1/1; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:var(--text-dim);}
+  .grid-card-info{padding:0.6rem;}
+  .grid-card-title{font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .grid-card-sub{font-size:0.72rem; color:var(--text-dim); margin-top:0.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 </style>
 </head>
 <body>
@@ -475,6 +544,93 @@
       <li><strong>Expulsar CD:</strong> icono ⏏ junto al de la lista de reproducción — siempre activo (con o sin disco puesto, para poder meter uno nuevo). Para la reproducción antes de abrir la bandeja.</li>
       <li><strong>Pantalla de arranque:</strong> si el mini PC saca imagen a la vez a la pantalla táctil y a la TV, puedes elegir en cuál de las dos arranca Ámbar desde "Ajustes y Sistema" → "Pantalla de arranque". El cambio se aplica la próxima vez que arranques el launcher (no en caliente). Ajustes se abre ahora a pantalla completa, no como una ventana pequeña.</li>
     </ul>
+
+    <h3>Otras pantallas</h3>
+
+    <div class="device-frame-col">
+      <div class="settings-header">
+        <h2>Ajustes</h2>
+        <div class="close-settings">✕</div>
+      </div>
+      <div class="settings-body">
+        <div class="settings-col">
+          <div class="form-group">
+            <label>Kodi Host (IP)</label>
+            <input type="text" value="localhost" disabled>
+          </div>
+          <div class="form-group">
+            <label>Estilo del VU-metro</label>
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem;">
+              <div class="btn btn-primary">Barras LED</div>
+              <div class="btn">Aguja simple</div>
+              <div class="btn">Aguja realista</div>
+              <div class="btn">Espectómetro</div>
+              <div class="btn">Osciloscopio</div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-col">
+          <div class="form-group">
+            <label>Pantalla de arranque</label>
+            <div class="btn picker-field">Principal</div>
+          </div>
+          <div class="form-group">
+            <label>Salvapantallas de hora/fecha</label>
+            <div class="btn picker-field">10 minutos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="device-caption">↑ Ajustes — misma rejilla de 3 columnas para el estilo del VU-metro, navegable con el mando.</div>
+
+    <div class="device-frame-col">
+      <div class="clock-fullscreen-demo">
+        <div class="clock-time">21:43:07</div>
+        <div class="clock-date">domingo, 16 de agosto</div>
+        <div class="clock-nowplaying">
+          <div class="clock-nowplaying-title">Carcaj</div>
+          <div class="clock-nowplaying-artist">Puño Dragón</div>
+        </div>
+      </div>
+    </div>
+    <div class="device-caption">↑ Reloj a pantalla completa — se abre tocando el reloj del home, o solo tras el tiempo configurado de inactividad (salvapantallas).</div>
+
+    <div class="device-frame-col">
+      <div class="lib-topbar">
+        <div class="lib-topbar-left">
+          <div class="back-btn">←</div>
+          <div class="lib-title">Biblioteca</div>
+        </div>
+        <div class="lib-topbar-right">
+          <div class="lib-tab active">Artistas (Kodi)</div>
+          <div class="lib-tab">Álbumes (Kodi)</div>
+          <div class="lib-tab">Carpetas</div>
+          <div class="lib-tab">CD</div>
+          <div class="lib-tab">Artistas (Spotify)</div>
+        </div>
+      </div>
+      <div class="lib-content">
+        <div class="grid-view">
+          <div class="grid-card">
+            <div class="grid-card-img">🎤</div>
+            <div class="grid-card-info"><div class="grid-card-title">Puño Dragón</div></div>
+          </div>
+          <div class="grid-card">
+            <div class="grid-card-img">🎤</div>
+            <div class="grid-card-info"><div class="grid-card-title">Romeo Santos</div></div>
+          </div>
+          <div class="grid-card">
+            <div class="grid-card-img">🎤</div>
+            <div class="grid-card-info"><div class="grid-card-title">Talking Heads</div></div>
+          </div>
+          <div class="grid-card">
+            <div class="grid-card-img">🎤</div>
+            <div class="grid-card-info"><div class="grid-card-title">Ana Mena</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="device-caption">↑ Navegación de artistas/álbumes — misma rejilla (<code>.grid-card</code>) para ambos, y para las carpetas y el CD insertado.</div>
 
     <div class="note">
       <p><strong>VU-metro en macOS (solo si compilas/ejecutas Ámbar en un Mac):</strong> la primera vez, macOS pedirá permiso de "Grabación de pantalla y del audio del sistema" (Ajustes del Sistema → Privacidad y Seguridad). Si la app no aparece sola en esa lista tras concederlo, añádela a mano con el botón "+" navegando hasta el `.app`. Como la app se firma de forma ad-hoc (sin certificado de Apple Developer), macOS puede pedir el permiso otra vez tras recompilarla — es una limitación conocida de macOS con este tipo de firma, no un fallo de la app. Tras conceder el permiso, cierra del todo y vuelve a abrir Ámbar. <br><br>
