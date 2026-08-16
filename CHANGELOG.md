@@ -7,6 +7,8 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-16
+
 ### Changed
 - **Guía de usuario (`docs/index.html`) con contenido visual real** en
   la sección "Uso en el Día a Día": la pantalla principal (Home) se
