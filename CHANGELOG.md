@@ -7,7 +7,35 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Fixed
+- **La tecla física Play/Pausa del mando a veces no hacía nada tras un
+  rato sin reproducir nada** (confirmado con Spotify). Causa: esa tecla
+  es una tecla multimedia de Windows, y Windows la enrutaba solo a la
+  sesión SMTC que considerara "actual" en ese momento — tras un rato
+  parado, Windows deja de considerar "actual" ninguna sesión (aunque la
+  de Spotify siga existiendo) y la tecla no llegaba a ningún sitio. El
+  botón de play en pantalla sí funcionaba siempre porque llama directo
+  al objeto de sesión de Spotify vía SMTC (`WindowsSMTCGateway.control`)
+  en vez de depender de ese enrutado. Arreglado registrando la propia
+  tecla como atajo global (`RegisterHotKey`,
+  `ambar/bootstrap.py:_start_media_playpause_hotkey`) que sigue ese
+  mismo camino que ya funcionaba, en vez de esperar a que Windows decida
+  enrutarla — deja de depender por completo de la heurística de "sesión
+  actual" de Windows.
+
 ### Added
+- **Atajo de emergencia Ctrl+Q (Windows)** para cerrar Ámbar al instante
+  pase lo que pase con la ventana/la página — pensado para un kiosko a
+  pantalla completa sin barra de título ni botón de cerrar visible.
+  Registrado a nivel de sistema operativo (`RegisterHotKey` + bucle de
+  mensajes Win32 propio en un hilo de fondo,
+  `ambar/bootstrap.py:_start_panic_hotkey`), no pasa por el JS ni por el
+  foco de la ventana en ningún momento — sigue funcionando aunque la
+  página esté congelada o el foco esté atascado en la propia ventana.
+  `os._exit(0)` a propósito (no un cierre limpio): es un botón de
+  pánico, no un apagado ordenado. Es un atajo global (se dispara sin
+  importar qué ventana tenga el foco en ese momento), inherente a cómo
+  funciona `RegisterHotKey` en Windows.
 - **Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
   como dos nuevos estilos del VU-metro**, junto a los ya existentes.
   `SpectrumAnalyzer` (`ambar/domain/audio.py`, nueva dependencia

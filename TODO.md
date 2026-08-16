@@ -69,14 +69,6 @@ de aquí.
   mismas variables de color/tipografía que `index.html`), en vez de
   describir el aspecto solo con palabras o con una imagen que se queda
   desactualizada en el primer rediseño.
-- **Simuladores de VU-metro analógico calcados de modelos reales**
-  (Sony TC-xxx, Pioneer SA-xxx, Technics SU-xxx...), como estilos
-  adicionales junto a la aguja "simple"/"realista" ya existentes.
-  Requisito explícito: tienen que parecer el aparato real al 100% (esfera,
-  tipografía, marcas de escala, colores, logotipo de la marca si aplica),
-  no una aguja genérica reetiquetada — necesitará referencias visuales
-  concretas (fotos/capturas) de cada modelo a imitar antes de poder
-  implementarlo con precisión.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se
