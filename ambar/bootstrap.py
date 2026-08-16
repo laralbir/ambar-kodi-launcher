@@ -127,6 +127,56 @@ def _build_wake_lock():
     return NullWakeLock()
 
 
+def _start_panic_hotkey() -> None:
+    """Registra Ctrl+Alt+Q como atajo global de emergencia para cerrar Ámbar
+    al instante, sea cual sea el estado de la ventana/la pagina -- pensado
+    para un kiosko en pantalla completa sin barra de titulo ni boton de
+    cerrar visible: si algo se queda atascado (una version rota del propio
+    Ambar, un cuelgue real...) hace falta una salida que no dependa de que
+    la ventana responda ni de poder hacer click en nada concreto.
+
+    RegisterHotKey + un bucle de mensajes Win32 propio, en un hilo de fondo
+    dedicado -- funciona a nivel de sistema operativo, no de la pagina web:
+    no pasa por el JS ni por el foco de la ventana de Ambar en absoluto, asi
+    que sigue funcionando aunque la pagina este congelada o el foco este
+    atascado en la propia ventana (visto en vivo: SetForegroundWindow
+    llamado sin cuidado desde secure_cursor() dejo el cursor confinado y la
+    ventana sin poder perder el foco -- Ctrl+Alt+Q habria bastado para
+    cerrarlo sin tener que matar el proceso a mano). os._exit(0), no un
+    cierre "limpio": es un boton de panico, no hace falta parar hilos ni
+    guardar nada -- y ClipCursor se libera solo en cuanto el proceso
+    termina (esta atado al hilo que lo puso, no sobrevive a que muera).
+
+    Solo Windows; best-effort (si falla el registro del atajo -- por
+    ejemplo, otro programa ya lo tiene reservado -- Ambar sigue arrancando
+    igual, solo que sin esta red de seguridad)."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        MOD_CONTROL = 0x0002
+        MOD_ALT = 0x0001
+        VK_Q = 0x51
+        WM_HOTKEY = 0x0312
+        HOTKEY_ID = 1
+
+        def _loop():
+            if not user32.RegisterHotKey(None, HOTKEY_ID, MOD_CONTROL | MOD_ALT, VK_Q):
+                print("Atajo de emergencia (Ctrl+Alt+Q) no disponible; puede que otro programa lo tenga reservado.")
+                return
+            msg = wintypes.MSG()
+            while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+                if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
+                    os._exit(0)
+
+        threading.Thread(target=_loop, daemon=True).start()
+    except Exception as e:
+        print(f"Atajo de emergencia (Ctrl+Alt+Q) no disponible ({e}); Ambar sigue arrancando igual.")
+
+
 def _build_smtc_gateway():
     """SMTC (Windows.Media.Control) para ahora-suena/control de Spotify sin
     pasar por su Web API (sin limite de peticiones, ver CHANGELOG.md
@@ -386,6 +436,7 @@ def run(app_dir: str) -> None:
         webview_available = False
 
     if webview_available and "--no-window" not in sys.argv:
+        _start_panic_hotkey()
         # pywebview exige correr en el hilo principal en macOS (Cocoa/AppKit),
         # asi que el servidor se mueve a un hilo de fondo y la ventana nativa
         # se queda en el hilo principal (funciona igual en Windows).

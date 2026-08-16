@@ -265,6 +265,131 @@
   .vu-channel-needle-realistic .vu-ch-label{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--text-dim);}
   .vu-channel-needle-realistic .vu-db-label{width:auto; white-space:nowrap;}
 
+  /* ---------- VU-METRO "SONY TC-U2" (calco de un magnetófono real) ---------- */
+  /* Referencia: Sony TC-U2 (fotos reales aportadas por el usuario) --
+     marco de aluminio cepillado arriba/abajo, esfera color crema, doble
+     escala VU (arriba, dB) + % (abajo), aguja negra, zona roja en 0/+3/+5.
+     "SONY" grabado en relieve en la barra inferior. */
+  .vu-meter-sony[hidden]{display:none !important;}
+  .vu-meter-sony{
+    border-radius:4px; overflow:hidden; border:1px solid #0c0c0c;
+    box-shadow:0 6px 16px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.08) inset;
+  }
+  /* Aluminio cepillado de verdad: textura de rayas finas (repeating-
+     linear-gradient) SUPERPUESTA a un degradado con varias bandas de
+     brillo/sombra (no un degradado simple de 2 paradas, que es lo que
+     dejaba las barras de arriba/abajo planas y sin aspecto de metal
+     real -- confirmado visualmente comparando contra la foto). */
+  .vu-sony-top-trim, .vu-sony-bottom-trim{
+    height:16px;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 2px),
+      linear-gradient(180deg, #f2f2f0 0%, #9a9a96 12%, #d8d8d4 24%, #7a7a76 40%, #c4c4c0 55%, #8a8a86 70%, #e0e0dc 85%, #6e6e6a 100%);
+  }
+  .vu-sony-bottom-trim{
+    height:30px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 -1px 0 rgba(0,0,0,0.4) inset;
+  }
+  .vu-sony-brand{
+    font-family:'Oswald', sans-serif; font-weight:700; font-size:1.05rem; letter-spacing:0.14em;
+    color:#8a8a84;
+    text-shadow:0 1px 0 rgba(255,255,255,0.65), 0 -1.5px 0.5px rgba(0,0,0,0.55), 0 0 1px rgba(0,0,0,0.3);
+  }
+  .vu-sony-face{
+    background:
+      radial-gradient(ellipse 90% 70% at 22% 15%, rgba(255,230,180,0.55) 0%, rgba(255,230,180,0) 60%),
+      radial-gradient(ellipse 70% 60% at 50% 105%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 55%),
+      linear-gradient(160deg, #efe4c8 0%, #e9e6d4 35%, #dde6df 70%, #d3ddd6 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.35) inset, 0 -1px 3px rgba(0,0,0,0.15) inset;
+    padding:0.3rem 0.6rem 0;
+  }
+  .vu-sony-header{display:flex; align-items:center; justify-content:center; position:relative; height:14px;}
+  .vu-sony-logo{
+    position:absolute; left:0.2rem; top:0; font-family:'Oswald', sans-serif; font-weight:700;
+    font-size:0.62rem; letter-spacing:0.1em; color:#454540;
+  }
+  .vu-sony-vu-label{font-family:'Georgia', serif; font-style:italic; font-weight:700; font-size:0.85rem; color:#454540;}
+  .vu-sony-gauges{display:flex;}
+  .vu-sony-channel{flex:1 1 0; min-width:0; text-align:center;}
+  .vu-sony-ch-label{
+    font-family:'Inter', sans-serif; font-weight:600; font-size:0.62rem; letter-spacing:0.08em;
+    color:#5c5c56;
+  }
+  .vu-sony-channel svg{width:100%; display:block; overflow:visible;}
+  .vu-tick-sony{stroke:#2e2e2c; stroke-width:2.2; stroke-linecap:round;}
+  .vu-tick-sony-red{stroke:#c0392b; stroke-width:2.4; stroke-linecap:round;}
+  .vu-label-sony{
+    fill:#2e2e2c; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700;
+  }
+  .vu-label-sony-red{fill:#c0392b;}
+  .vu-label-sony-pct{fill:#6b6b62; font-family:'JetBrains Mono', monospace; font-size:8px;}
+  .vu-needle-sony{
+    fill:#161614; stroke:#161614; stroke-width:0.6;
+    transform-origin: 150px 125px; transform: rotate(-55deg); transition: transform 0.1s ease-out;
+    filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.5));
+  }
+  .vu-pivot-sony{fill:#3a3a37; stroke:#0c0c0c; stroke-width:0.8;}
+
+  /* ---------- VU-METRO "PIONEER SA-7800 II" (calco de un amplificador real) ---------- */
+  /* Referencia: Pioneer SA-7800 II (fotos reales aportadas por el
+     usuario) -- ventanas ámbar retroiluminadas (más brillante hacia
+     abajo, donde estaría la bombilla real) empotradas en un panel de
+     aluminio más claro/plateado que el del Sony, con marco negro
+     biselado, LED "POWER" rojo en la franja central, escala doble
+     WATTS (arriba, logarítmica de verdad) + dB (abajo). */
+  .vu-meter-pioneer[hidden]{display:none !important;}
+  .vu-meter-pioneer{
+    border-radius:4px; overflow:hidden; border:1px solid #0c0c0c;
+    box-shadow:0 6px 16px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1) inset;
+  }
+  .vu-pioneer-top-trim{
+    height:14px;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 1px, transparent 1px, transparent 2px),
+      linear-gradient(180deg, #fbfbfa 0%, #b6b6b2 12%, #e9e9e6 26%, #9a9a96 42%, #d8d8d4 58%, #a4a4a0 74%, #ecece8 88%, #8c8c88 100%);
+  }
+  .vu-pioneer-face{
+    position:relative; display:flex; align-items:stretch;
+    background:linear-gradient(180deg, #4c4c4a 0%, #262624 100%);
+    padding:10px 10px 30px;
+  }
+  .vu-pioneer-gauges{display:flex; flex:1 1 auto; gap:26px;}
+  .vu-pioneer-channel{flex:1 1 0; min-width:0; display:flex; flex-direction:column;}
+  .vu-pioneer-channel svg{
+    width:100%; display:block; border-radius:2px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.7) inset, 0 0 0 3px #050505, 0 0 16px rgba(255,180,60,0.3);
+  }
+  .vu-pioneer-ch-label{
+    margin-top:0.4rem; text-align:center; font-family:'Inter', sans-serif; font-weight:600;
+    font-size:0.62rem; letter-spacing:0.12em; color:#c8c8c4; text-transform:uppercase;
+  }
+  .vu-pioneer-power{
+    position:absolute; left:50%; top:10px; bottom:30px; width:22px; transform:translateX(-50%);
+    background:linear-gradient(180deg,#1e1e1c,#0a0a0a); border-radius:2px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 0 0 1px #000;
+  }
+  .vu-pioneer-power-led{
+    width:8px; height:8px; border-radius:50%; flex:0 0 auto;
+    background:radial-gradient(circle at 35% 35%, #ff9d89, #c0392b 55%, #6e1a10 100%);
+    box-shadow:0 0 6px 2px rgba(224,72,50,0.75);
+  }
+  .vu-pioneer-power-label{
+    writing-mode:vertical-rl; font-family:'Inter', sans-serif; font-size:0.5rem;
+    letter-spacing:0.12em; color:#8a8a86; font-weight:600;
+  }
+  .vu-tick-pioneer{stroke:#2a2016; stroke-width:2.1; stroke-linecap:round;}
+  .vu-tick-pioneer-minor{stroke:#4a3a26; stroke-width:1; opacity:0.65;}
+  .vu-label-pioneer-watts{fill:#221708; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700;}
+  .vu-label-pioneer-db{fill:#2e2210; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:600;}
+  .vu-label-pioneer-unit{fill:#4a3a24; font-family:'Inter', sans-serif; font-size:9px; font-weight:600; letter-spacing:0.04em;}
+  .vu-needle-pioneer{
+    fill:#1c1712; stroke:#1c1712; stroke-width:0.5;
+    transform-origin: 150px 125px; transform: rotate(-55deg); transition: transform 0.1s ease-out;
+    filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.4));
+  }
+  .vu-pivot-pioneer{fill:#241a0c; stroke:#0c0c0c; stroke-width:0.6;}
+
   .transport{display:flex; align-items:center; justify-content:center; gap:1.1rem; margin-top:0.6vh;}
   .tbtn{
     width:64px; height:64px; border-radius:50%; border:1px solid var(--line);
@@ -354,7 +479,22 @@
   .vumeter-fullscreen-container .vu-meter-needle[hidden],
   .vumeter-fullscreen-container .vu-meter-needle-realistic[hidden],
   .vumeter-fullscreen-container .vu-meter-spectrum[hidden],
-  .vumeter-fullscreen-container .vu-meter-oscilloscope[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-meter-oscilloscope[hidden],
+  .vumeter-fullscreen-container .vu-meter-sony[hidden],
+  .vumeter-fullscreen-container .vu-meter-pioneer[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-sony-ch-label{font-size:1rem;}
+  .vumeter-fullscreen-container .vu-sony-logo{font-size:1rem;}
+  .vumeter-fullscreen-container .vu-sony-vu-label{font-size:1.4rem;}
+  .vumeter-fullscreen-container .vu-sony-brand{font-size:1.6rem;}
+  .vumeter-fullscreen-container .vu-sony-top-trim,
+  .vumeter-fullscreen-container .vu-sony-bottom-trim{height:24px;}
+  .vumeter-fullscreen-container .vu-sony-bottom-trim{height:44px;}
+  .vumeter-fullscreen-container .vu-sony-header{height:24px;}
+  .vumeter-fullscreen-container .vu-pioneer-ch-label{font-size:1rem;}
+  .vumeter-fullscreen-container .vu-pioneer-power-label{font-size:0.75rem;}
+  .vumeter-fullscreen-container .vu-pioneer-top-trim{height:24px;}
+  .vumeter-fullscreen-container .vu-pioneer-face{padding:20px 20px 44px;}
+  .vumeter-fullscreen-container .vu-pioneer-power{width:36px;}
   .vumeter-fullscreen-container .vu-meter-oscilloscope{height:220px;}
   .vumeter-fullscreen-container .vu-channel-spectrum canvas{height:90px;}
   .vumeter-fullscreen-container .vu-channel-spectrum .vu-ch-label{font-size:1.1rem; width:auto;}
@@ -701,6 +841,41 @@
         <div class="vu-meter-needle-realistic" id="vu-meter-needle-realistic" hidden></div>
         <div class="vu-meter-spectrum" id="vu-meter-spectrum" hidden></div>
         <canvas class="vu-meter-oscilloscope" id="vu-meter-oscilloscope" width="1200" height="200" hidden></canvas>
+        <!-- Sony TC-U2 (calcado de un magnetófono real, ver CHANGELOG.md) --
+             marco de aluminio arriba/abajo, esfera crema, doble escala
+             VU/%, "SONY" grabado en la barra inferior. Header (logo+VU) y
+             barras de aluminio son estáticos aquí (una sola vez, no por
+             canal); los medidores en sí (uno por canal) se generan en
+             #vu-sony-gauges igual que el resto de estilos (ver
+             buildVuChannels/VU_NEEDLE_SONY_SVG). -->
+        <div class="vu-meter-sony" id="vu-meter-sony" hidden>
+          <div class="vu-sony-top-trim"></div>
+          <div class="vu-sony-face">
+            <div class="vu-sony-header">
+              <span class="vu-sony-logo">SONY</span>
+              <span class="vu-sony-vu-label">VU</span>
+            </div>
+            <div class="vu-sony-gauges" id="vu-sony-gauges"></div>
+          </div>
+          <div class="vu-sony-bottom-trim"><span class="vu-sony-brand">SONY</span></div>
+        </div>
+        <!-- Pioneer SA-7800 II (calcado de un amplificador real, fotos de
+             referencia aportadas por el usuario) -- ventanas ámbar
+             retroiluminadas empotradas en un panel de aluminio, escala
+             doble WATTS (logarítmica de verdad, ver VU_NEEDLE_PIONEER_SVG)
+             + dB, LED "POWER" central. Mismo patrón que Sony: elementos
+             compartidos estáticos aquí, medidores por canal generados en
+             #vu-pioneer-gauges. -->
+        <div class="vu-meter-pioneer" id="vu-meter-pioneer" hidden>
+          <div class="vu-pioneer-top-trim"></div>
+          <div class="vu-pioneer-face">
+            <div class="vu-pioneer-gauges" id="vu-pioneer-gauges"></div>
+            <div class="vu-pioneer-power">
+              <span class="vu-pioneer-power-led"></span>
+              <span class="vu-pioneer-power-label">POWER</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="volume-inline-row">
@@ -861,6 +1036,8 @@
               <div class="btn" id="vu-style-needle-realistic" onclick="setVuMeterStyle('needle-realistic')">Aguja realista</div>
               <div class="btn" id="vu-style-spectrum" onclick="setVuMeterStyle('spectrum')">Espectómetro</div>
               <div class="btn" id="vu-style-oscilloscope" onclick="setVuMeterStyle('oscilloscope')">Osciloscopio</div>
+              <div class="btn" id="vu-style-sony-tc" onclick="setVuMeterStyle('sony-tc')">Sony TC-U2</div>
+              <div class="btn" id="vu-style-pioneer-sa" onclick="setVuMeterStyle('pioneer-sa')">Pioneer SA-7800</div>
             </div>
           </div>
           <div class="form-group">
@@ -1132,6 +1309,107 @@
     </div>
   `;
 
+  // Calco del Sony TC-U2 (magnetófono real, fotos de referencia
+  // aportadas por el usuario) -- doble escala radial VU (dB, arriba) +
+  // % (abajo) sobre el mismo abanico de líneas, pivote (150,125) y
+  // barrido -55°..+55° para poder reutilizar tal cual la mecánica de
+  // rotación por CSS/JS ya existente (updateVuMeter no sabe ni le
+  // importa qué estilo está activo). Coordenadas de las marcas/etiquetas
+  // calculadas por trigonometría (ver notas de la sesión), no a ojo --
+  // ángulos elegidos para imitar el reparto no uniforme de la foto real
+  // (el "0 VU" cae claramente a la derecha del centro, no en el medio).
+  // Solo la escala VU lleva marca radial propia; la escala % de abajo
+  // son solo los números (sin duplicar el abanico de líneas) para no
+  // recargar el dibujo.
+  const VU_NEEDLE_SONY_SVG = `
+    <svg viewBox="0 -10 300 150">
+      <line class="vu-tick-sony" x1="72.2" y1="70.5" x2="59.9" y2="61.9"/>
+      <line class="vu-tick-sony" x1="96.9" y1="46.2" x2="88.5" y2="33.8"/>
+      <line class="vu-tick-sony" x1="111.4" y1="38.2" x2="105.3" y2="24.5"/>
+      <line class="vu-tick-sony" x1="123.8" y1="33.7" x2="119.7" y2="19.3"/>
+      <line class="vu-tick-sony" x1="136.8" y1="30.9" x2="134.7" y2="16.1"/>
+      <line class="vu-tick-sony" x1="169.8" y1="32.1" x2="172.9" y2="17.4"/>
+      <line class="vu-tick-sony-red" x1="200.3" y1="44.4" x2="208.3" y2="31.7"/>
+      <line class="vu-tick-sony-red" x1="227.8" y1="70.5" x2="240.1" y2="61.9"/>
+
+      <text class="vu-label-sony" x="43.5" y="50.4" text-anchor="end">-20</text>
+      <text class="vu-label-sony" x="77.3" y="17.2" text-anchor="end">10</text>
+      <text class="vu-label-sony" x="97.1" y="6.2" text-anchor="end">7</text>
+      <text class="vu-label-sony" x="114.2" y="0" text-anchor="end">5</text>
+      <text class="vu-label-sony" x="131.9" y="-3.7" text-anchor="end">3</text>
+      <text class="vu-label-sony" x="177.0" y="-2.2" text-anchor="start">0</text>
+      <text class="vu-label-sony vu-label-sony-red" x="218.9" y="14.8" text-anchor="start">3</text>
+      <text class="vu-label-sony vu-label-sony-red" x="256.5" y="50.4" text-anchor="start">5+</text>
+
+      <text class="vu-label-sony-pct" x="100.9" y="90.6" text-anchor="end">0</text>
+      <text class="vu-label-sony-pct" x="111.4" y="79.0" text-anchor="end">20</text>
+      <text class="vu-label-sony-pct" x="125.6" y="70.2" text-anchor="end">40</text>
+      <text class="vu-label-sony-pct" x="141.6" y="65.6" text-anchor="middle">60</text>
+      <text class="vu-label-sony-pct" x="158.4" y="65.6" text-anchor="middle">80</text>
+      <text class="vu-label-sony-pct" x="174.4" y="70.2" text-anchor="start">100%</text>
+
+      <polygon class="vu-needle-sony" id="vu-needle-sony-{ch}" points="147.7,125 150,23 152.3,125"/>
+      <circle class="vu-pivot-sony" cx="150" cy="125" r="4.5"/>
+    </svg>
+  `;
+
+  // Calco del Pioneer SA-7800 II (amplificador real, fotos de referencia
+  // aportadas por el usuario) -- ventana ámbar retroiluminada, escala
+  // doble WATTS (arriba) + dB (abajo). A diferencia del Sony (marcas
+  // repartidas a ojo para imitar el aspecto de la foto), la escala de
+  // vatios aquí es logarítmica DE VERDAD: 0.01/0.1/1/5/10/50/100W
+  // mapeados con log10 real sobre el barrido -55°/+55° -- mismo pivote
+  // y mecánica de rotación que el resto de estilos.
+  const VU_NEEDLE_PIONEER_SVG = `
+    <svg viewBox="0 -10 300 150">
+      <defs>
+        <linearGradient id="pioneerFace{ch}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3d2c0a"/>
+          <stop offset="38%" stop-color="#8a6116"/>
+          <stop offset="72%" stop-color="#e7ac38"/>
+          <stop offset="100%" stop-color="#ffe192"/>
+        </linearGradient>
+      </defs>
+      <rect x="-10" y="-10" width="320" height="150" fill="url(#pioneerFace{ch})"/>
+
+      <line class="vu-tick-pioneer-minor" x1="86.7" y1="52.8" x2="81.4" y2="46.8"/>
+      <line class="vu-tick-pioneer-minor" x1="127.2" y1="31.8" x2="125.3" y2="24.0"/>
+      <line class="vu-tick-pioneer-minor" x1="166.0" y1="30.3" x2="167.3" y2="22.5"/>
+      <line class="vu-tick-pioneer-minor" x1="188.0" y1="36.9" x2="191.2" y2="29.5"/>
+      <line class="vu-tick-pioneer-minor" x1="207.9" y1="48.4" x2="212.7" y2="42.1"/>
+      <line class="vu-tick-pioneer-minor" x1="224.4" y1="64.4" x2="230.7" y2="59.3"/>
+
+      <line class="vu-tick-pioneer" x1="71.4" y1="69.9" x2="58.3" y2="60.8"/>
+      <line class="vu-tick-pioneer" x1="105.7" y1="39.8" x2="98.3" y2="25.7"/>
+      <line class="vu-tick-pioneer" x1="150.0" y1="29.0" x2="150.0" y2="13.0"/>
+      <line class="vu-tick-pioneer" x1="181.6" y1="34.3" x2="186.8" y2="19.2"/>
+      <line class="vu-tick-pioneer" x1="194.3" y1="39.8" x2="201.7" y2="25.7"/>
+      <line class="vu-tick-pioneer" x1="219.9" y1="59.2" x2="231.5" y2="48.2"/>
+      <line class="vu-tick-pioneer" x1="228.6" y1="69.9" x2="241.7" y2="60.8"/>
+
+      <text class="vu-label-pioneer-watts" x="42.7" y="49.9" text-anchor="end">0.01</text>
+      <text class="vu-label-pioneer-watts" x="89.5" y="8.8" text-anchor="end">0.1</text>
+      <text class="vu-label-pioneer-watts" x="150.0" y="-6.0" text-anchor="middle">1</text>
+      <text class="vu-label-pioneer-watts" x="193.1" y="1.3" text-anchor="start">5</text>
+      <text class="vu-label-pioneer-watts" x="210.5" y="8.8" text-anchor="start">10</text>
+      <text class="vu-label-pioneer-watts" x="245.3" y="35.2" text-anchor="start">50</text>
+      <text class="vu-label-pioneer-watts" x="257.3" y="49.9" text-anchor="start">100</text>
+
+      <text class="vu-label-pioneer-db" x="99.2" y="89.4" text-anchor="end">40</text>
+      <text class="vu-label-pioneer-db" x="121.4" y="70.0" text-anchor="end">30</text>
+      <text class="vu-label-pioneer-db" x="150.0" y="63.0" text-anchor="middle">20</text>
+      <text class="vu-label-pioneer-db" x="170.4" y="66.4" text-anchor="start">10</text>
+      <text class="vu-label-pioneer-db" x="178.6" y="70.0" text-anchor="start">5</text>
+      <text class="vu-label-pioneer-db" x="195.1" y="82.5" text-anchor="start">0</text>
+      <text class="vu-label-pioneer-db" x="200.8" y="89.4" text-anchor="start">3dB</text>
+
+      <text class="vu-label-pioneer-unit" x="150" y="100" text-anchor="middle">WATTS 8Ω</text>
+
+      <polygon class="vu-needle-pioneer" id="vu-needle-pioneer-{ch}" points="148,125 150,21 152,125"/>
+      <circle class="vu-pivot-pioneer" cx="150" cy="125" r="4"/>
+    </svg>
+  `;
+
   let vuChannelCount = 0;
 
   function vuChannelLabel(ch, total){
@@ -1204,9 +1482,35 @@
       row.append(label, canvas);
       spectrumRoot.appendChild(row);
     }
+
+    // Sony TC-U2: un medidor por canal, palabra completa LEFT/RIGHT (no
+    // la abreviatura L/R del resto de estilos) para calcar la etiqueta
+    // tal cual aparece en el aparato real.
+    const sonyRoot = el("vu-sony-gauges");
+    sonyRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const wrap = document.createElement("div");
+      wrap.className = "vu-sony-channel";
+      const chLabel = ch === 0 ? "LEFT" : ch === 1 ? "RIGHT" : ("CH " + (ch + 1));
+      wrap.innerHTML = `<div class="vu-sony-ch-label">${chLabel}</div>` + VU_NEEDLE_SONY_SVG.replaceAll("{ch}", ch);
+      sonyRoot.appendChild(wrap);
+    }
+
+    // Pioneer SA-7800 II: LEFT/RIGHT (palabra completa, como en la
+    // esfera del Sony) debajo de la ventana ámbar, no encima -- en la
+    // foto real el rótulo va en el panel de aluminio, fuera del cristal.
+    const pioneerRoot = el("vu-pioneer-gauges");
+    pioneerRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const wrap = document.createElement("div");
+      wrap.className = "vu-pioneer-channel";
+      const chLabel = ch === 0 ? "LEFT" : ch === 1 ? "RIGHT" : ("CH " + (ch + 1));
+      wrap.innerHTML = VU_NEEDLE_PIONEER_SVG.replaceAll("{ch}", ch) + `<div class="vu-pioneer-ch-label">${chLabel}</div>`;
+      pioneerRoot.appendChild(wrap);
+    }
   }
 
-  const VU_METER_STYLES = ["leds", "needle", "needle-realistic", "spectrum", "oscilloscope"];
+  const VU_METER_STYLES = ["leds", "needle", "needle-realistic", "spectrum", "oscilloscope", "sony-tc", "pioneer-sa"];
 
   function applyVuMeterStyle(style){
     vuMeterStyle = VU_METER_STYLES.includes(style) ? style : "leds";
@@ -1215,11 +1519,15 @@
     el("vu-meter-needle-realistic").hidden = vuMeterStyle !== "needle-realistic";
     el("vu-meter-spectrum").hidden = vuMeterStyle !== "spectrum";
     el("vu-meter-oscilloscope").hidden = vuMeterStyle !== "oscilloscope";
+    el("vu-meter-sony").hidden = vuMeterStyle !== "sony-tc";
+    el("vu-meter-pioneer").hidden = vuMeterStyle !== "pioneer-sa";
     el("vu-style-leds").classList.toggle("btn-primary", vuMeterStyle === "leds");
     el("vu-style-needle").classList.toggle("btn-primary", vuMeterStyle === "needle");
     el("vu-style-needle-realistic").classList.toggle("btn-primary", vuMeterStyle === "needle-realistic");
     el("vu-style-spectrum").classList.toggle("btn-primary", vuMeterStyle === "spectrum");
     el("vu-style-oscilloscope").classList.toggle("btn-primary", vuMeterStyle === "oscilloscope");
+    el("vu-style-sony-tc").classList.toggle("btn-primary", vuMeterStyle === "sony-tc");
+    el("vu-style-pioneer-sa").classList.toggle("btn-primary", vuMeterStyle === "pioneer-sa");
   }
 
   function setVuMeterStyle(style){
@@ -1260,12 +1568,15 @@
   function toggleVuMeterFullscreen(active){
     const leds = el("vu-meter-leds"), needle = el("vu-meter-needle"), needleReal = el("vu-meter-needle-realistic");
     const spectrum = el("vu-meter-spectrum"), oscilloscope = el("vu-meter-oscilloscope");
+    const sony = el("vu-meter-sony"), pioneer = el("vu-meter-pioneer");
     const target = active ? el("vumeter-fullscreen-container") : el("vu-meter-home");
     target.appendChild(leds);
     target.appendChild(needle);
     target.appendChild(needleReal);
     target.appendChild(spectrum);
     target.appendChild(oscilloscope);
+    target.appendChild(sony);
+    target.appendChild(pioneer);
     el("view-vumeter-fullscreen").classList.toggle("visible", active);
   }
   el("vu-meter-expand-btn").addEventListener("click", () => toggleVuMeterFullscreen(true));
@@ -1381,6 +1692,12 @@
       }
       const ledsLabel = el("vu-db-leds-" + ch);
       if(ledsLabel) ledsLabel.textContent = dbText;
+
+      const needleSony = el("vu-needle-sony-" + ch);
+      if(needleSony) needleSony.style.transform = needleAngle;
+
+      const needlePioneer = el("vu-needle-pioneer-" + ch);
+      if(needlePioneer) needlePioneer.style.transform = needleAngle;
     });
   }
 
@@ -2870,6 +3187,7 @@
       if(perp <= dot && score < bestAlignedScore){ bestAlignedScore = score; bestAligned = el; }
     }
     const winner = bestAligned || best;
+    navDebugPush(`navMove dx=${dx} dy=${dy} items=${items.length} cur=${navCurrentEl ? (navCurrentEl.id || navCurrentEl.className) : 'null'} winner=${winner ? (winner.id || winner.className) : 'NONE'}`);
     if(winner) navSetFocus(winner);
   }
 
@@ -3002,7 +3320,32 @@
     cdTrackTimer = setTimeout(commitCdTrackJump, 600);
   }
 
+  // --- DEBUG TEMPORAL: diagnostico en vivo del bug de navegacion
+  // reportado en esta sesion -- borrar este bloque entero en cuanto se
+  // resuelva. Muestra en pantalla los ultimos eventos de teclado
+  // recibidos y el resultado de cada navMove(), para ver desde el propio
+  // dispositivo si el evento llega siquiera al JS o si llega pero
+  // navMove() no encuentra candidato.
+  const navDebugLog = [];
+  function navDebugPush(line){
+    navDebugLog.push(line);
+    if(navDebugLog.length > 14) navDebugLog.shift();
+    let box = document.getElementById('nav-debug-overlay');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'nav-debug-overlay';
+      box.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;background:rgba(0,0,0,0.88);color:#3ddc73;font:13px monospace;padding:8px;max-width:640px;white-space:pre-wrap;pointer-events:none;';
+      document.body.appendChild(box);
+    }
+    box.textContent = navDebugLog.join('\n');
+    fetch("/api/debug/nav-log", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({line: `activeEl=${document.activeElement ? document.activeElement.tagName + (document.activeElement.id ? '#' + document.activeElement.id : '') : 'null'} | ${line}`})
+    }).catch(() => {});
+  }
+
   document.addEventListener('keydown', (ev) => {
+    navDebugPush(`keydown key=${ev.key} code=${ev.code} t=${Date.now() % 100000}`);
     // Dentro de un campo de texto (Ajustes: host/puerto/credenciales) las
     // flechas mueven el cursor y Backspace borra -- comportamiento nativo
     // del navegador, no hay que interceptarlo. Escape y Pg+/Pg- siguen

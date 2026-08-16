@@ -8,6 +8,65 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Atajo de emergencia Ctrl+Alt+Q (Windows)** para cerrar Ámbar al
+  instante pase lo que pase con la ventana/la página. Registrado a nivel
+  de sistema operativo (`RegisterHotKey` + bucle de mensajes Win32 propio
+  en un hilo de fondo, `ambar/bootstrap.py:_start_panic_hotkey`), no pasa
+  por el JS ni por el foco de la ventana de Ámbar en ningún momento —
+  sigue funcionando aunque la página esté congelada o el foco esté
+  atascado en la propia ventana. Motivado por un incidente real en esta
+  misma sesión: un intento de arreglo de `secure_cursor()` (ver más abajo,
+  revertido del todo) dejó el cursor confinado (`ClipCursor`) y la ventana
+  sin poder perder el foco, sin ninguna forma de salir salvo matar el
+  proceso a mano desde fuera. `os._exit(0)` a propósito (no un cierre
+  limpio): es un botón de pánico, no un apagado ordenado.
+- **VU-metro "Sony TC-U2"**, primer simulador de un aparato real (ver
+  `TODO.md`) — calcado a partir de tres referencias aportadas por el
+  usuario (una ilustración de estudio y dos fotos reales del panel).
+  Marco de aluminio cepillado arriba/abajo (textura de rayas finas +
+  varias bandas de brillo/sombra, no un degradado simple de 2 paradas),
+  esfera color crema con degradado cálido→frío, doble escala radial VU
+  (dB: -20, 10, 7, 5, 3, 0, 3, 5+, los tres últimos en rojo) y % (0-100,
+  solo números, repartidos en su propio ángulo para no solaparse con la
+  escala VU) sobre el mismo pivote, aguja negra afilada (polígono, no
+  una simple línea) con sombra, "SONY" grabado en relieve en la barra
+  inferior, "LEFT"/"RIGHT" (no la abreviatura L/R del resto de estilos)
+  sobre cada medidor. Reutiliza tal cual la mecánica de rotación de
+  aguja ya existente (mismo barrido -55°/+55°, mismo `updateVuMeter`) —
+  solo cambia el dibujo de la esfera bajo la aguja. Ángulos/posiciones
+  de las marcas calculados por trigonometría a partir de las
+  proporciones de las fotos, no medidos pixel a pixel.
+  **Verificado visualmente en esta misma sesión** (no solo "a ciegas"
+  como en el primer intento): capturas de pantalla con Edge en modo
+  headless (`msedge --headless --screenshot`) contra el propio servidor
+  de desarrollo, comparadas directamente contra las fotos de referencia
+  — encontró y corrigió un primer intento demasiado plano (gradientes de
+  2 paradas sin textura real) y una superposición de las etiquetas de
+  porcentaje ("6080" pegado). Sigue pendiente la confirmación del
+  usuario en la pantalla táctil real.
+- **VU-metro "Pioneer SA-7800 II"**, segundo simulador de un aparato
+  real — calcado a partir de dos fotos reales aportadas por el usuario
+  (plano cercano con las agujas iluminadas en ámbar y el LED "POWER", y
+  foto de catálogo del panel frontal completo). Esfera con degradado
+  ámbar de varias paradas (marrón oscuro arriba → amarillo brillante
+  abajo, imitando la retroiluminación), doble escala radial: "WATTS 8Ω"
+  (0.01 a 100, **logarítmica de verdad** — `norm = (log10(w) - (-2)) /
+  (2 - (-2))`, no una escala angular repartida a ojo) y dB (-40 a
+  3dB) sobre el mismo pivote y los mismos ángulos que la escala de
+  vatios, aguja negra afilada con sombra, marco de aluminio cepillado
+  superior, LED "POWER" rojo con halo (`radial-gradient` + `box-shadow`
+  con difuminado), "LEFT"/"RIGHT" bajo cada esfera (no encima, a
+  diferencia del Sony — así coloca la foto de referencia). Reutiliza sin
+  cambios la misma mecánica de rotación de aguja que el resto de
+  estilos (`updateVuMeter`, barrido -55°/+55°). **Verificado
+  visualmente con el mismo método que el Sony** (capturas con Edge en
+  modo headless contra el servidor de desarrollo, comparadas contra las
+  fotos de referencia) desde el primer intento — aplicando ya lo
+  aprendido del Sony (degradados de varias paradas, aguja afilada,
+  buena sombra) salió más convincente a la primera; el único ajuste
+  necesario fue subir el contraste de las etiquetas de dB (`fill`
+  demasiado claro sobre el fondo ámbar). Sigue pendiente la confirmación
+  del usuario en la pantalla táctil real.
 - **Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
   como dos nuevos estilos del VU-metro**, junto a los ya existentes.
   `SpectrumAnalyzer` (`ambar/domain/audio.py`, nueva dependencia

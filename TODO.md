@@ -59,6 +59,35 @@ de aquí.
 
 ## Pendiente
 
+- **Con el foco perdido, el D-pad no siempre recupera el control por sí
+  solo** — hace falta pulsar OK primero (que manda un clic de ratón real,
+  ver `secure_cursor()` en `ambar/application/system.py`) para que las
+  flechas vuelvan a moverse. Sin resolver: un intento de arreglo
+  (simular Alt antes de `SetForegroundWindow` para que Windows lo
+  conceda sin un clic real) se probó y se revirtió del todo porque
+  causaba algo peor — con la llamada ya sin bloquear, el aviso periódico
+  de cada 2s (JS, `setInterval`) reclamaba el foco de Windows sin parar,
+  dejando imposible cambiar de ventana y el cursor confinado
+  (`ClipCursor`) sin soltar. Sin verificar aún si el síntoma original
+  ocurre también con la ventana ya en el monitor correcto (táctil) y sin
+  nada más compitiendo por el foco (esta sesión se probó en un equipo de
+  desarrollo compartido con VS Code y otras ventanas a la vez, lo que
+  pudo agravarlo) — repetir la prueba en limpio antes de tocar código de
+  nuevo. Como red de seguridad para cualquier futuro intento, ya existe
+  el atajo Ctrl+Alt+Q (ver `CHANGELOG.md`) para cerrar Ámbar al instante
+  si algo se atasca.
+- **El botón físico "Play" del mando a veces no hace nada** — reportado
+  en vivo: hay que navegar al home con el D-pad y pulsar el botón de
+  play EN PANTALLA (vía OK) para que arranque; el play físico del mando
+  falla de forma intermitente, no siempre. Sin investigar aún. Sospecha
+  de partida (a confirmar, no asumir): las teclas multimedia físicas
+  llegan por SMTC de Windows, que las enruta a la sesión que considere
+  "actual" — Kodi publica su propia sesión SMTC solo mientras es la
+  fuente activa (`windows_smtc_publisher.py`) y Spotify tiene la suya;
+  un fallo de enrutado entre las dos (p. ej. justo al cambiar de fuente,
+  o si ninguna sesión está "activa" en ese instante para Windows)
+  encajaría con el síntoma, pero hace falta reproducirlo en vivo con
+  más detalle antes de tocar código a ciegas.
 - **Refactorizar la guía de usuario (`docs/index.html`) con contenido
   visual de la app**, no solo texto. Explícitamente NO capturas de
   pantalla estáticas (`.png`/`.jpg` que habría que regenerar cada vez
@@ -70,13 +99,14 @@ de aquí.
   describir el aspecto solo con palabras o con una imagen que se queda
   desactualizada en el primer rediseño.
 - **Simuladores de VU-metro analógico calcados de modelos reales**
-  (Sony TC-xxx, Pioneer SA-xxx, Technics SU-xxx...), como estilos
-  adicionales junto a la aguja "simple"/"realista" ya existentes.
-  Requisito explícito: tienen que parecer el aparato real al 100% (esfera,
-  tipografía, marcas de escala, colores, logotipo de la marca si aplica),
-  no una aguja genérica reetiquetada — necesitará referencias visuales
-  concretas (fotos/capturas) de cada modelo a imitar antes de poder
-  implementarlo con precisión.
+  (Technics SU-xxx...), como estilos adicionales junto a la aguja
+  "simple"/"realista" ya existentes. Sony TC-U2 y Pioneer SA-7800 II ya
+  implementados y verificados visualmente (ver `CHANGELOG.md`); falta
+  Technics. Requisito explícito: tienen que parecer el aparato real al
+  100% (esfera, tipografía, marcas de escala, colores, logotipo de la
+  marca si aplica), no una aguja genérica reetiquetada — necesitará
+  referencias visuales concretas (fotos/capturas) del modelo a imitar
+  antes de poder implementarlo con precisión.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se

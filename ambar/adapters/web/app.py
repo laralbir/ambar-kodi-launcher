@@ -115,6 +115,19 @@ def create_app(container) -> Flask:
         container.system_service.secure_cursor()
         return jsonify({"ok": True})
 
+    # DEBUG TEMPORAL: recibe lo que el frontend registraria en el overlay
+    # en pantalla (ver index.html, navDebugPush) y lo imprime en el log del
+    # servidor -- para poder leerlo sin depender de que el usuario pueda
+    # copiar/hacer una captura (el cursor real queda confinado mientras
+    # Ambar corre, ver secure_cursor()). Borrar esta ruta entera junto con
+    # navDebugPush en cuanto se resuelva el bug de navegacion que motiva
+    # este diagnostico.
+    @app.route("/api/debug/nav-log", methods=["POST"])
+    def api_debug_nav_log():
+        body = request.get_json(force=True) or {}
+        print(f"[NAV-DEBUG] {body.get('line', '')}", flush=True)
+        return jsonify({"ok": True})
+
     @app.route("/api/config", methods=["GET", "POST"])
     def api_config():
         if request.method == "POST":
