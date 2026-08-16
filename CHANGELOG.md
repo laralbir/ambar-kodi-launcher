@@ -9,11 +9,18 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Added
 - **Botón de expulsar CD en el home** (⏏, junto al de la lista de
-  reproducción — se deshabilita solo si no hay CD insertado, mismo
-  criterio que la pestaña CD de la biblioteca). Para primero la
-  reproducción en Kodi si es un CD lo que suena, y expulsa a nivel de
-  driver: `IOCTL_STORAGE_EJECT_MEDIA` en Windows (mismo mecanismo que
+  reproducción — siempre activo, con o sin CD insertado, para poder
+  abrir la bandeja y meter un disco nuevo). Para primero la reproducción
+  en Kodi si es un CD lo que suena, y expulsa a nivel de driver:
+  `IOCTL_STORAGE_EJECT_MEDIA` en Windows (mismo mecanismo que
   `_wake_cd_drive_windows`, IOCTL distinto), `drutil eject` en macOS.
+  **Se probó a deshabilitarlo solo cuando la bandeja ya estuviera
+  abierta** (vía MCI/winmm, `status cdaudio mode`) y se descartó:
+  confirmado en vivo que daba falso positivo (reportaba "open" incluso
+  con la bandeja físicamente cerrada) — no hay un IOCTL estándar de
+  Windows que distinga "bandeja abierta" de "bandeja cerrada sin disco"
+  con fiabilidad, así que el botón se queda siempre activo en vez de
+  deshabilitarse solo sin motivo real.
 - **Spinner real sobre la carátula mientras se identifica un CD**, en vez
   del disco de vinilo genérico: nuevo campo `PlaybackState.art_pending`
   (true mientras `identify_async` sigue en marcha y aún no hay

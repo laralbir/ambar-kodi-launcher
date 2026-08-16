@@ -657,7 +657,7 @@
       <div class="source-row">
         <span class="source-badge" id="source-badge"><span class="dot"></span><span id="source-label">Sin fuente</span></span>
         <div class="header-actions">
-          <div class="playlist-toggle-btn disabled" id="cd-eject-btn" title="Expulsar CD">⏏</div>
+          <div class="playlist-toggle-btn" id="cd-eject-btn" title="Expulsar CD">⏏</div>
           <div class="playlist-toggle-btn" id="playlist-toggle-btn" title="Lista de reproducción">☰</div>
         </div>
       </div>
@@ -1805,16 +1805,20 @@
       cdDetectionReliable = data.detection_reliable;
       // Si la deteccion no es fiable en este SO (macOS, ver backend), no se
       // deshabilita nunca la pestaña -- se avisa al entrar en vez de ocultar
-      // una funcion que podria funcionar igualmente. El boton de expulsar
-      // CD del home sigue el mismo criterio.
+      // una funcion que podria funcionar igualmente.
       const disable = !kodiAvailable || (data.detection_reliable && !data.available);
       el("lib-tab-cd").classList.toggle("disabled", disable);
-      el("cd-eject-btn")?.classList.toggle("disabled", disable);
     }).catch(() => {});
   }
 
+  // Siempre activo, con o sin CD puesto -- sirve igual para abrir la
+  // bandeja y meter un disco nuevo. Sin detección fiable de "bandeja ya
+  // abierta" (se probó vía MCI/winmm, "status cdaudio mode"; confirmado
+  // en vivo que daba falso positivo -- devolvía "open" incluso con la
+  // bandeja físicamente cerrada, parece reportar el estado de la propia
+  // sesión MCI recién abierta, no el de la bandeja) -- descartado en vez
+  // de dejar un botón que se deshabilita solo sin motivo real.
   el("cd-eject-btn").addEventListener("click", () => {
-    if(el("cd-eject-btn").classList.contains("disabled")) return;
     fetch(API_BASE + "/api/library/kodi/eject-cd", {method: "POST"}).catch(() => {});
   });
 
