@@ -317,6 +317,18 @@
   .grid-card-info{padding:0.6rem;}
   .grid-card-title{font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .grid-card-sub{font-size:0.72rem; color:var(--text-dim); margin-top:0.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* ---------- Tabla de referencia (clases/IDs para skins) ---------- */
+  .ref-table{width:100%; border-collapse:collapse; margin:0.8rem 0 2rem; font-size:0.92rem;}
+  .ref-table th{
+    text-align:left; padding:0.5rem 0.8rem; border-bottom:2px solid var(--amber);
+    color:var(--amber); font-family:'Oswald', sans-serif; text-transform:uppercase;
+    font-size:0.8rem; letter-spacing:0.04em;
+  }
+  .ref-table td{padding:0.5rem 0.8rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--text-dim);}
+  .ref-table tr:last-child td{border-bottom:none;}
+  .ref-table td:first-child{white-space:nowrap; color:var(--text);}
+  .ref-table code{font-size:0.85em;}
 </style>
 </head>
 <body>
@@ -665,6 +677,239 @@
         }
       </code>
       <p>También puedes sobreescribir clases concretas (por ejemplo <code>.track-title</code> para cambiar la tipografía del título, o <code>.action-card</code> para los accesos de Biblioteca/Spotify) inspeccionando el HTML con las herramientas de desarrollador del navegador.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span style="color:var(--amber)">5.</span> Referencia completa: clases e IDs para una skin</h2>
+    <p>Listado exhaustivo de todo lo que expone <code>index.html</code> — cada clase y cada ID con reglas propias en su hoja de estilos, agrupados por zona de la interfaz. Tu <code>style.css</code> se carga <strong>después</strong> del original (ver sección 4), así que cualquiera de estos selectores se puede sobreescribir sin tocar el resto. Las clases de estado (<code>.active</code>, <code>.on</code>...) se combinan con una de base — por ejemplo <code>.action-card.kodi</code>, no <code>.kodi</code> suelto.</p>
+
+    <div class="note">
+      <p>Los IDs de aquí son los de los <strong>contenedores de cada pantalla</strong> (útiles para reglas del tipo "solo en Ajustes"). Casi todos los controles individuales (botones, campos...) también tienen su propio ID único para que el JS los localice, pero no son la superficie pensada para skins — usa las clases, son las mismas en todas las pantallas y no cambian de una versión a otra tan fácilmente como un ID concreto.</p>
+    </div>
+
+    <div class="block">
+      <h3>Variables de color (<code>:root</code>)</h3>
+      <table class="ref-table">
+        <tr><th>Variable</th><th>Valor por defecto</th><th>Dónde se usa</th></tr>
+        <tr><td><code>--bg</code></td><td>#17181a</td><td>Fondo general de toda la app</td></tr>
+        <tr><td><code>--panel</code></td><td>#1f2124</td><td>Fondo de tarjetas y paneles (accesos, biblioteca, Ajustes)</td></tr>
+        <tr><td><code>--panel-raised</code></td><td>#26282c</td><td>Fondo "elevado": carátula, VU-metro, botones circulares, estado pulsado/hover</td></tr>
+        <tr><td><code>--line</code></td><td>#34363a</td><td>Bordes y separadores en toda la interfaz</td></tr>
+        <tr><td><code>--text</code></td><td>#f2ede4</td><td>Texto principal</td></tr>
+        <tr><td><code>--text-dim</code></td><td>#9a9a9e</td><td>Texto secundario/atenuado (metadatos, etiquetas, hints)</td></tr>
+        <tr><td><code>--amber</code></td><td>#ffb020</td><td>Acento ámbar tipo VFD/LED: progreso, foco del mando, botón play, estados activos</td></tr>
+        <tr><td><code>--amber-dim</code></td><td>#7a5a1c</td><td>Versión atenuada del ámbar (fondo de botones activos/pulsados)</td></tr>
+        <tr><td><code>--kodi</code></td><td>#5aa9e6</td><td>Color identificativo de Kodi (badges, borde de tarjetas, pestañas)</td></tr>
+        <tr><td><code>--spotify</code></td><td>#1DB954</td><td>Color identificativo de Spotify</td></tr>
+        <tr><td><code>--danger</code></td><td>#e65a5a</td><td>Rojo de aviso: zona de saturación del VU-metro, botones destructivos</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Estructura general</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#app</code></td><td>Contenedor raíz de toda la app</td></tr>
+        <tr><td><code>.brushed</code></td><td>Textura de fondo "cepillada" (rayas finas) aplicada al <code>&lt;body&gt;</code></td></tr>
+        <tr><td><code>#view-home</code></td><td>Pantalla principal (carátula + reproductor + accesos laterales)</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Carátula y "ahora suena"</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.art-frame</code></td><td>Marco cuadrado de la carátula</td></tr>
+        <tr><td><code>.art-frame .placeholder</code></td><td>Contenedor del disco de vinilo genérico (sin carátula)</td></tr>
+        <tr><td><code>.vinyl-body</code> / <code>.vinyl-groove</code> / <code>.vinyl-sheen</code> / <code>.vinyl-label</code> / <code>.vinyl-label-ring</code> / <code>.vinyl-spindle</code></td><td>Partes del SVG del vinilo genérico</td></tr>
+        <tr><td><code>.art-spinner</code></td><td>Spinner de carga sobre la carátula</td></tr>
+        <tr><td><code>.now-playing</code></td><td>Columna central: título, artista, transporte, VU-metro, volumen</td></tr>
+        <tr><td><code>.source-row</code></td><td>Fila superior de <code>.now-playing</code>: badge de fuente + iconos de cabecera</td></tr>
+        <tr><td><code>.source-badge</code> (<code>.active.kodi</code> / <code>.active.spotify</code>)</td><td>Indicador redondeado "Kodi"/"Spotify"/"Sin fuente"</td></tr>
+        <tr><td><code>.source-badge .dot</code></td><td>Punto de color dentro del badge de fuente</td></tr>
+        <tr><td><code>.header-actions</code></td><td>Contenedor de los iconos ⏏/☰ junto al badge de fuente</td></tr>
+        <tr><td><code>.playlist-toggle-btn</code> (<code>.active</code> / <code>.disabled</code>)</td><td>Botón circular reutilizado para expulsar CD (⏏) y lista de reproducción (☰)</td></tr>
+        <tr><td><code>.track-title</code></td><td>Título de la canción</td></tr>
+        <tr><td><code>.track-meta</code></td><td>Artista · álbum</td></tr>
+        <tr><td><code>.marquee</code> / <code>.marquee-inner</code></td><td>Desplazamiento lateral de título/artista cuando el texto no cabe</td></tr>
+        <tr><td><code>.artist-link</code></td><td>Nombre de artista subrayado (abre su catálogo)</td></tr>
+        <tr><td><code>.spotify-badges</code></td><td>Contenedor de los indicadores ❤️/📻</td></tr>
+        <tr><td><code>.spotify-badge</code> (<code>.on</code>)</td><td>Badge individual "Me gusta"/"Semanal"</td></tr>
+        <tr><td><code>.rate-limit-banner</code> / <code>#rate-limit-time</code></td><td>Aviso flotante de límite de peticiones de Spotify alcanzado, y la hora estimada de recuperación dentro de él</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Progreso y transporte</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.vu-bar</code></td><td>Pista de la barra de progreso de reproducción (estilo VU-meter segmentado)</td></tr>
+        <tr><td><code>.vu-fill</code></td><td>Relleno de la barra de progreso</td></tr>
+        <tr><td><code>.time-row</code></td><td>Fila de tiempo transcurrido/estado/restante bajo la barra</td></tr>
+        <tr><td><code>.transport</code></td><td>Fila de botones de transporte</td></tr>
+        <tr><td><code>.tbtn</code> (<code>.play</code> / <code>.tbtn-mode</code> / <code>.active</code>)</td><td>Botón circular de transporte — <code>.play</code> es el central grande, <code>.tbtn-mode</code> son aleatorio/repetir</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>VU-metro — todos los estilos</h3>
+      <p style="margin-top:0;">Todos viven dentro de <code>.vu-meter</code> (con <code>.vu-meter-expand-btn</code>, el icono ⛶). Solo uno está visible a la vez según el estilo elegido en Ajustes.</p>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.vu-meter-leds</code> / <code>.vu-channel-leds</code> / <code>.vu-ch-label</code> / <code>.vu-led-row</code></td><td>Estilo "Barras LED": contenedor, fila por canal, etiqueta L/R, fila de segmentos</td></tr>
+        <tr><td><code>.led</code> (<code>.on</code> / <code>.zone-green</code> / <code>.zone-amber</code> / <code>.zone-red</code>)</td><td>Segmento individual de las barras LED, con su zona de color</td></tr>
+        <tr><td><code>.vu-db-label</code></td><td>Etiqueta de dB junto a cada barra (LED y aguja simple)</td></tr>
+        <tr><td><code>.vu-meter-needle</code> / <code>.vu-channel-needle</code></td><td>Estilo "Aguja simple": contenedor y columna por canal</td></tr>
+        <tr><td><code>.vu-arc</code> / <code>.vu-arc-amber</code> / <code>.vu-arc-red</code></td><td>Arcos de escala de la aguja simple (normal/zona ámbar/zona roja)</td></tr>
+        <tr><td><code>.vu-tick</code> / <code>.vu-label</code></td><td>Marcas y números de la escala de la aguja simple</td></tr>
+        <tr><td><code>.vu-needle</code> / <code>.vu-pivot</code></td><td>Aguja y pivote central (aguja simple)</td></tr>
+        <tr><td><code>.vu-needle-footer</code></td><td>Fila de etiqueta de canal + dB bajo cada aguja</td></tr>
+        <tr><td><code>.vu-meter-needle-realistic</code> / <code>.vu-channel-needle-realistic</code></td><td>Estilo "Aguja realista": contenedor y columna por canal</td></tr>
+        <tr><td><code>.vu-arc-real</code> / <code>.vu-arc-real-red</code></td><td>Arcos de escala de la aguja realista</td></tr>
+        <tr><td><code>.vu-tick-real</code> / <code>.vu-tick-real-minor</code> / <code>.vu-label-real</code></td><td>Marcas mayores/menores y números de la aguja realista</td></tr>
+        <tr><td><code>.vu-brand-real</code></td><td>Texto de marca grabado en la esfera (aguja realista)</td></tr>
+        <tr><td><code>.vu-screw-real</code> / <code>.vu-screw-slot-real</code></td><td>Tornillos decorativos de las esquinas (aguja realista)</td></tr>
+        <tr><td><code>.vu-needle-real</code> / <code>.vu-needle-sheen</code> / <code>.vu-pivot-real</code></td><td>Aguja, brillo de la aguja y pivote (aguja realista)</td></tr>
+        <tr><td><code>.vu-meter-spectrum</code> / <code>.vu-channel-spectrum</code></td><td>Estilo "Espectómetro": contenedor y fila por canal (barras dibujadas en <code>&lt;canvas&gt;</code>, no CSS)</td></tr>
+        <tr><td><code>.vu-meter-oscilloscope</code></td><td>Estilo "Osciloscopio": el propio <code>&lt;canvas&gt;</code> de la forma de onda</td></tr>
+        <tr><td><code>.vu-meter-expand-btn</code></td><td>Icono ⛶ para ampliar el VU-metro a pantalla completa</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Volumen</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.volume-inline-row</code></td><td>Fila de controles de volumen bajo el VU-metro</td></tr>
+        <tr><td><code>.volume-inline-btn</code> (<code>.active</code>)</td><td>Botón silenciar/−5/+5 — <code>.active</code> cuando está silenciado</td></tr>
+        <tr><td><code>#volume-slider-inline</code></td><td>Deslizador de volumen (input <code>range</code>)</td></tr>
+        <tr><td><code>.volume-inline-value</code></td><td>Porcentaje de volumen en texto</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Accesos laterales y reloj (home)</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.side-actions</code></td><td>Columna derecha: reloj + accesos a Biblioteca/Spotify/Ajustes</td></tr>
+        <tr><td><code>.action-card</code> (<code>.kodi</code> / <code>.spotify</code> / <code>.settings</code> / <code>.disabled</code>)</td><td>Tarjeta de acceso — variantes con borde de color por fuente</td></tr>
+        <tr><td><code>.action-card .eyebrow</code> / <code>.label</code> / <code>.hint</code></td><td>Texto pequeño superior / título / texto pequeño inferior de cada tarjeta</td></tr>
+        <tr><td><code>.clock-widget</code></td><td>Reloj compacto (hora + fecha) sobre los accesos</td></tr>
+        <tr><td><code>.clock-time</code> / <code>.clock-date</code></td><td>Hora y fecha del reloj (compacto y a pantalla completa)</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Reloj a pantalla completa</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-clock-fullscreen</code></td><td>Contenedor de la vista</td></tr>
+        <tr><td><code>.clock-fullscreen-container</code></td><td>Bloque centrado con la hora/fecha grandes</td></tr>
+        <tr><td><code>.clock-nowplaying</code> / <code>.clock-nowplaying-title</code> / <code>.clock-nowplaying-artist</code></td><td>Título/artista que aparecen bajo el reloj si hay algo sonando</td></tr>
+        <tr><td><code>#clock-fullscreen-back</code></td><td>Botón ← para volver (reutiliza <code>.back-btn</code>)</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Biblioteca (artistas, álbumes, carpetas, CD, listas de Spotify)</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-library</code></td><td>Contenedor de la vista</td></tr>
+        <tr><td><code>.lib-topbar</code> / <code>.lib-topbar-left</code> / <code>.lib-topbar-right</code></td><td>Barra superior: volver+título a la izquierda, pestañas a la derecha</td></tr>
+        <tr><td><code>.back-btn</code></td><td>Botón circular ← (reutilizado en varias vistas)</td></tr>
+        <tr><td><code>.lib-title</code></td><td>Título de la barra superior ("Biblioteca")</td></tr>
+        <tr><td><code>.lib-tab</code> (<code>.active</code> / <code>.disabled</code>)</td><td>Pestaña Artistas/Álbumes/Carpetas/CD/Spotify</td></tr>
+        <tr><td><code>.lib-content</code></td><td>Área de contenido bajo la barra superior</td></tr>
+        <tr><td><code>.grid-view</code> / <code>.grid-card</code></td><td>Rejilla y tarjeta individual (artistas, álbumes, playlists de Spotify)</td></tr>
+        <tr><td><code>.grid-card-img</code> / <code>.grid-card-spinner</code></td><td>Imagen de la tarjeta y su spinner de carga</td></tr>
+        <tr><td><code>.grid-card-info</code> / <code>.grid-card-title</code> / <code>.grid-card-sub</code></td><td>Texto bajo la imagen de la tarjeta</td></tr>
+        <tr><td><code>.list-view</code> / <code>.list-item</code></td><td>Listado y fila individual (canciones, carpetas)</td></tr>
+        <tr><td><code>.list-item-icon</code> / <code>.list-item-info</code> / <code>.list-item-title</code> / <code>.list-item-sub</code></td><td>Icono y texto de cada fila de lista</td></tr>
+        <tr><td><code>.cd-warning</code></td><td>Aviso en la pestaña CD (p. ej. sin disco insertado)</td></tr>
+        <tr><td><code>.cd-header</code> / <code>.cd-header-art</code> / <code>.cd-header-info</code> / <code>.cd-header-title</code> / <code>.cd-header-artist</code></td><td>Cabecera con la carátula/título/artista del CD identificado</td></tr>
+        <tr><td><code>.cd-header-refresh</code> (<code>.spinning</code>)</td><td>Botón 🔄 para forzar una nueva identificación del CD</td></tr>
+        <tr><td><code>.source-tag</code> (<code>.kodi</code> / <code>.spotify</code>)</td><td>Etiqueta pequeña "Kodi"/"Spotify" (catálogo de artista con álbumes en ambas fuentes)</td></tr>
+        <tr><td><code>.source-choice</code> / <code>.source-choice-btn</code></td><td>Botones para elegir desde qué fuente reproducir un álbum duplicado</td></tr>
+        <tr><td><code>.artist-section-title</code></td><td>Título de sección dentro del catálogo de un artista</td></tr>
+        <tr><td><code>.loader</code></td><td>Indicador de carga a pantalla completa de una vista</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Lista de reproducción actual</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-playlist</code></td><td>Contenedor de la vista</td></tr>
+        <tr><td><code>.playlist-content</code></td><td>Área con el listado completo</td></tr>
+        <tr><td><code>.playlist-item</code> (<code>.current</code>)</td><td>Fila de canción — <code>.current</code> resalta la que suena ahora</td></tr>
+        <tr><td><code>.playlist-item-icon</code> / <code>.playlist-item-info</code> / <code>.playlist-item-title</code> / <code>.playlist-item-sub</code></td><td>Icono y texto de cada fila</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Ajustes</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-settings</code> / <code>.settings-box</code></td><td>Contenedor de la vista</td></tr>
+        <tr><td><code>.settings-header</code> / <code>.close-settings</code></td><td>Cabecera ("Ajustes") y botón ✕ de cerrar</td></tr>
+        <tr><td><code>.settings-body</code> / <code>.settings-col</code></td><td>Área de contenido y cada una de las dos columnas (Configuración/Sistema)</td></tr>
+        <tr><td><code>.wizard-banner</code> (<code>.visible</code>)</td><td>Aviso de bienvenida con los pasos iniciales (primer arranque)</td></tr>
+        <tr><td><code>.spotify-auth-box</code> / <code>.spotify-auth-status</code> (<code>.connected</code>) / <code>.spotify-auth-instructions</code></td><td>Bloque de estado y ayuda para autorizar Spotify</td></tr>
+        <tr><td><code>.form-group</code></td><td>Etiqueta + campo de un ajuste</td></tr>
+        <tr><td><code>.btn</code> (<code>.btn-primary</code> / <code>.btn-danger</code>)</td><td>Botón genérico de Ajustes (también usado por los selectores de estilo de VU-metro, fluidez, etc.)</td></tr>
+        <tr><td><code>.picker-field</code></td><td>Campo tipo "selector" que abre el modal de opciones (sustituye a <code>&lt;select&gt;</code>)</td></tr>
+        <tr><td><code>.system-controls</code></td><td>Rejilla de botones de sistema (reiniciar/apagar...)</td></tr>
+        <tr><td><code>.settings-footer</code></td><td>Pie con los botones de guardar/cancelar</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Modales: confirmación y selector de opciones</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-confirm</code> / <code>.confirm-box</code></td><td>Modal de confirmación/aviso (sustituye a <code>confirm()</code>/<code>alert()</code> nativos)</td></tr>
+        <tr><td><code>.confirm-message</code> / <code>.confirm-actions</code></td><td>Texto del aviso y fila de botones aceptar/cancelar</td></tr>
+        <tr><td><code>#view-picker</code> / <code>.picker-box</code></td><td>Modal selector de opciones (sustituye a <code>&lt;select&gt;</code> nativo)</td></tr>
+        <tr><td><code>.picker-header</code> / <code>.picker-list</code></td><td>Título del selector y lista de opciones</td></tr>
+        <tr><td><code>.picker-list .list-item.selected</code></td><td>Opción actualmente elegida dentro del selector</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Otras vistas a pantalla completa</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>#view-artist</code></td><td>Catálogo de un artista (álbumes + canciones, mezclando Kodi/Spotify)</td></tr>
+        <tr><td><code>#view-vumeter-fullscreen</code> / <code>.vumeter-fullscreen-container</code></td><td>VU-metro ampliado a pantalla completa (icono ⛶)</td></tr>
+        <tr><td><code>#vumeter-fullscreen-back</code></td><td>Botón ← para volver (reutiliza <code>.back-btn</code>)</td></tr>
+        <tr><td><code>#vumeter-nowplaying</code></td><td>Título/artista bajo el VU-metro ampliado si hay algo sonando (reutiliza <code>.clock-nowplaying*</code>)</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Navegación con mando/teclado</h3>
+      <table class="ref-table">
+        <tr><th>Selector</th><th>Qué es</th></tr>
+        <tr><td><code>.nav-focused</code></td><td>Marco ámbar aplicado al elemento con foco del D-pad — un único estilo genérico para tarjetas, botones, pestañas y filas de lista</td></tr>
+      </table>
+    </div>
+
+    <div class="block">
+      <h3>Clases de estado genéricas</h3>
+      <p style="margin-top:0;">No son selectores independientes — se combinan con una clase de base de las tablas de arriba (p. ej. <code>.grid-card.selected</code>, <code>.lib-tab.active</code>).</p>
+      <table class="ref-table">
+        <tr><th>Clase</th><th>Se usa en</th></tr>
+        <tr><td><code>.active</code></td><td>Pestañas, badges de fuente, botones de modo (aleatorio/repetir), campos de volumen silenciado</td></tr>
+        <tr><td><code>.on</code></td><td>Segmentos LED encendidos, badges de Spotify activos</td></tr>
+        <tr><td><code>.disabled</code></td><td>Tarjetas/pestañas/botones no disponibles (p. ej. Spotify sin autorizar)</td></tr>
+        <tr><td><code>.visible</code></td><td>Vistas superpuestas actualmente abiertas (Ajustes, modales, pantallas completas...)</td></tr>
+        <tr><td><code>.selected</code></td><td>Opción elegida dentro del selector de opciones</td></tr>
+        <tr><td><code>.current</code></td><td>Canción en curso dentro de la lista de reproducción</td></tr>
+        <tr><td><code>.spinning</code></td><td>Icono de refrescar CD mientras identifica el disco</td></tr>
+        <tr><td><code>.refreshing</code></td><td>Carátula mientras se refresca al tocarla</td></tr>
+        <tr><td><code>.connected</code></td><td>Estado de autorización de Spotify en Ajustes</td></tr>
+      </table>
     </div>
   </section>
 

@@ -23,6 +23,16 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   del VU-metro, campos tipo `picker-field`), Reloj a pantalla completa,
   y Navegación de biblioteca (`.lib-topbar`/`.grid-card`, artistas y
   álbumes comparten la misma rejilla que carpetas y CD).
+- **Nueva sección "5. Referencia completa: clases e IDs para una skin"**
+  al final de la guía: tabla exhaustiva de todas las clases (158) e IDs
+  de contenedor con reglas propias en `index.html`, agrupadas por zona
+  de la interfaz (carátula/ahora-suena, transporte, los cinco estilos
+  de VU-metro, volumen, accesos laterales, reloj a pantalla completa,
+  biblioteca, lista de reproducción, Ajustes, modales, clases de
+  estado) más la tabla completa de variables de color de `:root`.
+  Generada cruzando cada selector documentado contra un extracto
+  automático de todas las clases/IDs reales de la hoja de estilos de
+  `index.html`, para no dejarse ninguno fuera.
 
 ### Fixed
 - **La tecla física Play/Pausa del mando a veces no hacía nada tras un
