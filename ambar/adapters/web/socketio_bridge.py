@@ -14,4 +14,4 @@ class SocketIOBridge:
         self._socketio.emit("playback_update", asdict(event.state))
 
     def handle_audio_level_changed(self, event: AudioLevelChanged) -> None:
-        self._socketio.emit("audio_level", {"db": event.db})
+        self._socketio.emit("audio_level", {"db": event.db, "spectrum": event.spectrum, "waveform": event.waveform})

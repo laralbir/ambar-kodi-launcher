@@ -3,8 +3,12 @@ import time
 from dataclasses import dataclass
 from typing import Sequence
 
+import numpy as np
+
 DB_FLOOR = -60.0
 DB_CEILING = 0.0
+SPECTRUM_BANDS = 20
+WAVEFORM_POINTS = 96
 # Ballistica asimetrica: subida rapida para que se note la respuesta al
 # instante (no como un VU analogico "de verdad", que resultaba demasiado
 # lento/estatico en pantalla), bajada lenta tipo VU clasico (ANSI C16.5,
@@ -74,3 +78,67 @@ class LevelMeter:
             return DB_FLOOR
         db = 10 * math.log10(mean_square)  # 20*log10(rms) == 10*log10(rms**2)
         return max(DB_FLOOR, min(DB_CEILING, db))
+
+
+class SpectrumAnalyzer:
+    """Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
+    para el VU-metro, a partir del mismo fragmento de muestras PCM que ya
+    usa LevelMeter -- no captura audio aparte, solo lo reanaliza. Sin
+    ballistica propia (a diferencia de LevelMeter): con un fragmento
+    nuevo cada ~20ms (1024 muestras/48kHz) ya se ve "vivo" de por si,
+    suavizarlo mas lo dejaba con pinta de ir a cámara lenta.
+
+    NO calibrado contra hardware de audio real (desarrollado sin poder
+    reproducir sonido real por WASAPI en esta sesión) -- REF_DIVISOR
+    (magnitud FFT aproximada de un tono a escala completa tras la
+    ventana de Hann, sobre la que se calcula el 0dB del espectómetro) es
+    una estimación teórica, no medida en vivo. Si las barras del
+    espectómetro salen siempre al máximo o siempre vacías con audio real,
+    revisar/ajustar este valor primero."""
+
+    REF_DIVISOR = 4.0
+
+    @staticmethod
+    def spectrum(samples: Sequence[float], bands: int = SPECTRUM_BANDS) -> list[float]:
+        n = len(samples)
+        if n < 2:
+            return [0.0] * bands
+        arr = np.asarray(samples, dtype=np.float64)
+        magnitudes = np.abs(np.fft.rfft(arr * np.hanning(n)))
+        usable = magnitudes[1:]  # descarta el bin 0 (DC, sin interes visual)
+        total = len(usable)
+        if total < bands:
+            return [0.0] * bands
+        ref = n / SpectrumAnalyzer.REF_DIVISOR
+        result = []
+        prev_edge = 0
+        for i in range(1, bands + 1):
+            # Bordes de banda espaciados logaritmicamente sobre el INDICE
+            # del bin (no en Hz -- los adapters de audio no exponen la
+            # frecuencia de muestreo real, ver AudioLevelSource): el
+            # efecto perceptual es el mismo que espaciar por Hz, ya que
+            # el indice del bin ya es proporcional a la frecuencia --
+            # graves ocupan mas barras, agudos se comprimen en menos,
+            # como en cualquier espectómetro "normal".
+            edge = min(total, max(prev_edge + 1, round(total ** (i / bands))))
+            band = usable[prev_edge:edge]
+            prev_edge = edge
+            energy = float(band.mean()) if band.size else 0.0
+            db = 20 * math.log10(energy / ref) if energy > 0 else DB_FLOOR
+            db = max(DB_FLOOR, min(DB_CEILING, db))
+            result.append((db - DB_FLOOR) / (DB_CEILING - DB_FLOOR))
+        return result
+
+    @staticmethod
+    def waveform(samples: Sequence[float], points: int = WAVEFORM_POINTS) -> list[float]:
+        n = len(samples)
+        if n == 0:
+            return [0.0] * points
+        if n <= points:
+            return list(samples)
+        # Decimacion simple por zancada -- un osciloscopio decorativo no
+        # necesita anti-aliasing de verdad, solo dar la forma general de
+        # la onda.
+        arr = np.asarray(samples, dtype=np.float64)
+        idx = np.linspace(0, n - 1, points).astype(int)
+        return arr[idx].tolist()

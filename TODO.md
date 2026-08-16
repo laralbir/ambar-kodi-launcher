@@ -59,14 +59,24 @@ de aquí.
 
 ## Pendiente
 
-- **Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
-  como estilos adicionales del VU-metro**: junto a los ya existentes
-  (barras LED, aguja simple, aguja realista). El pipeline de audio ya
-  captura el nivel real por canal (`ambar/adapters/audio/`, ver
-  `AudioLevelService`); haría falta añadir un análisis en frecuencia
-  (FFT) para las barras del espectómetro, o exponer directamente la
-  forma de onda cruda del buffer para el osciloscopio, y un nuevo
-  `VU_METER_STYLE` en el frontend para cada uno.
+- **Refactorizar la guía de usuario (`docs/index.html`) con contenido
+  visual de la app**, no solo texto. Explícitamente NO capturas de
+  pantalla estáticas (`.png`/`.jpg` que habría que regenerar cada vez
+  que cambie el diseño): al ser el frontend de Ámbar HTML/CSS puro, la
+  guía debe reutilizar ese mismo HTML/CSS para "pintar" en vivo la parte
+  de la interfaz que esté explicando en cada sección (p. ej. un
+  fragmento real de `.action-card`, `.tbtn`, `.vu-meter-leds`... con las
+  mismas variables de color/tipografía que `index.html`), en vez de
+  describir el aspecto solo con palabras o con una imagen que se queda
+  desactualizada en el primer rediseño.
+- **Simuladores de VU-metro analógico calcados de modelos reales**
+  (Sony TC-xxx, Pioneer SA-xxx, Technics SU-xxx...), como estilos
+  adicionales junto a la aguja "simple"/"realista" ya existentes.
+  Requisito explícito: tienen que parecer el aparato real al 100% (esfera,
+  tipografía, marcas de escala, colores, logotipo de la marca si aplica),
+  no una aguja genérica reetiquetada — necesitará referencias visuales
+  concretas (fotos/capturas) de cada modelo a imitar antes de poder
+  implementarlo con precisión.
 - **Firma de código estable para el `.app` de macOS**: ahora mismo
   `build.py` firma en modo *ad-hoc* (`codesign_identity=None`), lo que
   hace que el permiso de "Grabación de pantalla" del VU-metro se

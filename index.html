@@ -166,7 +166,12 @@
   .vu-meter{margin-top:1.6vh; position:relative;}
   /* Los selectores con id vencen a las reglas de clase display:flex de abajo;
      necesario para que [hidden] realmente oculte (si no, "flex" gana). */
-  .vu-meter-leds[hidden], .vu-meter-needle[hidden], .vu-meter-needle-realistic[hidden]{display:none !important;}
+  .vu-meter-leds[hidden], .vu-meter-needle[hidden], .vu-meter-needle-realistic[hidden],
+  .vu-meter-spectrum[hidden], .vu-meter-oscilloscope[hidden]{display:none !important;}
+  .vu-meter-oscilloscope{width:100%; height:70px; display:block; border-radius:6px;}
+  .vu-meter-spectrum{display:flex; flex-direction:column; gap:5px;}
+  .vu-channel-spectrum{display:flex; align-items:center; gap:0.6rem;}
+  .vu-channel-spectrum canvas{width:100%; height:28px; display:block; border-radius:4px; flex:1 1 auto;}
   .vu-meter-expand-btn{
     position:absolute; top:-2.6rem; right:0; width:40px; height:40px; border-radius:8px;
     border:1px solid var(--line); background:var(--panel-raised); color:var(--text-dim);
@@ -347,7 +352,12 @@
   .vumeter-fullscreen-container{width:min(90vw, 1400px); padding:2rem;}
   .vumeter-fullscreen-container .vu-meter-leds[hidden],
   .vumeter-fullscreen-container .vu-meter-needle[hidden],
-  .vumeter-fullscreen-container .vu-meter-needle-realistic[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-meter-needle-realistic[hidden],
+  .vumeter-fullscreen-container .vu-meter-spectrum[hidden],
+  .vumeter-fullscreen-container .vu-meter-oscilloscope[hidden]{display:none !important;}
+  .vumeter-fullscreen-container .vu-meter-oscilloscope{height:220px;}
+  .vumeter-fullscreen-container .vu-channel-spectrum canvas{height:90px;}
+  .vumeter-fullscreen-container .vu-channel-spectrum .vu-ch-label{font-size:1.1rem; width:auto;}
   .vumeter-fullscreen-container .vu-channel-leds{gap:1.2rem;}
   .vumeter-fullscreen-container .vu-led-row{height:48px; gap:6px;}
   .vumeter-fullscreen-container .vu-led-row .led{border-radius:4px;}
@@ -689,6 +699,8 @@
         <div class="vu-meter-leds" id="vu-meter-leds" hidden></div>
         <div class="vu-meter-needle" id="vu-meter-needle" hidden></div>
         <div class="vu-meter-needle-realistic" id="vu-meter-needle-realistic" hidden></div>
+        <div class="vu-meter-spectrum" id="vu-meter-spectrum" hidden></div>
+        <canvas class="vu-meter-oscilloscope" id="vu-meter-oscilloscope" width="1200" height="200" hidden></canvas>
       </div>
 
       <div class="volume-inline-row">
@@ -836,10 +848,19 @@
           </div>
           <div class="form-group">
             <label>Estilo del VU-metro</label>
-            <div style="display:flex; gap:0.6rem;">
-              <div class="btn" id="vu-style-leds" style="flex:1;" onclick="setVuMeterStyle('leds')">Barras LED</div>
-              <div class="btn" id="vu-style-needle" style="flex:1;" onclick="setVuMeterStyle('needle')">Aguja simple</div>
-              <div class="btn" id="vu-style-needle-realistic" style="flex:1;" onclick="setVuMeterStyle('needle-realistic')">Aguja realista</div>
+            <!-- Rejilla de 3 columnas (no dos filas flex independientes de
+                 3+2): con dos flex separados, la fila de 2 no quedaba
+                 alineada en vertical con la de 3 (columnas de ancho
+                 distinto), y la navegación espacial con el mando no
+                 conseguía llegar a Espectómetro/Osciloscopio bajando desde
+                 la fila de arriba -- confirmado en vivo. Con grid, la 4ª
+                 y 5ª opción caen exactamente debajo de la 1ª y 2ª. -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.6rem;">
+              <div class="btn" id="vu-style-leds" onclick="setVuMeterStyle('leds')">Barras LED</div>
+              <div class="btn" id="vu-style-needle" onclick="setVuMeterStyle('needle')">Aguja simple</div>
+              <div class="btn" id="vu-style-needle-realistic" onclick="setVuMeterStyle('needle-realistic')">Aguja realista</div>
+              <div class="btn" id="vu-style-spectrum" onclick="setVuMeterStyle('spectrum')">Espectómetro</div>
+              <div class="btn" id="vu-style-oscilloscope" onclick="setVuMeterStyle('oscilloscope')">Osciloscopio</div>
             </div>
           </div>
           <div class="form-group">
@@ -1164,18 +1185,41 @@
       wrap.innerHTML = VU_NEEDLE_REALISTIC_SVG.replaceAll("{ch}", ch).replace("{chLabel}", vuChannelLabel(ch, n));
       needleRealRoot.appendChild(wrap);
     }
+
+    // Espectómetro estéreo: un <canvas> por canal (igual que las barras
+    // LED/aguja, un elemento por canal) -- ver AudioLevelService, ahora
+    // manda un espectro distinto por canal en vez de una mezcla mono.
+    const spectrumRoot = el("vu-meter-spectrum");
+    spectrumRoot.innerHTML = "";
+    for(let ch = 0; ch < n; ch++){
+      const row = document.createElement("div");
+      row.className = "vu-channel-spectrum";
+      const label = document.createElement("span");
+      label.className = "vu-ch-label";
+      label.textContent = vuChannelLabel(ch, n);
+      const canvas = document.createElement("canvas");
+      canvas.id = "vu-spectrum-canvas-" + ch;
+      canvas.width = 1200;
+      canvas.height = 200;
+      row.append(label, canvas);
+      spectrumRoot.appendChild(row);
+    }
   }
 
-  const VU_METER_STYLES = ["leds", "needle", "needle-realistic"];
+  const VU_METER_STYLES = ["leds", "needle", "needle-realistic", "spectrum", "oscilloscope"];
 
   function applyVuMeterStyle(style){
     vuMeterStyle = VU_METER_STYLES.includes(style) ? style : "leds";
     el("vu-meter-leds").hidden = vuMeterStyle !== "leds";
     el("vu-meter-needle").hidden = vuMeterStyle !== "needle";
     el("vu-meter-needle-realistic").hidden = vuMeterStyle !== "needle-realistic";
+    el("vu-meter-spectrum").hidden = vuMeterStyle !== "spectrum";
+    el("vu-meter-oscilloscope").hidden = vuMeterStyle !== "oscilloscope";
     el("vu-style-leds").classList.toggle("btn-primary", vuMeterStyle === "leds");
     el("vu-style-needle").classList.toggle("btn-primary", vuMeterStyle === "needle");
     el("vu-style-needle-realistic").classList.toggle("btn-primary", vuMeterStyle === "needle-realistic");
+    el("vu-style-spectrum").classList.toggle("btn-primary", vuMeterStyle === "spectrum");
+    el("vu-style-oscilloscope").classList.toggle("btn-primary", vuMeterStyle === "oscilloscope");
   }
 
   function setVuMeterStyle(style){
@@ -1215,10 +1259,13 @@
   // igual este donde este el DOM fisicamente.
   function toggleVuMeterFullscreen(active){
     const leds = el("vu-meter-leds"), needle = el("vu-meter-needle"), needleReal = el("vu-meter-needle-realistic");
+    const spectrum = el("vu-meter-spectrum"), oscilloscope = el("vu-meter-oscilloscope");
     const target = active ? el("vumeter-fullscreen-container") : el("vu-meter-home");
     target.appendChild(leds);
     target.appendChild(needle);
     target.appendChild(needleReal);
+    target.appendChild(spectrum);
+    target.appendChild(oscilloscope);
     el("view-vumeter-fullscreen").classList.toggle("visible", active);
   }
   el("vu-meter-expand-btn").addEventListener("click", () => toggleVuMeterFullscreen(true));
@@ -1350,10 +1397,83 @@
   // Recalculado por applyVuMeterSmoothing() segun el preset de fluidez elegido.
   let vuReleaseAlpha = 1 - Math.exp(-(VU_WATCHDOG_TICK_MS / 1000) / 0.3);
 
+  // Espectómetro/osciloscopio: se dibujan en <canvas> (no como el resto
+  // de estilos, que son DOM/SVG) -- redibujar decenas de barras o cientos
+  // de puntos de la forma de onda a ~20-30Hz como elementos DOM sería
+  // mucho más costoso que pintarlos directo en un canvas 2D. Espectómetro
+  // en estéreo (un <canvas> por canal, ver buildVuChannels); osciloscopio
+  // en mono, ver AudioLevelService para el porqué de la asimetría.
+  //
+  // Barras "de celdas" (como un espectómetro LCD de ecualizador de
+  // verdad), no barras continuas: mismas zonas verde/ámbar/rojo y mismo
+  // recuento de segmentos que las barras LED del propio VU-metro
+  // (VU_LED_COUNT), para que ambos estilos usen el mismo lenguaje visual.
+  function drawSpectrumChannel(canvas, bands){
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if(!bands || !bands.length) return;
+    const barGap = w * 0.006;
+    const barWidth = (w - barGap * (bands.length - 1)) / bands.length;
+    const segGap = h * 0.02;
+    const segHeight = (h - segGap * (VU_LED_COUNT - 1)) / VU_LED_COUNT;
+    bands.forEach((v, bi) => {
+      const lit = Math.round(v * VU_LED_COUNT);
+      const x = bi * (barWidth + barGap);
+      for(let s = 0; s < VU_LED_COUNT; s++){
+        const y = h - (s + 1) * segHeight - s * segGap;
+        const zone = s < VU_LED_COUNT * 0.6 ? 0 : s < VU_LED_COUNT * 0.85 ? 1 : 2;
+        const on = s < lit;
+        const onColor = ["#3ddc73", "#ffb020", "#e65a5a"][zone];
+        const offColor = ["rgba(61,220,115,0.12)", "rgba(255,176,32,0.12)", "rgba(230,90,90,0.12)"][zone];
+        ctx.fillStyle = on ? onColor : offColor;
+        ctx.fillRect(x, y, barWidth, segHeight);
+      }
+    });
+  }
+
+  function drawSpectrum(spectrumPerChannel){
+    if(!Array.isArray(spectrumPerChannel)) return;
+    spectrumPerChannel.forEach((bands, ch) => {
+      const canvas = el("vu-spectrum-canvas-" + ch);
+      if(canvas) drawSpectrumChannel(canvas, bands);
+    });
+  }
+
+  // Ganancia visual: la amplitud real de las muestras PCM (captura de
+  // loopback, ya despues del volumen del sistema) se queda visualmente
+  // plana a volumenes normales de escucha -- confirmado en vivo que
+  // hacia falta subir el volumen casi al 100% para apreciar la forma de
+  // onda de verdad (el espectómetro, en dB con suelo/techo fijos, no
+  // tenia este problema). Se amplifica x4 y se recorta a ±1 para no
+  // salirse del lienzo con picos reales a volumen ya alto.
+  const OSCILLOSCOPE_GAIN = 4;
+
+  function drawOscilloscope(points){
+    const canvas = el("vu-meter-oscilloscope");
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if(!points || points.length < 2) return;
+    ctx.strokeStyle = "#ffb020";
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    points.forEach((v, i) => {
+      const x = (i / (points.length - 1)) * w;
+      const amplified = Math.max(-1, Math.min(1, v * OSCILLOSCOPE_GAIN));
+      const y = h / 2 - amplified * (h / 2 - 6);
+      if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
   socket.on("audio_level", (data) => {
     vuCurrentDb = Array.isArray(data.db) ? data.db.slice() : [data.db];
     vuLastEventAt = performance.now();
     updateVuMeter(vuCurrentDb);
+    if(vuMeterStyle === "spectrum") drawSpectrum(data.spectrum);
+    if(vuMeterStyle === "oscilloscope") drawOscilloscope(data.waveform);
   });
 
   setInterval(() => {

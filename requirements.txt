@@ -14,6 +14,13 @@ soundcard; sys_platform == "win32"
 pyobjc-framework-ScreenCaptureKit; sys_platform == "darwin"
 pyobjc-framework-CoreMedia; sys_platform == "darwin"
 
+# Espectómetro/osciloscopio del VU-metro (ver ambar/domain/audio.py,
+# SpectrumAnalyzer -- FFT y decimado de la forma de onda). Antes solo
+# llegaba de forma transitoria via `soundcard` en Windows; explicito y sin
+# marcador de plataforma porque ahora se usa directamente en código de
+# aplicación (no un adapter), que debe funcionar igual en macOS.
+numpy
+
 # Control de volumen del sistema (ver ambar/adapters/audio/*_volume.py).
 # En macOS se usa `osascript` (ya viene con el sistema, sin dependencia extra).
 pycaw==20251023; sys_platform == "win32"

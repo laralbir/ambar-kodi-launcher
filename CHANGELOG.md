@@ -8,6 +8,36 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Espectómetro (barras de frecuencia) y osciloscopio (forma de onda)
+  como dos nuevos estilos del VU-metro**, junto a los ya existentes.
+  `SpectrumAnalyzer` (`ambar/domain/audio.py`, nueva dependencia
+  explícita de `numpy`) reanaliza el mismo fragmento PCM que ya usa
+  `LevelMeter` — FFT con ventana de Hann para el espectómetro (20 bandas
+  espaciadas logarítmicamente por índice de bin, no por Hz: los adapters
+  de audio no exponen la frecuencia de muestreo real) y decimado simple
+  para el osciloscopio (96 puntos). Se dibujan en `<canvas>` (a
+  diferencia del resto de estilos, DOM/SVG) por coste: redibujar
+  barras/forma de onda a 20-30Hz como elementos DOM habría sido mucho
+  más caro que pintarlos directo en un canvas 2D.
+  **Espectómetro en estéreo** (un `<canvas>` por canal, igual que las
+  barras LED/aguja — el osciloscopio se queda en mono, mezcla de todos
+  los canales: una forma de onda por canal no aporta nada visualmente
+  ahí). **Barras "de celdas"** (segmentos horizontales con hueco entre
+  ellos, no una barra continua) con las mismas zonas verde/ámbar/rojo y
+  el mismo recuento de segmentos que las barras LED del propio VU-metro,
+  como un espectómetro LCD de ecualizador real.
+  **Calibración del espectómetro (0dB de referencia) sin verificar
+  contra audio real** (desarrollado sin poder reproducir sonido por
+  WASAPI en esta sesión) — validado con tonos sintéticos y ruido blanco
+  de prueba (silencio → 0, tono moderado → pico contenido sin saturar,
+  ruido blanco → reparto plano entre bandas, tonos distintos por canal
+  → picos en bandas distintas por canal); revisar
+  `SpectrumAnalyzer.REF_DIVISOR` si las barras salen siempre al máximo o
+  siempre vacías con música real. **Osciloscopio con ganancia visual
+  x4** (confirmado en vivo que la amplitud real de las muestras se
+  quedaba plana a volúmenes normales de escucha, hacía falta subir casi
+  al 100% para apreciar la forma de onda — el espectómetro, en dB con
+  suelo/techo fijos, no tenía este problema).
 - **Botón de expulsar CD en el home** (⏏, junto al de la lista de
   reproducción — siempre activo, con o sin CD insertado, para poder
   abrir la bandeja y meter un disco nuevo). Para primero la reproducción
@@ -104,6 +134,13 @@ y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
   SMTC traducen el suyo propio al leerlo y escribirlo.
 
 ### Fixed
+- **Los botones de Espectómetro/Osciloscopio en Ajustes no eran
+  alcanzables con el mando**: estaban en una segunda fila `flex`
+  independiente de la primera (3 botones arriba, 2 abajo), con columnas
+  de ancho distinto entre ambas filas — la navegación espacial no
+  conseguía bajar de la fila de arriba a la de abajo. Sustituido por una
+  rejilla `grid` de 3 columnas común a los 5 botones, para que la 4ª y
+  5ª opción caigan exactamente debajo de la 1ª y 2ª.
 - **CD identificado correctamente (título/artista/pistas) pero sin
   carátula**: confirmado en vivo con un disco real (La Polla Records,
   "Toda la puta vida igual") que `art` venía `null` aunque la

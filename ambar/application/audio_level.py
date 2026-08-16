@@ -1,7 +1,7 @@
 import time
 from typing import Sequence
 
-from ambar.domain.audio import VU_ATTACK_SECONDS, VU_RELEASE_SECONDS, LevelMeter
+from ambar.domain.audio import VU_ATTACK_SECONDS, VU_RELEASE_SECONDS, LevelMeter, SpectrumAnalyzer
 from ambar.domain.events import AudioLevelChanged
 from ambar.ports.audio_level_source import AudioLevelSource
 
@@ -53,4 +53,19 @@ class AudioLevelService:
         if self._last_publish is not None and (now - self._last_publish) < self._min_interval:
             return
         self._last_publish = now
-        self._event_bus.publish(AudioLevelChanged(db=db_per_channel))
+        # Espectómetro estéreo (un espectro por canal, igual que las
+        # barras LED/aguja) -- osciloscopio en mono (mezcla de todos los
+        # canales): una forma de onda por canal por separado no aporta
+        # nada visualmente en un osciloscopio (a diferencia del
+        # espectómetro, donde graves/agudos SI pueden diferir de verdad
+        # entre L/R) y duplicaria el coste sin necesidad. Solo se
+        # calculan si hay muestras de verdad (canales vacíos en el
+        # primer fragmento tras arrancar).
+        spectrum_per_channel: list[list[float]] = []
+        waveform: list[float] = []
+        if channels and channels[0]:
+            spectrum_per_channel = [SpectrumAnalyzer.spectrum(samples) for samples in channels]
+            length = min(len(c) for c in channels)
+            mono = [sum(c[i] for c in channels) / len(channels) for i in range(length)]
+            waveform = SpectrumAnalyzer.waveform(mono)
+        self._event_bus.publish(AudioLevelChanged(db=db_per_channel, spectrum=spectrum_per_channel, waveform=waveform))
